@@ -1,6 +1,8 @@
 @echo off
 
-ctime -begin generator.ctm
+:: NOTE: For the ctime timings make sure to change the name
+:: of the file here and at the end of the script as well
+ctime -begin garden.ctm
 
 set CompilerFlags= /Zi /MDd /FC /nologo
 REM set LinkerFlags=-subsystem:Console
@@ -19,6 +21,7 @@ cl %CompilerFlags% /c /D PLATFORM_DESKTOP /I..\external\Raylib\external\glfw\inc
     ..\external\Raylib\rtextures.c ^
     ..\external\Raylib\utils.c
 
+:: NOTE: Make sure to name both the .cpp and .exe files appropriately
 cl %CompilerFlags% ^
     ..\garden.cpp ^
     rcore.obj ^
