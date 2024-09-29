@@ -46,6 +46,8 @@ int main() {
             base_screen_height * scale_y,
         };
 
+        // TODO: Delete this todo
+
         Rectangle rect = {0.0f, 0.0f, (float)target.texture.width, -(float)target.texture.height}; 
         Vector2 zero_vec = {0, 0};
         DrawTexturePro(target.texture, rect,
