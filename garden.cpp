@@ -1,4 +1,7 @@
+
 #include "raylib.h"
+#include "types.h"
+//#include "mymath.h"
 
 int main() {
     // -------------------------------------
@@ -11,14 +14,31 @@ int main() {
     const int window_height = 720;
     InitWindow(window_width, window_height, "Raylib basic window");
 
-    RenderTexture2D target = LoadRenderTexture(base_screen_width, base_screen_height); SetTargetFPS(60);
+    float player_speed = 3.0f;
+    Vector2 rect_pos   = {base_screen_width*0.5, base_screen_height*0.5};
+    Vector2 rect_size  = {10, 10};
+
+    RenderTexture2D target = LoadRenderTexture(base_screen_width, base_screen_height); 
+    SetTargetFPS(60);
     // -------------------------------------
     // Main Game Loop
     while (!WindowShouldClose()) {
         // -----------------------------------
         // Update
         // -----------------------------------
-        // TODO: put things here
+
+        float delta_t = GetFrameTime();
+
+#if 0
+        Vector2 input_axis = {0, 0};
+        if (IsKeyDown(KEY_RIGHT)) input_axis.x =  1.0f;
+        if (IsKeyDown(KEY_LEFT))  input_axis.x = -1.0f;
+        if (IsKeyDown(KEY_UP))    input_axis.y = -1.0f;
+        if (IsKeyDown(KEY_DOWN))  input_axis.y =  1.0f;;
+        Vector2Normalize(input_axis);
+        rect_pos = Vector2Add(rect_pos, Vector2Scale(input_axis, player_speed * delta_t);
+#endif
+
         // -----------------------------------
         // Draw
         // -----------------------------------
@@ -27,8 +47,7 @@ int main() {
         BeginTextureMode(target);
         ClearBackground(BLACK);
         DrawText("It works!", 20, 20, 20, WHITE);
-        Vector2 rect_pos = {1, 0.0f};
-        Vector2 rect_size = {10, 170};
+
         DrawRectangleV(rect_pos, rect_size, RED);
         EndTextureMode();
 
