@@ -1,7 +1,6 @@
 
 #include "raylib.h"
-#include "types.h"
-//#include "mymath.h"
+#include "mymath.h"
 
 int main() {
     // -------------------------------------
@@ -14,7 +13,7 @@ int main() {
     const int window_height = 720;
     InitWindow(window_width, window_height, "Raylib basic window");
 
-    float player_speed = 3.0f;
+    float player_speed = 100.0f;
     Vector2 rect_pos   = {base_screen_width*0.5, base_screen_height*0.5};
     Vector2 rect_size  = {10, 10};
 
@@ -29,15 +28,14 @@ int main() {
 
         float delta_t = GetFrameTime();
 
-#if 0
         Vector2 input_axis = {0, 0};
         if (IsKeyDown(KEY_RIGHT)) input_axis.x =  1.0f;
         if (IsKeyDown(KEY_LEFT))  input_axis.x = -1.0f;
         if (IsKeyDown(KEY_UP))    input_axis.y = -1.0f;
         if (IsKeyDown(KEY_DOWN))  input_axis.y =  1.0f;;
-        Vector2Normalize(input_axis);
-        rect_pos = Vector2Add(rect_pos, Vector2Scale(input_axis, player_speed * delta_t);
-#endif
+
+        VectorNorm(input_axis);
+        rect_pos = VectorAdd(rect_pos, VectorScale(input_axis, player_speed * delta_t));
 
         // -----------------------------------
         // Draw
