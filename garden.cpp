@@ -28,14 +28,17 @@ int main() {
 
         float delta_t = GetFrameTime();
 
-        Vector2 input_axis = {0, 0};
-        if (IsKeyDown(KEY_RIGHT)) input_axis.x =  1.0f;
-        if (IsKeyDown(KEY_LEFT))  input_axis.x = -1.0f;
-        if (IsKeyDown(KEY_UP))    input_axis.y = -1.0f;
-        if (IsKeyDown(KEY_DOWN))  input_axis.y =  1.0f;;
+        // -Player Movement 
+        {
+            Vector2 input_axis = {0, 0};
+            if (IsKeyDown(KEY_RIGHT)) input_axis.x =  1.0f;
+            if (IsKeyDown(KEY_LEFT))  input_axis.x = -1.0f;
+            if (IsKeyDown(KEY_UP))    input_axis.y = -1.0f;
+            if (IsKeyDown(KEY_DOWN))  input_axis.y =  1.0f;;
 
-        VectorNorm(input_axis);
-        rect_pos = VectorAdd(rect_pos, VectorScale(input_axis, player_speed * delta_t));
+            VectorNorm(input_axis);
+            rect_pos = VectorAdd(rect_pos, VectorScale(input_axis, player_speed * delta_t));
+        }
 
         // -----------------------------------
         // Draw
