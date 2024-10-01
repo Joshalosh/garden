@@ -2,6 +2,33 @@
 #include "raylib.h"
 #include "mymath.h"
 
+#define MAP_WIDTH  20
+#define MAP_HEIGHT 15
+#define TILE_SIZE  16
+
+enum Tile_Type {
+    TileType_none  = 0,
+    TileType_wall  = 1,
+    TileType_grass = 2,
+};
+
+int tile_map[15][20] = {
+    {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
+    {1, 2, 2, 2, 2, 2, 2, 2, 0, 0, 0, 0, 0, 2, 2, 2, 2, 2, 2, 2},
+    {1, 2, 2, 2, 2, 2, 2, 2, 1, 0, 0, 0, 1, 2, 2, 2, 2, 2, 2, 2},
+    {1, 2, 2, 2, 2, 2, 2, 2, 1, 0, 0, 0, 1, 2, 2, 2, 2, 2, 2, 2},
+    {1, 2, 2, 2, 2, 2, 2, 2, 1, 0, 0, 0, 1, 2, 2, 2, 2, 2, 2, 2},
+    {1, 2, 2, 2, 2, 2, 2, 2, 1, 0, 0, 0, 1, 2, 2, 2, 2, 2, 2, 2},
+    {1, 2, 2, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 0, 2},
+    {1, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2},
+    {1, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2},
+    {1, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2},
+    {1, 2, 2, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 2},
+    {1, 2, 2, 2, 2, 2, 2, 2, 0, 0, 0, 0, 0, 2, 2, 2, 2, 2, 2, 2},
+    {1, 2, 2, 2, 2, 2, 2, 2, 0, 0, 0, 0, 0, 2, 2, 2, 2, 2, 2, 2},
+    {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
+};
+
 int main() {
     // -------------------------------------
     // Initialisation
@@ -31,10 +58,10 @@ int main() {
         // -Player Movement 
         {
             Vector2 input_axis = {0, 0};
-            if (IsKeyDown(KEY_RIGHT)) input_axis.x =  1.0f;
-            if (IsKeyDown(KEY_LEFT))  input_axis.x = -1.0f;
-            if (IsKeyDown(KEY_UP))    input_axis.y = -1.0f;
-            if (IsKeyDown(KEY_DOWN))  input_axis.y =  1.0f;;
+            if (IsKeyDown(KEY_RIGHT) || IsKeyDown('D')) input_axis.x =  1.0f;
+            if (IsKeyDown(KEY_LEFT)  || IsKeyDown('A')) input_axis.x = -1.0f;
+            if (IsKeyDown(KEY_UP)    || IsKeyDown('W')) input_axis.y = -1.0f;
+            if (IsKeyDown(KEY_DOWN)  || IsKeyDown('S')) input_axis.y =  1.0f;;
 
             VectorNorm(input_axis);
             rect_pos = VectorAdd(rect_pos, VectorScale(input_axis, player_speed * delta_t));
@@ -47,7 +74,26 @@ int main() {
         // Draw to render texture
         BeginTextureMode(target);
         ClearBackground(BLACK);
-        DrawText("It works!", 20, 20, 20, WHITE);
+        //DrawText("It works!", 20, 20, 20, WHITE);
+
+        // Draw tiles
+        for (s32 y = 0; y < MAP_HEIGHT; y++) {
+            for (s32 x = 0; x < MAP_WIDTH; x++) {
+                Tile_Type tile = (Tile_Type)tile_map[y][x];
+                Vector2 tile_pos = {(float)x * TILE_SIZE, (float)y * TILE_SIZE};
+
+                Color tile_col;
+                switch (tile) {
+                    case TileType_none:  tile_col = BLACK;    break;
+                    case TileType_wall:  tile_col = DARKGRAY; break;
+                    case TileType_grass: tile_col = GREEN;    break;
+                }
+
+                Vector2 tile_size = {TILE_SIZE, TILE_SIZE};
+                DrawRectangleV(tile_pos, tile_size, tile_col);
+            }
+        }
+
 
         DrawRectangleV(rect_pos, rect_size, RED);
         EndTextureMode();
@@ -65,8 +111,6 @@ int main() {
             base_screen_width * scale_x,
             base_screen_height * scale_y,
         };
-
-        // TODO: Delete this todo
 
         Rectangle rect = {0.0f, 0.0f, (float)target.texture.width, -(float)target.texture.height}; 
         Vector2 zero_vec = {0, 0};
