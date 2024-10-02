@@ -69,3 +69,12 @@ Vector3 VectorAdd(Vector3 a, Vector3 b) {
     return result;
 }
 
+Vector2 VectorSub(Vector2 a, Vector2 b) {
+    Vector2 result = {(a.x - b.x), (a.y - b.y)};
+    return result;
+}
+
+Vector3 VectorSub(Vector3 a, Vector3 b) {
+    Vector3 result = {(a.x - b.x), (a.y - b.y), (a.z - b.z)};
+    return result;
+}

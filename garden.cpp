@@ -2,8 +2,8 @@
 #include "raylib.h"
 #include "mymath.h"
 
-#define MAP_WIDTH  16
-#define MAP_HEIGHT 9
+#define TILEMAP_WIDTH  16
+#define TILEMAP_HEIGHT 9
 #define TILE_SIZE  20
 
 enum Tile_Type {
@@ -12,16 +12,16 @@ enum Tile_Type {
     TileType_grass = 2,
 };
 
-int tile_map[MAP_HEIGHT][MAP_WIDTH] = {
-    {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, },
-    {1, 2, 2, 2, 2, 2, 2, 2, 0, 0, 0, 0, 2, 2, 2, 1, },
-    {1, 2, 2, 2, 2, 2, 2, 2, 1, 0, 0, 0, 1, 2, 2, 1, },
-    {1, 2, 2, 2, 2, 2, 2, 2, 1, 0, 0, 0, 1, 2, 2, 1, },
-    {1, 2, 2, 2, 2, 2, 2, 2, 1, 0, 0, 0, 1, 2, 2, 1, },
-    {1, 2, 2, 2, 2, 2, 2, 2, 1, 0, 0, 0, 1, 2, 2, 1, },
-    {1, 2, 2, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, },
-    {1, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, },
-    {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, },
+int tilemap[TILEMAP_HEIGHT][TILEMAP_WIDTH] = {
+    {1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, },
+    {1, 2, 2, 2, 2, 2, 2, 1, 0, 0, 1, 2, 2, 2, 2, 1, },
+    {1, 2, 2, 2, 2, 2, 2, 1, 0, 0, 1, 2, 1, 2, 2, 1, },
+    {1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, },
+    {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, },
+    {1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, },
+    {1, 2, 2, 2, 2, 2, 2, 1, 0, 0, 0, 0, 1, 2, 2, 1, },
+    {1, 2, 2, 2, 2, 2, 2, 1, 0, 0, 1, 1, 1, 2, 2, 1, },
+    {1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, },
 };
 
 int main() {
@@ -35,9 +35,11 @@ int main() {
     const int window_height = 720;
     InitWindow(window_width, window_height, "Raylib basic window");
 
-    float player_speed = 100.0f;
-    Vector2 rect_pos   = {base_screen_width*0.5, base_screen_height*0.5};
-    Vector2 rect_size  = {10, 10};
+    float player_speed = 50.0f;
+    Vector2 player_pos = {base_screen_width*0.5, base_screen_height*0.5};
+    Vector2 tile_origin_offset = {TILE_SIZE*0.5, TILE_SIZE*0.5};
+
+    Vector2 rect_size  = {TILE_SIZE, TILE_SIZE};
 
     RenderTexture2D target = LoadRenderTexture(base_screen_width, base_screen_height); 
     SetTargetFPS(60);
@@ -53,13 +55,26 @@ int main() {
         // -Player Movement 
         {
             Vector2 input_axis = {0, 0};
-            if (IsKeyDown(KEY_RIGHT) || IsKeyDown('D')) input_axis.x =  1.0f;
-            if (IsKeyDown(KEY_LEFT)  || IsKeyDown('A')) input_axis.x = -1.0f;
-            if (IsKeyDown(KEY_UP)    || IsKeyDown('W')) input_axis.y = -1.0f;
-            if (IsKeyDown(KEY_DOWN)  || IsKeyDown('S')) input_axis.y =  1.0f;;
+            if (IsKeyDown(KEY_RIGHT) || IsKeyDown('D')) input_axis.x += 1.0f;
+            if (IsKeyDown(KEY_LEFT)  || IsKeyDown('A')) input_axis.x -= 1.0f;
+            if (IsKeyDown(KEY_UP)    || IsKeyDown('W')) input_axis.y -= 1.0f;
+            if (IsKeyDown(KEY_DOWN)  || IsKeyDown('S')) input_axis.y += 1.0f;;
 
             VectorNorm(input_axis);
-            rect_pos = VectorAdd(rect_pos, VectorScale(input_axis, player_speed * delta_t));
+
+            // TODO: figure out how to get the player moving from the middle point rather than top left
+            player_pos = {player_pos.x + (float)(TILE_SIZE*0.5), player_pos.y + (float)(TILE_SIZE*0.5)};
+            Vector2 potential_pos = VectorAdd(player_pos, (VectorScale(input_axis, player_speed * delta_t)));
+
+            int tile_x = (int)potential_pos.x / TILE_SIZE;
+            int tile_y = (int)potential_pos.y / TILE_SIZE;
+
+            if ((tile_x >= 0 && tile_x < TILEMAP_WIDTH) && (tile_y >= 0 && tile_y < TILEMAP_HEIGHT)) {
+                Tile_Type tile_type = (Tile_Type)tilemap[tile_y][tile_x];
+                if (tile_type != TileType_wall) {
+                    player_pos = potential_pos;
+                }
+            }
         }
 
         // -----------------------------------
@@ -72,9 +87,9 @@ int main() {
         //DrawText("It works!", 20, 20, 20, WHITE);
 
         // Draw tiles
-        for (s32 y = 0; y < MAP_HEIGHT; y++) {
-            for (s32 x = 0; x < MAP_WIDTH; x++) {
-                Tile_Type tile = (Tile_Type)tile_map[y][x];
+        for (s32 y = 0; y < TILEMAP_HEIGHT; y++) {
+            for (s32 x = 0; x < TILEMAP_WIDTH; x++) {
+                Tile_Type tile = (Tile_Type)tilemap[y][x];
                 Vector2 tile_pos = {(float)x * TILE_SIZE, (float)y * TILE_SIZE};
 
                 Color tile_col;
@@ -90,7 +105,7 @@ int main() {
         }
 
 
-        DrawRectangleV(rect_pos, rect_size, RED);
+        DrawRectangleV(player_pos, rect_size, RED);
         EndTextureMode();
 
         // NOTE: Draw the render texture to the screen, scaling it with window size
