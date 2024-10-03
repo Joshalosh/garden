@@ -37,7 +37,8 @@ int main() {
 
     float player_speed = 50.0f;
     Vector2 player_pos = {base_screen_width*0.5, base_screen_height*0.5};
-    Vector2 tile_origin_offset = {TILE_SIZE*0.5, TILE_SIZE*0.5};
+    Vector2 new_mid = {0, 0};
+    float half_tile_size = TILE_SIZE * 0.5;
 
     Vector2 rect_size  = {TILE_SIZE, TILE_SIZE};
 
@@ -63,8 +64,8 @@ int main() {
             VectorNorm(input_axis);
 
             // TODO: figure out how to get the player moving from the middle point rather than top left
-            player_pos = {player_pos.x + (float)(TILE_SIZE*0.5), player_pos.y + (float)(TILE_SIZE*0.5)};
-            Vector2 potential_pos = VectorAdd(player_pos, (VectorScale(input_axis, player_speed * delta_t)));
+            //player_pos = {player_pos.x + (float)(TILE_SIZE*0.5), player_pos.y + (float)(TILE_SIZE*0.5)};
+            Vector2 potential_pos = VectorAdd(player_pos, VectorScale(input_axis, player_speed * delta_t));
 
             int tile_x = (int)potential_pos.x / TILE_SIZE;
             int tile_y = (int)potential_pos.y / TILE_SIZE;
@@ -73,6 +74,7 @@ int main() {
                 Tile_Type tile_type = (Tile_Type)tilemap[tile_y][tile_x];
                 if (tile_type != TileType_wall) {
                     player_pos = potential_pos;
+
                 }
             }
         }
@@ -105,7 +107,8 @@ int main() {
         }
 
 
-        DrawRectangleV(player_pos, rect_size, RED);
+        Vector2 draw_pos = {player_pos.x - half_tile_size, player_pos.y - half_tile_size};
+        DrawRectangleV(draw_pos, rect_size, RED);
         EndTextureMode();
 
         // NOTE: Draw the render texture to the screen, scaling it with window size
