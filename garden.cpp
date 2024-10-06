@@ -1,6 +1,8 @@
 
 #include "raylib.h"
+#include "types.h"
 #include "mymath.h"
+#include "range"
 
 #define TILEMAP_WIDTH  16
 #define TILEMAP_HEIGHT 9

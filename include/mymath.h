@@ -1,5 +1,4 @@
 
-#include "types.h"
 #include <math.h>
 
 f32 Dot(Vector2 a, Vector2 b) {
