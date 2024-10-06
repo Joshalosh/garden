@@ -2,7 +2,6 @@
 #include "raylib.h"
 #include "types.h"
 #include "mymath.h"
-#include "range"
 
 #define TILEMAP_WIDTH  16
 #define TILEMAP_HEIGHT 9
@@ -44,6 +43,8 @@ int main() {
 
     Vector2 rect_size  = {TILE_SIZE, TILE_SIZE};
 
+    Rectangle player_collider;
+
     RenderTexture2D target = LoadRenderTexture(base_screen_width, base_screen_height); 
     SetTargetFPS(60);
     // -------------------------------------
@@ -68,15 +69,39 @@ int main() {
             // TODO: figure out how to get the player moving from the middle point rather than top left
             //player_pos = {player_pos.x + (float)(TILE_SIZE*0.5), player_pos.y + (float)(TILE_SIZE*0.5)};
             Vector2 potential_pos = VectorAdd(player_pos, VectorScale(input_axis, player_speed * delta_t));
+            player_collider.x = potential_pos.x - half_tile_size; 
+            player_collider.y = potential_pos.y;
+            player_collider.width = TILE_SIZE;
+            player_collider.height = half_tile_size;
 
-            int tile_x = (int)potential_pos.x / TILE_SIZE;
-            int tile_y = (int)potential_pos.y / TILE_SIZE;
+            int tile_min_x = (int)player_collider.x / TILE_SIZE;
+            int tile_min_y = (int)player_collider.y / TILE_SIZE;
+            int tile_max_x = (int)(player_collider.x + player_collider.width)  / TILE_SIZE;
+            int tile_max_y = (int)(player_collider.y + player_collider.height) / TILE_SIZE; 
+            int tile_x     = (int)potential_pos.x / TILE_SIZE;
+            int tile_y     = (int)potential_pos.y / TILE_SIZE;
 
-            if ((tile_x >= 0 && tile_x < TILEMAP_WIDTH) && (tile_y >= 0 && tile_y < TILEMAP_HEIGHT)) {
-                Tile_Type tile_type = (Tile_Type)tilemap[tile_y][tile_x];
-                if (tile_type != TileType_wall) {
+            if ((tile_min_x >= 0 && tile_max_x < TILEMAP_WIDTH) && (tile_min_y >= 0 && tile_max_y < TILEMAP_HEIGHT)) {
+                Tile_Type tile_type1 = (Tile_Type)tilemap[tile_y][tile_x];
+                Tile_Type tile_type2 = tile_type1;
+                if (input_axis.x == 1.0f) {
+                    tile_type1 = (Tile_Type)tilemap[tile_max_y][tile_max_x];
+                    tile_type2 = (Tile_Type)tilemap[tile_min_y][tile_max_x];
+                }
+                if (input_axis.x == -1.0f) {
+                    tile_type1 = (Tile_Type)tilemap[tile_max_y][tile_min_x];
+                    tile_type2 = (Tile_Type)tilemap[tile_min_y][tile_min_x];
+                }
+                if (input_axis.y == -1.0f) {
+                    tile_type1 = (Tile_Type)tilemap[tile_min_y][tile_max_x];
+                    tile_type2 = (Tile_Type)tilemap[tile_min_y][tile_min_x];
+                }
+                if (input_axis.y == 1.0f) {
+                    tile_type1 = (Tile_Type)tilemap[tile_max_y][tile_max_x];
+                    tile_type2 = (Tile_Type)tilemap[tile_max_y][tile_min_x];
+                }
+                if (tile_type1 != TileType_wall && tile_type2 != TileType_wall) {
                     player_pos = potential_pos;
-
                 }
             }
         }
@@ -111,6 +136,16 @@ int main() {
 
         Vector2 draw_pos = {player_pos.x - half_tile_size, player_pos.y - half_tile_size};
         DrawRectangleV(draw_pos, rect_size, RED);
+
+#if 0
+        Rectangle draw_rec; 
+        draw_rec.x = player_collider.x - half_tile_size;
+        draw_rec.y = player_collider.y;
+        draw_rec.width = TILE_SIZE;
+        draw_rec.height = half_tile_size;
+#endif
+            
+        //DrawRectangleLinesEx(player_collider, 0.2f, GREEN);
         EndTextureMode();
 
         // NOTE: Draw the render texture to the screen, scaling it with window size
