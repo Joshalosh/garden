@@ -70,9 +70,10 @@ int main() {
             //player_pos = {player_pos.x + (float)(TILE_SIZE*0.5), player_pos.y + (float)(TILE_SIZE*0.5)};
             Vector2 potential_pos = VectorAdd(player_pos, VectorScale(input_axis, player_speed * delta_t));
             player_collider.x = potential_pos.x - half_tile_size; 
-            player_collider.y = potential_pos.y;
+            f32 quarter_tile_size = half_tile_size*0.5;
+            player_collider.y = potential_pos.y + quarter_tile_size;
             player_collider.width = TILE_SIZE;
-            player_collider.height = half_tile_size;
+            player_collider.height = quarter_tile_size;
 
             int tile_min_x = (int)player_collider.x / TILE_SIZE;
             int tile_min_y = (int)player_collider.y / TILE_SIZE;
@@ -81,7 +82,7 @@ int main() {
             int tile_x     = (int)potential_pos.x / TILE_SIZE;
             int tile_y     = (int)potential_pos.y / TILE_SIZE;
 
-            if ((tile_min_x >= 0 && tile_max_x < TILEMAP_WIDTH) && (tile_min_y >= 0 && tile_max_y < TILEMAP_HEIGHT)) {
+            if ((tile_max_x > 0 && tile_max_x < TILEMAP_WIDTH) && (player_collider.y >= 0 && tile_max_y < TILEMAP_HEIGHT)) {
                 Tile_Type tile_type1 = (Tile_Type)tilemap[tile_y][tile_x];
                 Tile_Type tile_type2 = tile_type1;
                 if (input_axis.x == 1.0f) {
@@ -137,15 +138,7 @@ int main() {
         Vector2 draw_pos = {player_pos.x - half_tile_size, player_pos.y - half_tile_size};
         DrawRectangleV(draw_pos, rect_size, RED);
 
-#if 0
-        Rectangle draw_rec; 
-        draw_rec.x = player_collider.x - half_tile_size;
-        draw_rec.y = player_collider.y;
-        draw_rec.width = TILE_SIZE;
-        draw_rec.height = half_tile_size;
-#endif
-            
-        //DrawRectangleLinesEx(player_collider, 0.2f, GREEN);
+        DrawRectangleLinesEx(player_collider, 0.2f, GREEN);
         EndTextureMode();
 
         // NOTE: Draw the render texture to the screen, scaling it with window size
