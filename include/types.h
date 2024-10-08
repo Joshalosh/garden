@@ -16,3 +16,5 @@ typedef double  float64;
 typedef float32 f32;
 typedef float64 f64;
 
+#define ASSERT(expression) if(!(expression)) *(int *)0 = 0
+
