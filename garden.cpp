@@ -17,11 +17,13 @@ enum Tile_Type {
 
 Memory_Arena arena;
 
+
 struct World {
     tilemap[TILEMAP_HEIGHT][TILEMAPE_WIDTH];
 };
 
 
+// TODO: Figure out how to store this in memory
 world.tilemap[TILEMAP_HEIGHT][TILEMAP_WIDTH] = {
     {1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, },
     {1, 2, 2, 2, 2, 2, 2, 1, 0, 0, 1, 2, 2, 2, 2, 1, },
