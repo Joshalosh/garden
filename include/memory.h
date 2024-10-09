@@ -22,3 +22,11 @@ void *ArenaAlloc(Memory_Arena *arena, size_t size) {
     }
     return result;
 }
+
+void ArenaClear(Memory_Arena *arena) {
+    ArenaInit(arena, arena->size, arena->base);
+}
+
+void ArenaFree(Memory_Arena *arena) {
+    free(arena->base);
+}
