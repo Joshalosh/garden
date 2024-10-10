@@ -5,7 +5,7 @@ struct Memory_Arena {
     u8     *base;
 };
 
-void ArenaInit(Memory_Arena *arena, size_t size void *base) {
+void ArenaInit(Memory_Arena *arena, size_t size, void *base) {
     arena->size = size;
     arena->used = 0;
     arena->base = (u8 *)base;
@@ -22,6 +22,7 @@ void *ArenaAlloc(Memory_Arena *arena, size_t size) {
     }
     return result;
 }
+#define PUSH_STRUCT(arena, type) ArenaAlloc(arena, sizeof type)
 
 void ArenaClear(Memory_Arena *arena) {
     ArenaInit(arena, arena->size, arena->base);

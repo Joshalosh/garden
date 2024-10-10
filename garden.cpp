@@ -1,7 +1,10 @@
 
+#include <stdlib.h>
+#include <stdio.h>
 #include "raylib.h"
 #include "types.h"
 #include "mymath.h"
+#include "memory.h"
 
 #define TILEMAP_WIDTH  16
 #define TILEMAP_HEIGHT 9
@@ -15,16 +18,12 @@ enum Tile_Type {
     TileType_grass = 2,
 };
 
-Memory_Arena arena;
-
-
 struct World {
-    tilemap[TILEMAP_HEIGHT][TILEMAPE_WIDTH];
+    // TODO: Populate this
 };
 
 
-// TODO: Figure out how to store this in memory
-world.tilemap[TILEMAP_HEIGHT][TILEMAP_WIDTH] = {
+int tilemap[TILEMAP_HEIGHT][TILEMAP_WIDTH] = {
     {1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, },
     {1, 2, 2, 2, 2, 2, 2, 1, 0, 0, 1, 2, 2, 2, 2, 1, },
     {1, 2, 2, 2, 2, 2, 2, 1, 0, 0, 1, 2, 1, 2, 2, 1, },
@@ -46,9 +45,6 @@ int main() {
     const int window_width  = 1280;
     const int window_height = 720;
     InitWindow(window_width, window_height, "Raylib basic window");
-
-    void *memory_block = malloc(ARENA_SIZE);
-    ArenaInit(&arena, ARENA_SIZE, memory_block);
 
     float player_speed = 50.0f;
     Vector2 player_pos = {base_screen_width*0.5, base_screen_height*0.5};
