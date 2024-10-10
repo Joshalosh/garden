@@ -18,10 +18,9 @@ enum Tile_Type {
     TileType_grass = 2,
 };
 
-struct World {
-    // TODO: Populate this
+struct Game_State {
+    Vector2 player_pos;
 };
-
 
 int tilemap[TILEMAP_HEIGHT][TILEMAP_WIDTH] = {
     {1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, },
@@ -34,6 +33,7 @@ int tilemap[TILEMAP_HEIGHT][TILEMAP_WIDTH] = {
     {1, 2, 2, 2, 2, 2, 2, 1, 0, 0, 1, 1, 1, 2, 2, 1, },
     {1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, },
 };
+
 
 int main() {
     // -------------------------------------
