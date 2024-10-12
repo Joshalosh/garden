@@ -7,15 +7,19 @@
 #include "memory.h"
 
 #define TILEMAP_WIDTH  16
-#define TILEMAP_HEIGHT 9
+#define TILEMAP_HEIGHT 16
 #define TILE_SIZE  20
 #define MB(x) x*1024ULL*1024ULL
 #define ARENA_SIZE MB(500)
+const int base_screen_width  = 320;
+const int base_screen_height = 320;
 
 enum Tile_Type {
     TileType_none  = 0,
     TileType_wall  = 1,
     TileType_grass = 2,
+    TileType_dirt  = 3,
+    TileType_wall2 = 4,
 };
 
 struct Game_State {
@@ -23,27 +27,37 @@ struct Game_State {
 };
 
 int tilemap[TILEMAP_HEIGHT][TILEMAP_WIDTH] = {
-    {1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, },
-    {1, 2, 2, 2, 2, 2, 2, 1, 0, 0, 1, 2, 2, 2, 2, 1, },
-    {1, 2, 2, 2, 2, 2, 2, 1, 0, 0, 1, 2, 1, 2, 2, 1, },
-    {1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, },
-    {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, },
-    {1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, },
-    {1, 2, 2, 2, 2, 2, 2, 1, 0, 0, 0, 0, 1, 2, 2, 1, },
-    {1, 2, 2, 2, 2, 2, 2, 1, 0, 0, 1, 1, 1, 2, 2, 1, },
-    {1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, },
+    {4, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 1, },
+    {1, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 4, },
+    {4, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 1, },
+    {1, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 4, },
+    {4, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 1, },
+    {1, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 4, },
+    {4, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 1, },
+    {1, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 4, },
+    {4, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 1, },
+    {1, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 4, },
+    {4, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 1, },
+    {1, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 4, },
+    {4, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 1, },
+    {1, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 4, },
+    {4, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 1, },
+    {1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, },
 };
+
+void GameOver(Vector2 *player_pos) {
+    Vector2 start_pos = {base_screen_width*0.5, base_screen_height*0.5};
+    *player_pos = start_pos;
+}
 
 
 int main() {
     // -------------------------------------
     // Initialisation
     // -------------------------------------
-    const int base_screen_width  = 320;
-    const int base_screen_height = 180;
 
     const int window_width  = 1280;
-    const int window_height = 720;
+    const int window_height = 1280;
     InitWindow(window_width, window_height, "Raylib basic window");
 
     float player_speed = 50.0f;
@@ -112,7 +126,10 @@ int main() {
                     tile_type2 = (Tile_Type)tilemap[tile_max_y][tile_min_x];
                 }
                 if (tile_type1 != TileType_wall && tile_type2 != TileType_wall) {
-                    player_pos = potential_pos;
+                    player_pos.x = potential_pos.x*TILE_SIZE;
+                    player_pos.y = potential_pos.y*TILE_SIZE;
+                } else {
+                    GameOver(&player_pos);
                 }
             }
         }
@@ -135,8 +152,10 @@ int main() {
                 Color tile_col;
                 switch (tile) {
                     case TileType_none:  tile_col = BLACK;    break;
-                    case TileType_wall:  tile_col = DARKGRAY; break;
-                    case TileType_grass: tile_col = GREEN;    break;
+                    case TileType_wall:  tile_col = PURPLE; break;
+                    case TileType_wall2: tile_col = {140, 20, 140, 255}; break;
+                    case TileType_grass: tile_col = {68, 68, 68, 255};    break;
+                    case TileType_dirt:  tile_col = {168, 168, 168, 255};    break;
                 }
 
                 Vector2 tile_size = {TILE_SIZE, TILE_SIZE};
@@ -145,8 +164,8 @@ int main() {
         }
 
 
-        Vector2 draw_pos = {player_pos.x - half_tile_size, player_pos.y - half_tile_size};
-        DrawRectangleV(draw_pos, rect_size, RED);
+        //Vector2 draw_pos = {player_pos.x - half_tile_size, player_pos.y - half_tile_size};
+        DrawRectangleV(player_pos, rect_size, RED);
 
         DrawRectangleLinesEx(player_collider, 0.2f, GREEN);
         EndTextureMode();
