@@ -68,7 +68,7 @@ int main() {
 
     Vector2 rect_size  = {TILE_SIZE, TILE_SIZE};
 
-    Rectangle player_collider;
+    Rectangle player_collider = {player_pos.x, player_pos.y, rect_size.x, rect_size.y};
 
     RenderTexture2D target = LoadRenderTexture(base_screen_width, base_screen_height); 
     SetTargetFPS(60);
@@ -154,17 +154,20 @@ int main() {
                 s32 target_tile_x = current_tile_x + s32(input_axis.x);
                 s32 target_tile_y = current_tile_y + s32(input_axis.y);
 
+                player_collider = {(f32)target_tile_x*TILE_SIZE, (f32)target_tile_y*TILE_SIZE, TILE_SIZE, TILE_SIZE};
 
-                if (target_tile_x > 0 && target_tile_x < TILEMAP_WIDTH &&
-                    target_tile_y > 0 && target_tile_y < TILEMAP_HEIGHT) {
+                if (target_tile_x > 0 && target_tile_x < TILEMAP_WIDTH-1 &&
+                    target_tile_y > 0 && target_tile_y < TILEMAP_HEIGHT-1) {
                     target_pos = {(f32)target_tile_x * TILE_SIZE, (f32)target_tile_y * TILE_SIZE};
                     is_moving = true;
                 } else {
                     GameOver(&player_pos);
+                    // TODO: Set a starting tile for the target tile or the player will keep
+                    // moving after restart
                 }
             }
         } else {
-            // MOTE: Move towards target positiong
+            // MOTE: Move towards target position
             Vector2 direction = VectorSub(target_pos, player_pos);
             float distance    = Length(direction);
             if (distance <= player_speed * delta_t) {
@@ -174,6 +177,7 @@ int main() {
                 direction = VectorNorm(direction);
                 Vector2 movement = VectorScale(direction, player_speed * delta_t);
                 player_pos = VectorAdd(player_pos, movement);
+                //player_collider = {player_pos.x, player_pos.y, TILE_SIZE, TILE_SIZE};
             }
         }
 
@@ -209,8 +213,12 @@ int main() {
 
         //Vector2 draw_pos = {player_pos.x - half_tile_size, player_pos.y - half_tile_size};
         DrawRectangleV(player_pos, rect_size, RED);
+        Vector2 col_v = {player_collider.x, player_collider.y};
+        DrawRectangleV(col_v, rect_size, GREEN);
 
-        //DrawRectangleLinesEx(player_collider, 0.2f, GREEN);
+
+        //float thickness = 2.0;
+        //DrawRectangleLinesEx(player_collider, thickness, GREEN);
         EndTextureMode();
 
         // NOTE: Draw the render texture to the screen, scaling it with window size
