@@ -60,9 +60,10 @@ int main() {
     const int window_height = 1280; //720;
     InitWindow(window_width, window_height, "Raylib basic window");
 
-    float player_speed = 250.0f;
-    Vector2 player_pos = {base_screen_width*0.5, base_screen_height*0.5};
-    Vector2 new_mid = {0, 0};
+    float player_speed   = 50.0f;
+    Vector2 player_pos   = {base_screen_width*0.5, base_screen_height*0.5};
+    Vector2 target_pos   = player_pos;
+    bool is_moving       = false;
     float half_tile_size = TILE_SIZE * 0.5;
 
     Vector2 rect_size  = {TILE_SIZE, TILE_SIZE};
@@ -81,6 +82,7 @@ int main() {
         float delta_t = GetFrameTime();
 
         // -Player Movement 
+#if 0
         {
             Vector2 input_axis = {0, 0};
             if (IsKeyDown(KEY_RIGHT) || IsKeyDown('D')) input_axis.x += 1.0f;
@@ -134,6 +136,46 @@ int main() {
                 }
             }
         }
+#endif
+        // - New player movement
+        if (!is_moving) {
+
+            Vector2 input_axis = {0, 0};
+            if (IsKeyDown(KEY_RIGHT) || IsKeyDown(KEY_D)) input_axis.x += 1.0f;
+            if (IsKeyDown(KEY_LEFT)  || IsKeyDown(KEY_A)) input_axis.x -= 1.0f;
+            if (IsKeyDown(KEY_UP)    || IsKeyDown(KEY_W)) input_axis.y -= 1.0f;
+            if (IsKeyDown(KEY_DOWN)  || IsKeyDown(KEY_S)) input_axis.y += 1.0f;
+
+            if (input_axis.x != 0 || input_axis.y != 0) {
+                // NOTE: Calculate the next tile position
+                s32 current_tile_x = (s32)player_pos.x / TILE_SIZE;
+                s32 current_tile_y = (s32)player_pos.y / TILE_SIZE;
+
+                s32 target_tile_x = current_tile_x + s32(input_axis.x);
+                s32 target_tile_y = current_tile_y + s32(input_axis.y);
+
+
+                if (target_tile_x > 0 && target_tile_x < TILEMAP_WIDTH &&
+                    target_tile_y > 0 && target_tile_y < TILEMAP_HEIGHT) {
+                    target_pos = {(f32)target_tile_x * TILE_SIZE, (f32)target_tile_y * TILE_SIZE};
+                    is_moving = true;
+                } else {
+                    GameOver(&player_pos);
+                }
+            }
+        } else {
+            // MOTE: Move towards target positiong
+            Vector2 direction = VectorSub(target_pos, player_pos);
+            float distance    = Length(direction);
+            if (distance <= player_speed * delta_t) {
+                player_pos = target_pos;
+                is_moving  = false;
+            } else {
+                direction = VectorNorm(direction);
+                Vector2 movement = VectorScale(direction, player_speed * delta_t);
+                player_pos = VectorAdd(player_pos, movement);
+            }
+        }
 
         // -----------------------------------
         // Draw
@@ -168,7 +210,7 @@ int main() {
         //Vector2 draw_pos = {player_pos.x - half_tile_size, player_pos.y - half_tile_size};
         DrawRectangleV(player_pos, rect_size, RED);
 
-        DrawRectangleLinesEx(player_collider, 0.2f, GREEN);
+        //DrawRectangleLinesEx(player_collider, 0.2f, GREEN);
         EndTextureMode();
 
         // NOTE: Draw the render texture to the screen, scaling it with window size
