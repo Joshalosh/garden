@@ -12,7 +12,7 @@
 #define MB(x) x*1024ULL*1024ULL
 #define ARENA_SIZE MB(500)
 const int base_screen_width  = 320;
-const int base_screen_height = 320;
+const int base_screen_height = 320; //180;
 
 enum Tile_Type {
     TileType_none  = 0,
@@ -57,10 +57,10 @@ int main() {
     // -------------------------------------
 
     const int window_width  = 1280;
-    const int window_height = 1280;
+    const int window_height = 1280; //720;
     InitWindow(window_width, window_height, "Raylib basic window");
 
-    float player_speed = 50.0f;
+    float player_speed = 250.0f;
     Vector2 player_pos = {base_screen_width*0.5, base_screen_height*0.5};
     Vector2 new_mid = {0, 0};
     float half_tile_size = TILE_SIZE * 0.5;
@@ -93,9 +93,9 @@ int main() {
             // TODO: figure out how to get the player moving from the middle point rather than top left
             //player_pos = {player_pos.x + (float)(TILE_SIZE*0.5), player_pos.y + (float)(TILE_SIZE*0.5)};
             Vector2 potential_pos = VectorAdd(player_pos, VectorScale(input_axis, player_speed * delta_t));
-            player_collider.x = potential_pos.x - half_tile_size; 
+            player_collider.x = potential_pos.x;
             f32 quarter_tile_size = half_tile_size*0.5;
-            player_collider.y = potential_pos.y + quarter_tile_size;
+            player_collider.y = potential_pos.y + (TILE_SIZE - quarter_tile_size);
             player_collider.width = TILE_SIZE;
             player_collider.height = quarter_tile_size;
 
@@ -125,9 +125,10 @@ int main() {
                     tile_type1 = (Tile_Type)tilemap[tile_max_y][tile_max_x];
                     tile_type2 = (Tile_Type)tilemap[tile_max_y][tile_min_x];
                 }
-                if (tile_type1 != TileType_wall && tile_type2 != TileType_wall) {
-                    player_pos.x = potential_pos.x*TILE_SIZE;
-                    player_pos.y = potential_pos.y*TILE_SIZE;
+                if (tile_type1 != TileType_wall && tile_type1 != TileType_wall2 && 
+                    tile_type2 != TileType_wall && tile_type1 != TileType_wall2) {
+                    player_pos.x = potential_pos.x;
+                    player_pos.y = potential_pos.y;
                 } else {
                     GameOver(&player_pos);
                 }
