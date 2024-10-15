@@ -20,6 +20,7 @@ enum Tile_Type {
     TileType_grass = 2,
     TileType_dirt  = 3,
     TileType_wall2 = 4,
+    TileType_fire  = 5,
 };
 
 struct Game_State {
@@ -84,6 +85,7 @@ int main() {
 
     Player player;
     PlayerInit(&player);
+    Vector2 input_axis = {0, 0};
 
     RenderTexture2D target = LoadRenderTexture(base_screen_width, base_screen_height); 
     SetTargetFPS(60);
@@ -109,11 +111,12 @@ int main() {
 
                     Color tile_col;
                     switch (tile) {
-                        case TileType_none:  tile_col = BLACK;    break;
-                        case TileType_wall:  tile_col = PURPLE; break;
-                        case TileType_wall2: tile_col = {140, 20, 140, 255}; break;
+                        case TileType_none:  tile_col = BLACK;                break;
+                        case TileType_wall:  tile_col = PURPLE;               break;
+                        case TileType_wall2: tile_col = {140, 20, 140, 255};  break;
                         case TileType_grass: tile_col = {68, 68, 68, 255};    break;
-                        case TileType_dirt:  tile_col = {168, 168, 168, 255};    break;
+                        case TileType_dirt:  tile_col = {168, 168, 168, 255}; break;
+                        case TileType_fire:  tile_col = {168, 0, 0, 255};     break;
                     }
 
                     Vector2 tile_size = {TILE_SIZE, TILE_SIZE};
@@ -122,14 +125,13 @@ int main() {
             }
         }
 
+        if      (IsKeyDown(KEY_RIGHT) || IsKeyDown(KEY_D)) input_axis = {1.0f, 0};
+        else if (IsKeyDown(KEY_LEFT)  || IsKeyDown(KEY_A)) input_axis = {-1.0f, 0};
+        else if (IsKeyDown(KEY_UP)    || IsKeyDown(KEY_W)) input_axis = {0, -1.0f};
+        else if (IsKeyDown(KEY_DOWN)  || IsKeyDown(KEY_S)) input_axis = {0, 1.0f};
+
         // - New player movement
         if (!player.is_moving) {
-
-            Vector2 input_axis = {0, 0};
-            if (IsKeyDown(KEY_RIGHT) || IsKeyDown(KEY_D)) input_axis.x += 1.0f;
-            if (IsKeyDown(KEY_LEFT)  || IsKeyDown(KEY_A)) input_axis.x -= 1.0f;
-            if (IsKeyDown(KEY_UP)    || IsKeyDown(KEY_W)) input_axis.y -= 1.0f;
-            if (IsKeyDown(KEY_DOWN)  || IsKeyDown(KEY_S)) input_axis.y += 1.0f;
 
             if (input_axis.x != 0 || input_axis.y != 0) {
                 // NOTE: Calculate the next tile position
@@ -145,6 +147,7 @@ int main() {
                     target_tile_y > 0 && target_tile_y < TILEMAP_HEIGHT-1) {
                     player.target_pos = {(f32)target_tile_x * TILE_SIZE, (f32)target_tile_y * TILE_SIZE};
                     player.is_moving = true;
+                    tilemap[current_tile_y][current_tile_x] = (int)TileType_fire;
                 } else {
                     GameOver(&player);
                     // TODO: Set a starting tile for the target tile or the player will keep
