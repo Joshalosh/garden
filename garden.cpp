@@ -31,8 +31,8 @@ struct Tilemap {
 };
 
 void TilemapInit(Tilemap *tilemap) {
-    tilemap->width     = 16;
-    tilemap->height    = 16;
+    tilemap->width     = TILEMAP_WIDTH;
+    tilemap->height    = TILEMAP_HEIGHT;
     tilemap->tile_size = 20;
     tilemap->tiles     = 0;
 }
