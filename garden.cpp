@@ -8,7 +8,6 @@
 
 #define TILEMAP_WIDTH  16
 #define TILEMAP_HEIGHT 16
-#define TILE_SIZE  20
 #define MB(x) x*1024ULL*1024ULL
 #define ARENA_SIZE MB(500)
 const int base_screen_width  = 320;
@@ -23,28 +22,20 @@ enum Tile_Type {
     TileType_fire  = 5,
 };
 
-struct Game_State {
-    Vector2 player_pos;
+struct Tilemap {
+    u32 width;
+    u32 height;
+    u32 tile_size;
+
+    u32 *tiles;
 };
 
-int tilemap[TILEMAP_HEIGHT][TILEMAP_WIDTH] = {
-    {4, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 1, },
-    {1, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 4, },
-    {4, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 1, },
-    {1, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 4, },
-    {4, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 1, },
-    {1, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 4, },
-    {4, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 1, },
-    {1, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 4, },
-    {4, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 1, },
-    {1, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 4, },
-    {4, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 1, },
-    {1, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 4, },
-    {4, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 1, },
-    {1, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 4, },
-    {4, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 1, },
-    {1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, },
-};
+void TilemapInit(Tilemap *tilemap) {
+    tilemap->width     = 16;
+    tilemap->height    = 16;
+    tilemap->tile_size = 20;
+    tilemap->tiles     = 0;
+}
 
 struct Player {
     Vector2   pos;
@@ -59,7 +50,7 @@ struct Player {
 void PlayerInit(Player *player) {
     player->pos = {base_screen_width*0.5, base_screen_height*0.5};
     player->target_pos = player->pos;
-    player->size       = {TILE_SIZE, TILE_SIZE};
+    player->size       = {20, 20};
     player->collider   = {player->pos.x, player->pos.y, player->size.x, player->size.y};
     player->speed      = 50.0f;
     player->is_moving  = false;
@@ -80,8 +71,27 @@ int main() {
     const int window_height = 1280; //720;
     InitWindow(window_width, window_height, "Raylib basic window");
 
-    float half_tile_size = TILE_SIZE * 0.5;
-    Vector2 rect_size  = {TILE_SIZE, TILE_SIZE};
+    Tilemap map;
+    TilemapInit(&map);
+    u32 tilemap[TILEMAP_HEIGHT][TILEMAP_WIDTH] = {
+        {4, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 1, },
+        {1, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 4, },
+        {4, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 1, },
+        {1, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 4, },
+        {4, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 1, },
+        {1, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 4, },
+        {4, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 1, },
+        {1, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 4, },
+        {4, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 1, },
+        {1, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 4, },
+        {4, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 1, },
+        {1, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 4, },
+        {4, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 1, },
+        {1, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 4, },
+        {4, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 1, },
+        {1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, },
+    };
+    map.tiles = (u32 *)tilemap;
 
     Player player;
     PlayerInit(&player);
@@ -104,10 +114,10 @@ int main() {
 
         // Draw tiles in background
         {
-            for (s32 y = 0; y < TILEMAP_HEIGHT; y++) {
-                for (s32 x = 0; x < TILEMAP_WIDTH; x++) {
-                    Tile_Type tile = (Tile_Type)tilemap[y][x];
-                    Vector2 tile_pos = {(float)x * TILE_SIZE, (float)y * TILE_SIZE};
+            for (s32 y = 0; y < map.height; y++) {
+                for (s32 x = 0; x < map.width; x++) {
+                    Tile_Type tile = (Tile_Type)map.tiles[y*map.width+x];
+                    Vector2 tile_pos = {(float)x * map.tile_size, (float)y * map.tile_size};
 
                     Color tile_col;
                     switch (tile) {
@@ -119,7 +129,7 @@ int main() {
                         case TileType_fire:  tile_col = {168, 0, 0, 255};     break;
                     }
 
-                    Vector2 tile_size = {TILE_SIZE, TILE_SIZE};
+                    Vector2 tile_size = {(f32)map.tile_size, (f32)map.tile_size};
                     DrawRectangleV(tile_pos, tile_size, tile_col);
                 }
             }
@@ -135,19 +145,20 @@ int main() {
 
             if (input_axis.x != 0 || input_axis.y != 0) {
                 // NOTE: Calculate the next tile position
-                s32 current_tile_x = (s32)player.pos.x / TILE_SIZE;
-                s32 current_tile_y = (s32)player.pos.y / TILE_SIZE;
+                s32 current_tile_x = (s32)player.pos.x / map.tile_size;
+                s32 current_tile_y = (s32)player.pos.y / map.tile_size;
 
                 s32 target_tile_x = current_tile_x + s32(input_axis.x);
                 s32 target_tile_y = current_tile_y + s32(input_axis.y);
 
-                player.collider = {(f32)target_tile_x*TILE_SIZE, (f32)target_tile_y*TILE_SIZE, TILE_SIZE, TILE_SIZE};
+                player.collider = {(f32)target_tile_x*map.tile_size, (f32)target_tile_y*map.tile_size, (f32)map.tile_size, (f32)map.tile_size};
 
-                if (target_tile_x > 0 && target_tile_x < TILEMAP_WIDTH-1 &&
-                    target_tile_y > 0 && target_tile_y < TILEMAP_HEIGHT-1) {
-                    player.target_pos = {(f32)target_tile_x * TILE_SIZE, (f32)target_tile_y * TILE_SIZE};
+                if (target_tile_x > 0 && target_tile_x < map.width-1 &&
+                    target_tile_y > 0 && target_tile_y < map.height-1) {
+                    player.target_pos = {(f32)target_tile_x * map.tile_size, (f32)target_tile_y * map.tile_size};
                     player.is_moving = true;
-                    tilemap[current_tile_y][current_tile_x] = (int)TileType_fire;
+                    u32 tile_index = current_tile_y * map.width + current_tile_x;
+                    map.tiles[tile_index] = (int)TileType_fire;
                 } else {
                     GameOver(&player);
                     // TODO: Set a starting tile for the target tile or the player will keep
