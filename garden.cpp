@@ -45,7 +45,37 @@ struct Player {
 
     float     speed;
     bool      is_moving;
+    Vector2   path[TILEMAP_WIDTH*TILEMAP_HEIGHT];
+    u32       path_len;
 };
+
+#define STACK_MAX_SIZE 1024
+struct StackU32 {
+    u32 x[STACK_MAX_SIZE];
+    u32 y[STACK_MAX_SIZE];
+    s32 top;
+};
+
+void StackInit(StackU32 *stack) {
+    stack->top = -1;
+}
+
+bool StackPush(StackU32 *stack, u32 x_val, u32 y_val) {
+    if (stack->top >= STACK_MAX_SIZE - 1) return false;
+    stack->top++;
+    stack->x[stack->top] = x_val;
+    stack->y[stack->top] = y_val;
+    return true;
+}
+
+bool StackPop(StackU32 *stack, u32 *x_val, u32 *y_val) {
+    if (stack->top < 0) return false;
+    *x_val = stack->x[stack->top];
+    *y_val = stack->y[stack->top];
+    stack->top--;
+    return true;
+}
+
 
 void PlayerInit(Player *player) {
     player->pos = {base_screen_width*0.5, base_screen_height*0.5};
@@ -54,11 +84,32 @@ void PlayerInit(Player *player) {
     player->collider   = {player->pos.x, player->pos.y, player->size.x, player->size.y};
     player->speed      = 50.0f;
     player->is_moving  = false;
+    player->path_len   = 0;
 }
 
 void GameOver(Player *player) {
     Vector2 start_pos = {base_screen_width*0.5, base_screen_height*0.5};
     player->pos = start_pos;
+}
+
+void FloodFill(u32 x, u32 y, u32 target_tile, u32 replacement_tile) {
+    if (target_tile == replacement_tile) return;
+
+    StackU32 nodes;
+    StackInit(&nodes);
+    StackPush(&nodes, x, y);
+
+    while (StackPop(&nodes, &x, &y)) {
+        if (x < 0 || x >= TILEMAP_WIDTH || y < 0 || y >=TILEMAP_HEIGHT) continue;
+        if (tilemap[y][x] != target_tile) continue;
+
+        tilemap[y][x] = replacement_tile;
+
+        StackPush(&nodes, x+1, y);
+        StackPush(&nodes, x-1, y);
+        StackPush(&nodes, x, y+1);
+        StackPush(&nodes, x, y-1);
+    }
 }
 
 
@@ -152,6 +203,19 @@ int main() {
                 s32 target_tile_y = current_tile_y + s32(input_axis.y);
 
                 player.collider = {(f32)target_tile_x*map.tile_size, (f32)target_tile_y*map.tile_size, (f32)map.tile_size, (f32)map.tile_size};
+
+                bool loop_closed = false;
+                for (size_t i = 0; i < player.path_len; i++) {
+                    if (player.path[i].x == (f32) current_tile_x && 
+                        player.path[i].y == (f32)current_tile_y) {
+                        loop_closed = true;
+                        break;
+                    }
+                }
+
+                if (loop_closed) {
+                    //FloodFill();
+                }
 
                 if (target_tile_x > 0 && target_tile_x < map.width-1 &&
                     target_tile_y > 0 && target_tile_y < map.height-1) {
