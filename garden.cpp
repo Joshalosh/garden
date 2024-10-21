@@ -92,18 +92,20 @@ void GameOver(Player *player) {
     player->pos = start_pos;
 }
 
-void FloodFill(u32 x, u32 y, u32 target_tile, u32 replacement_tile) {
-    if (target_tile == replacement_tile) return;
+void FloodFill(Tilemap *tilemap, u32 x, u32 y, u32 replacement_tile) {
+    if (TileType_grass == replacement_tile || TileType_dirt == replacement_tile) return;
 
     StackU32 nodes;
     StackInit(&nodes);
     StackPush(&nodes, x, y);
 
     while (StackPop(&nodes, &x, &y)) {
+        u32 tilemap_index = y * tilemap->width + x;
         if (x < 0 || x >= TILEMAP_WIDTH || y < 0 || y >=TILEMAP_HEIGHT) continue;
-        if (tilemap[y][x] != target_tile) continue;
+        if (tilemap->tiles[tilemap_index] != TileType_grass && 
+            tilemap->tiles[tilemap_index] != TileType_dirt) continue;
 
-        tilemap[y][x] = replacement_tile;
+        tilemap->tiles[tilemap_index] = replacement_tile;
 
         StackPush(&nodes, x+1, y);
         StackPush(&nodes, x-1, y);
@@ -204,18 +206,9 @@ int main() {
 
                 player.collider = {(f32)target_tile_x*map.tile_size, (f32)target_tile_y*map.tile_size, (f32)map.tile_size, (f32)map.tile_size};
 
-                bool loop_closed = false;
-                for (size_t i = 0; i < player.path_len; i++) {
-                    if (player.path[i].x == (f32) current_tile_x && 
-                        player.path[i].y == (f32)current_tile_y) {
-                        loop_closed = true;
-                        break;
-                    }
-                }
+                player.path[player.path_len] = {(f32)current_tile_x, (f32)current_tile_y};
+                player.path_len++;
 
-                if (loop_closed) {
-                    //FloodFill();
-                }
 
                 if (target_tile_x > 0 && target_tile_x < map.width-1 &&
                     target_tile_y > 0 && target_tile_y < map.height-1) {
@@ -236,6 +229,29 @@ int main() {
             if (distance <= player.speed * delta_t) {
                 player.pos = player.target_pos;
                 player.is_moving  = false;
+
+                u32 current_tile_x = (u32)player.pos.x / map.tile_size;
+                u32 current_tile_y = (u32)player.pos.y / map.tile_size;
+
+                bool loop_closed = false;
+                for (size_t i = 0; i < player.path_len; i++) {
+                    if (player.path[i].x == (f32) current_tile_x && 
+                        player.path[i].y == (f32) current_tile_y) {
+                        loop_closed = true;
+                        break;
+                    }
+                }
+
+                if (loop_closed) {
+                    u32 fill_x = (u32)current_tile_x;
+                    u32 fill_y = (u32)current_tile_y;
+
+                    if (fill_x > 0) fill_x += 1;
+                    if (fill_y > 0) fill_y += 1;
+
+                    FloodFill(&map, fill_x, fill_y, TileType_fire);
+                    player.path_len = 0;
+                }
             } else {
                 direction = VectorNorm(direction);
                 Vector2 movement = VectorScale(direction, player.speed * delta_t);
