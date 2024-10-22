@@ -90,6 +90,7 @@ void PlayerInit(Player *player) {
 void GameOver(Player *player) {
     Vector2 start_pos = {base_screen_width*0.5, base_screen_height*0.5};
     player->pos = start_pos;
+    player->path_len = 0;
 }
 
 void FloodFill(Tilemap *tilemap, u32 x, u32 y, u32 replacement_tile) {
@@ -112,6 +113,16 @@ void FloodFill(Tilemap *tilemap, u32 x, u32 y, u32 replacement_tile) {
         StackPush(&nodes, x, y+1);
         StackPush(&nodes, x, y-1);
     }
+}
+
+void *MemCopy(void *at, void *from, size_t size) {
+    u8 *dest   = (u8 *)at;
+    u8 *source = (u8 *)from;
+
+    for (size_t i = 0; i < size; i++) {
+        dest[i] = source[i];
+    }
+    return dest;
 }
 
 
@@ -145,6 +156,15 @@ int main() {
         {1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, },
     };
     map.tiles = (u32 *)tilemap;
+
+    u32 original_tilemap[TILEMAP_HEIGHT][TILEMAP_WIDTH];
+    u32 total_tiles = TILEMAP_WIDTH * TILEMAP_HEIGHT;
+    //MemCopy((u32 *)original_tilemap, map.tiles, total_tiles);
+    for (u32 y = 0; y < TILEMAP_HEIGHT; y++) {
+        for (u32 x = 0; x < TILEMAP_WIDTH; x++) {
+            original_tilemap[y][x] = tilemap[y][x];
+        }
+    }
 
     Player player;
     PlayerInit(&player);
@@ -218,6 +238,12 @@ int main() {
                     map.tiles[tile_index] = (int)TileType_fire;
                 } else {
                     GameOver(&player);
+                    // NOTE: Reset the tiles to original state
+                    for (u32 y = 0; y < TILEMAP_HEIGHT; y++) {
+                        for (u32 x = 0; x < TILEMAP_WIDTH; x++) {
+                            map.tiles[y*TILEMAP_WIDTH+x] = original_tilemap[y][x];
+                        }
+                    }
                     // TODO: Set a starting tile for the target tile or the player will keep
                     // moving after restart
                 }
@@ -250,7 +276,6 @@ int main() {
                     if (fill_y > 0) fill_y += 1;
 
                     FloodFill(&map, fill_x, fill_y, TileType_fire);
-                    player.path_len = 0;
                 }
             } else {
                 direction = VectorNorm(direction);
