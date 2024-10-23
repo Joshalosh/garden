@@ -72,17 +72,6 @@ void FloodFill(Tilemap *tilemap, u32 x, u32 y, u32 replacement_tile) {
     }
 }
 
-void *MemCopy(void *at, void *from, size_t size) {
-    u8 *dest   = (u8 *)at;
-    u8 *source = (u8 *)from;
-
-    for (size_t i = 0; i < size; i++) {
-        dest[i] = source[i];
-    }
-    return dest;
-}
-
-
 int main() {
     // -------------------------------------
     // Initialisation
@@ -115,8 +104,6 @@ int main() {
     map.tiles = (u32 *)tilemap;
 
     u32 original_tilemap[TILEMAP_HEIGHT][TILEMAP_WIDTH];
-    u32 total_tiles = TILEMAP_WIDTH * TILEMAP_HEIGHT;
-    //MemCopy((u32 *)original_tilemap, map.tiles, total_tiles);
     for (u32 y = 0; y < TILEMAP_HEIGHT; y++) {
         for (u32 x = 0; x < TILEMAP_WIDTH; x++) {
             original_tilemap[y][x] = tilemap[y][x];
