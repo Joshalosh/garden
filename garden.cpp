@@ -72,6 +72,88 @@ void FloodFill(Tilemap *tilemap, u32 x, u32 y, u32 replacement_tile) {
     }
 }
 
+u32 TilemapIndex(Tilemap tilemap, u32 x, u32 y) {
+    u32 result = y * tilemap.width + x;
+    return result;
+}
+
+void FloodFillFromBorders(Tilemap *tilemap) {
+    StackU32 nodes;
+    StackInit(&nodes);
+    u32 x, y;
+
+    // Add border tiles to the stack
+    for (x = 0; x < tilemap->width; x++) {
+        // Top border
+        y = 0;
+        u32 index = TilemapIndex(*tilemap, x, y);
+        if (tilemap->tiles[index] == TileType_grass || tilemap->tiles[index] == TileType_dirt) {
+            StackPush(&nodes, x, y);
+        }
+        // Bottom border
+        y = tilemap->height - 1;
+        index = TilemapIndex(*tilemap, x, y);
+        if (tilemap->tiles[index] == TileType_grass || tilemap->tiles[index] == TileType_dirt) {
+            StackPush(&nodes, x, y);
+        }
+    }
+    for (y = 1; y < tilemap->height; y++)
+    {
+        // Left border
+        x = 0;
+        u32 index = TilemapIndex(*tilemap, x, y);
+        if (tilemap->tiles[index] == TileType_grass || tilemap->tiles[index] == TileType_dirt) {
+            StackPush(&nodes, x, y);
+        }
+        // Right border
+        x = tilemap->width - 1;
+        index = TilemapIndex(*tilemap, x, y);
+        if (tilemap->tiles[index] == TileType_grass || tilemap->tiles[index] == TileType_dirt) {
+            StackPush(&nodes, x, y);
+        }
+    }
+
+    // Flood fill from borders
+    while (StackPop(&nodex, x, y)) {
+        if (x < 0 || x >= tilemap->width || y < 0 || y >= tilemap->height) continue;
+
+        u32 index = TilemapIndex(*tilemap, x, y);
+        u32 tile  = tilemap->tiles[index];
+
+        if (tile != TileType_grass && tile != TileType_dirt) continue;
+
+        // Mark tile as visited
+        tilemap->tiles[index] = TileType_temp;
+
+        // Add adjacent tiles
+        StackPush(&nodes, x+1, y);
+        StackPush(&nodes, x-1, y);
+        StackPush(&nodes, x, y+1);
+        StackPush(&nodes, x, y-1);
+    }
+}
+
+void CheckEnclosedAreas(Tilemap *tilemap) {
+    // Flood fill from borders to mark reachable areas
+    FloodFillFromBorders(tilemap);
+
+    // Any grass or dirt tiles marked are enclosed
+    for (u32 y = 0; y < tilemap->height; y++) {
+        for (u32 x = 0; x M tilemap->width; x++) {
+            u32 index = TilemapIndex(*tilemap, x, y);
+            u32 tile  = tilemap->tiles[index];
+
+            if (tile == TileType_grass || tile == TileType_dirt) {
+                // Tile is enclosed so fill it
+                tilemap->tiles[index] == TileType_fire;
+            } else if (tile == TileType_temp) {
+                // Restore originla tile type
+                tilemap->tiles[index] = TileType_grass;
+            }
+        }
+    }
+}
+
 int main() {
     // -------------------------------------
     // Initialisation
@@ -162,18 +244,33 @@ int main() {
 
             if (input_axis.x != 0 || input_axis.y != 0) {
                 // NOTE: Calculate the next tile position
-                s32 current_tile_x = (s32)player.pos.x / map.tile_size;
-                s32 current_tile_y = (s32)player.pos.y / map.tile_size;
+                u32 current_tile_x = (u32)player.pos.x / map.tile_size;
+                u32 current_tile_y = (u32)player.pos.y / map.tile_size;
 
-                s32 target_tile_x = current_tile_x + s32(input_axis.x);
-                s32 target_tile_y = current_tile_y + s32(input_axis.y);
+                u32 target_tile_x = current_tile_x + u32(input_axis.x);
+                u32 target_tile_y = current_tile_y + u32(input_axis.y);
 
-                player.collider = {(f32)target_tile_x*map.tile_size, (f32)target_tile_y*map.tile_size, (f32)map.tile_size, (f32)map.tile_size};
+                //player.collider = {(f32)target_tile_x*map.tile_size, (f32)target_tile_y*map.tile_size, (f32)map.tile_size, (f32)map.tile_size};
 
-                player.path[player.path_len] = {(f32)current_tile_x, (f32)current_tile_y};
-                player.path_len++;
+                bool is_in_path = false;
+                for (u32 i = 0; i < player.path_len; i++) {
+                    if (player.path[i].x == (f32)target_tile_x && player.path[i].y == (f32)target_tile_y) {
+                        is_in_path = true;
+                        break;
+                    }
+                }
+                if (is_in_path) {
+                    GameOver(&player);
+                    // NOTE: Reset the tiles to original state
+                    for (u32 y = 0; y < map.height; y++) {
+                        for (u32 x = 0; x < map.width; x++) {
+                            map.tiles[y*map.width+x] = original_tilemap[y][x];
+                        }
+                    }
+                    continue;
+                }
 
-
+                // TODO: need to continue the refactor from here
                 if (target_tile_x > 0 && target_tile_x < map.width-1 &&
                     target_tile_y > 0 && target_tile_y < map.height-1) {
                     player.target_pos = {(f32)target_tile_x * map.tile_size, (f32)target_tile_y * map.tile_size};
@@ -183,11 +280,12 @@ int main() {
                 } else {
                     GameOver(&player);
                     // NOTE: Reset the tiles to original state
-                    for (u32 y = 0; y < TILEMAP_HEIGHT; y++) {
-                        for (u32 x = 0; x < TILEMAP_WIDTH; x++) {
-                            map.tiles[y*TILEMAP_WIDTH+x] = original_tilemap[y][x];
+                    for (u32 y = 0; y < map.height; y++) {
+                        for (u32 x = 0; x < map.width; x++) {
+                            map.tiles[y*map.width+x] = original_tilemap[y][x];
                         }
                     }
+                    continue;
                     // TODO: Set a starting tile for the target tile or the player will keep
                     // moving after restart
                 }

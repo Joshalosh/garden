@@ -13,6 +13,7 @@ enum Tile_Type {
     TileType_dirt  = 3,
     TileType_wall2 = 4,
     TileType_fire  = 5,
+    TileType_temp  = 6;
 };
 
 struct Tilemap {
