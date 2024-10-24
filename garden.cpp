@@ -114,7 +114,7 @@ void FloodFillFromBorders(Tilemap *tilemap) {
     }
 
     // Flood fill from borders
-    while (StackPop(&nodex, x, y)) {
+    while (StackPop(&nodes, &x, &y)) {
         if (x < 0 || x >= tilemap->width || y < 0 || y >= tilemap->height) continue;
 
         u32 index = TilemapIndex(*tilemap, x, y);
@@ -139,13 +139,13 @@ void CheckEnclosedAreas(Tilemap *tilemap) {
 
     // Any grass or dirt tiles marked are enclosed
     for (u32 y = 0; y < tilemap->height; y++) {
-        for (u32 x = 0; x M tilemap->width; x++) {
+        for (u32 x = 0; x < tilemap->width; x++) {
             u32 index = TilemapIndex(*tilemap, x, y);
             u32 tile  = tilemap->tiles[index];
 
             if (tile == TileType_grass || tile == TileType_dirt) {
                 // Tile is enclosed so fill it
-                tilemap->tiles[index] == TileType_fire;
+                tilemap->tiles[index] = TileType_fire;
             } else if (tile == TileType_temp) {
                 // Restore originla tile type
                 tilemap->tiles[index] = TileType_grass;
@@ -273,11 +273,30 @@ int main() {
                 // TODO: need to continue the refactor from here
                 if (target_tile_x > 0 && target_tile_x < map.width-1 &&
                     target_tile_y > 0 && target_tile_y < map.height-1) {
-                    player.target_pos = {(f32)target_tile_x * map.tile_size, (f32)target_tile_y * map.tile_size};
-                    player.is_moving = true;
-                    u32 tile_index = current_tile_y * map.width + current_tile_x;
-                    map.tiles[tile_index] = (int)TileType_fire;
+
+                    u32 target_tile_index = target_tile_y * map.width + target_tile_x;
+                    u32 target_tile = map.tiles[target_tile_index];
+
+                    if (target_tile != TileType_wall  && 
+                        target_tile != TileType_wall2 && 
+                        target_tile != TileType_fire) {
+                        // Start moving
+                        player.target_pos = {(float)target_tile_x * map.tile_size, (float)target_tile_y * map.tile_size};
+                        player.is_moving  = true;
+
+                        u32 current_tile_index = current_tile_y * map.width + current_tile_x;
+                        map.tiles[current_tile_index] = TileType_fire;
+                    } else {
+                        GameOver(&player);
+                        // NOTE: Reset the tiles to original state
+                        for (u32 y = 0; y < map.height; y++) {
+                            for (u32 x = 0; x < map.width; x++) {
+                                map.tiles[y*map.width+x] = original_tilemap[y][x];
+                            }
+                        }
+                    }
                 } else {
+                    // Out of bounds
                     GameOver(&player);
                     // NOTE: Reset the tiles to original state
                     for (u32 y = 0; y < map.height; y++) {
@@ -301,24 +320,11 @@ int main() {
                 u32 current_tile_x = (u32)player.pos.x / map.tile_size;
                 u32 current_tile_y = (u32)player.pos.y / map.tile_size;
 
-                bool loop_closed = false;
-                for (size_t i = 0; i < player.path_len; i++) {
-                    if (player.path[i].x == (f32) current_tile_x && 
-                        player.path[i].y == (f32) current_tile_y) {
-                        loop_closed = true;
-                        break;
-                    }
-                }
+                player.path[player.path_len] = {(float)current_tile_x, (float)current_tile_y};
+                player.path_len++;
 
-                if (loop_closed) {
-                    u32 fill_x = (u32)current_tile_x;
-                    u32 fill_y = (u32)current_tile_y;
-
-                    if (fill_x > 0) fill_x += 1;
-                    if (fill_y > 0) fill_y += 1;
-
-                    FloodFill(&map, fill_x, fill_y, TileType_fire);
-                }
+                // Check for enclosed areas
+                CheckEnclosedAreas(&map);
             } else {
                 direction = VectorNorm(direction);
                 Vector2 movement = VectorScale(direction, player.speed * delta_t);
