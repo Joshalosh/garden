@@ -18,7 +18,7 @@ void StackInit(StackS32 *stack) {
     stack->top = -1;
 }
 
-bool StackPush(StackS32 *stack, u32 x_val, u32 y_val) {
+bool StackPush(StackS32 *stack, s32 x_val, u32 y_val) {
     if (stack->top >= STACK_MAX_SIZE - 1) return false;
     stack->top++;
     stack->x[stack->top] = x_val;
@@ -26,7 +26,7 @@ bool StackPush(StackS32 *stack, u32 x_val, u32 y_val) {
     return true;
 }
 
-bool StackPop(StackS32 *stack, u32 *x_val, u32 *y_val) {
+bool StackPop(StackS32 *stack, s32 *x_val, s32 *y_val) {
     if (stack->top < 0) return false;
     *x_val = stack->x[stack->top];
     *y_val = stack->y[stack->top];
@@ -52,7 +52,7 @@ void GameOver(Player *player) {
     player->path_len = 0;
 }
 
-void FloodFill(Tilemap *tilemap, u32 x, u32 y, u32 replacement_tile) {
+void FloodFill(Tilemap *tilemap, s32 x, s32 y, u32 replacement_tile) {
     if (TileType_grass == replacement_tile || TileType_dirt == replacement_tile) return;
 
     StackS32 nodes;
@@ -82,12 +82,12 @@ u32 TilemapIndex(Tilemap tilemap, u32 x, u32 y) {
 void FloodFillFromBorders(Tilemap *tilemap) {
     StackS32 nodes;
     StackInit(&nodes);
-    u32 x, y;
+    s32 x, y;
 
     // Add border tiles to the stack
-    for (x = 0; x < (s32)tilemap->width; x++) {
+    for (x = 1; x < (s32)tilemap->width; x++) {
         // Top border
-        y = 0;
+        y = 1;
         u32 index = TilemapIndex(*tilemap, x, y);
         if (tilemap->tiles[index] == TileType_grass || tilemap->tiles[index] == TileType_dirt) {
             StackPush(&nodes, x, y);
@@ -102,7 +102,7 @@ void FloodFillFromBorders(Tilemap *tilemap) {
     for (y = 1; y < tilemap->height; y++)
     {
         // Left border
-        x = 0;
+        x = 1;
         u32 index = TilemapIndex(*tilemap, x, y);
         if (tilemap->tiles[index] == TileType_grass || tilemap->tiles[index] == TileType_dirt) {
             StackPush(&nodes, x, y);
@@ -129,6 +129,35 @@ void FloodFillFromBorders(Tilemap *tilemap) {
         } else continue;
 
         // Add adjacent tiles
+        StackPush(&nodes, x+1, y);
+        if (x > 0) StackPush(&nodes, x-1, y);
+        StackPush(&nodes, x, y+1);
+        if (y > 0) StackPush(&nodes, x, y-1);
+    }
+}
+
+void FloodFillFromPlayerPosition(Tilemap *tilemap, s32 start_x, s32 start_y) {
+    StackS32 nodes;
+    StackInit(&nodes);
+
+    StackPush(&nodes, start_x, start_y);
+
+    s32 x, y;
+
+    // Flood fill from players position
+    while(StackPop(&nodes, &x, &y)) {
+        if (x < 0 || x >= (s32)tilemap->width || y < 0 || y >= tilemap->height) continue;
+
+        u32 index = TilemapIndex(*tilemap, (u32)x, (u32)y);
+        u32 tile  = tilemap->tiles[index];
+
+        if (tile == TileType_grass) {
+            tilemap->tiles[index] = TileType_temp_grass;
+        } else if (tile == TileType_dirt) {
+            tilemap->tiles[index] = TileType_temp_dirt;
+        } else continue;
+
+        // Add adjacent tiles 
         StackPush(&nodes, x+1, y);
         if (x > 0) StackPush(&nodes, x-1, y);
         StackPush(&nodes, x, y+1);
@@ -231,6 +260,8 @@ int main() {
                         case TileType_grass: tile_col = {68, 68, 68, 255};    break;
                         case TileType_dirt:  tile_col = {168, 168, 168, 255}; break;
                         case TileType_fire:  tile_col = {168, 0, 0, 255};     break;
+                        case TileType_temp_grass: tile_col = {68, 68, 68, 255}; break;
+                        case TileType_temp_dirt:  tile_col = {168, 168, 168, 255}; break;
                     }
 
                     Vector2 tile_size = {(f32)map.tile_size, (f32)map.tile_size};
@@ -272,7 +303,6 @@ int main() {
                             map.tiles[y*map.width+x] = original_tilemap[y][x];
                         }
                     }
-                    continue;
                 }
 
                 // TODO: need to continue the refactor from here
@@ -291,7 +321,8 @@ int main() {
 
                         u32 current_tile_index = current_tile_y * map.width + current_tile_x;
                         map.tiles[current_tile_index] = TileType_fire;
-                    } else {
+                    } 
+                    else {
                         GameOver(&player);
                         // NOTE: Reset the tiles to original state
                         for (u32 y = 0; y < map.height; y++) {
@@ -309,7 +340,6 @@ int main() {
                             map.tiles[y*map.width+x] = original_tilemap[y][x];
                         }
                     }
-                    continue;
                     // TODO: Set a starting tile for the target tile or the player will keep
                     // moving after restart
                 }
