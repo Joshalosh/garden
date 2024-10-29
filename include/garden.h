@@ -29,7 +29,6 @@ struct Player {
     Vector2   pos;
     Vector2   target_pos;
     Vector2   size;
-    Rectangle collider;
 
     float     speed;
     bool      is_moving;
@@ -38,9 +37,9 @@ struct Player {
 };
 
 #define STACK_MAX_SIZE 4096
-struct StackS32 {
-    s32 x[STACK_MAX_SIZE];
-    s32 y[STACK_MAX_SIZE];
+struct StackU32 {
+    u32 x[STACK_MAX_SIZE];
+    u32 y[STACK_MAX_SIZE];
     s32 top;
 };
 
