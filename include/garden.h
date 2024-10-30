@@ -17,6 +17,16 @@ enum Tile_Type {
     TileType_temp_dirt   = 7,
 };
 
+enum Tile_Flags {
+    TileFlag_fire = 1 << 0;
+    TileFlag_item = 1 << 1;
+};
+
+struct Tile {
+    Tile_Type  type;
+    Tile_flags flags;
+}
+
 struct Tilemap {
     u32 width;
     u32 height;
@@ -32,6 +42,7 @@ struct Player {
 
     float     speed;
     bool      is_moving;
+    // TODO: Do we really need path still? Get rid of it if not
     Vector2   path[TILEMAP_WIDTH*TILEMAP_HEIGHT];
     u32       path_len;
 };
