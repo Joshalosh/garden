@@ -11,7 +11,6 @@ void TilemapInit(Tilemap *tilemap) {
     tilemap->width     = TILEMAP_WIDTH;
     tilemap->height    = TILEMAP_HEIGHT;
     tilemap->tile_size = 20;
-    tilemap->tiles     = 0;
 }
 
 void StackInit(StackU32 *stack) {
@@ -51,6 +50,7 @@ void GameOver(Player *player) {
     player->path_len = 0;
 }
 
+#if 0
 void FloodFill(Tilemap *tilemap, u32 x, u32 y, u32 replacement_tile) {
     if (TileType_grass == replacement_tile || TileType_dirt == replacement_tile) return;
 
@@ -72,6 +72,7 @@ void FloodFill(Tilemap *tilemap, u32 x, u32 y, u32 replacement_tile) {
         StackPush(&nodes, x, y-1);
     }
 }
+#endif
 
 u32 TilemapIndex(Tilemap tilemap, u32 x, u32 y) {
     u32 result = y * tilemap.width + x;
@@ -150,12 +151,12 @@ void FloodFillFromPlayerPosition(Tilemap *tilemap, u32 start_x, u32 start_y) {
         if (x < 0 || x >= (u32)tilemap->width || y < 0 || y >= tilemap->height) continue;
 
         u32 index = TilemapIndex(*tilemap, (u32)x, (u32)y);
-        u32 tile  = tilemap->tiles[index];
+        Tile_Type tile = tilemap->tiles[y][x].type;
 
         if (tile == TileType_grass) {
-            tilemap->tiles[index] = TileType_temp_grass;
+            tilemap->tiles[y][x].type = TileType_temp_grass;
         } else if (tile == TileType_dirt) {
-            tilemap->tiles[index] = TileType_temp_dirt;
+            tilemap->tiles[y][x].type = TileType_temp_dirt;
         } else continue;
 
         // Add adjacent tiles 
@@ -174,16 +175,16 @@ void CheckEnclosedAreas(Tilemap *tilemap, u32 current_x, u32 current_y) {
     for (u32 y = 0; y < (s32)tilemap->height; y++) {
         for (u32 x = 0; x < (s32)tilemap->width; x++) {
             u32 index = TilemapIndex(*tilemap, x, y);
-            u32 tile  = tilemap->tiles[index];
+            Tile_Type tile  = tilemap->tiles[y][x].type;
 
             if (tile == TileType_grass || tile == TileType_dirt) {
                 // Tile is enclosed so fill it
-                tilemap->tiles[index] = TileType_fire;
+                tilemap->tiles[y][x].type = TileType_fire;
             } else if (tile == TileType_temp_grass) {
                 // Restore originla tile type
-                tilemap->tiles[index] = TileType_grass;
+                tilemap->tiles[y][x].type = TileType_grass;
             } else if (tile == TileType_temp_dirt) {
-                tilemap->tiles[index] = TileType_dirt;
+                tilemap->tiles[y][x].type = TileType_dirt;
             }
         }
     }
@@ -218,12 +219,13 @@ int main() {
         {4, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 1, },
         {1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, },
     };
-    map.tiles = (u32 *)tilemap;
+    //map.tiles = (u32 *)tilemap;
 
     u32 original_tilemap[TILEMAP_HEIGHT][TILEMAP_WIDTH];
     for (u32 y = 0; y < TILEMAP_HEIGHT; y++) {
         for (u32 x = 0; x < TILEMAP_WIDTH; x++) {
             original_tilemap[y][x] = tilemap[y][x];
+            map.tiles[y][x].type = (Tile_Type)tilemap[y][x];
         }
     }
 
@@ -250,7 +252,7 @@ int main() {
         {
             for (u32 y = 0; y < map.height; y++) {
                 for (u32 x = 0; x < map.width; x++) {
-                    Tile_Type tile = (Tile_Type)map.tiles[y*map.width+x];
+                    Tile_Type tile = map.tiles[y][x].type;
                     Vector2 tile_pos = {(float)x * map.tile_size, (float)y * map.tile_size};
 
                     Color tile_col;
@@ -302,7 +304,7 @@ int main() {
                     target_tile_y > 0 && target_tile_y < map.height-1) {
 
                     u32 target_tile_index = target_tile_y * map.width + target_tile_x;
-                    u32 target_tile = map.tiles[target_tile_index];
+                    Tile_Type target_tile = map.tiles[target_tile_y][target_tile_x].type;
 
                     if (target_tile != TileType_wall  && 
                         target_tile != TileType_wall2 && 
@@ -311,15 +313,15 @@ int main() {
                         player.target_pos = {(float)target_tile_x * map.tile_size, (float)target_tile_y * map.tile_size};
                         player.is_moving  = true;
 
-                        u32 current_tile_index = current_tile_y * map.width + current_tile_x;
-                        map.tiles[current_tile_index] = TileType_fire;
+                        //u32 current_tile_index = current_tile_y * map.width + current_tile_x;
+                        map.tiles[current_tile_y][current_tile_x].type = TileType_fire;
                     } 
                     else {
                         GameOver(&player);
                         // NOTE: Reset the tiles to original state
                         for (u32 y = 0; y < map.height; y++) {
                             for (u32 x = 0; x < map.width; x++) {
-                                map.tiles[y*map.width+x] = original_tilemap[y][x];
+                                map.tiles[y][x].type = (Tile_Type)original_tilemap[y][x];
                             }
                         }
                     }
@@ -329,7 +331,7 @@ int main() {
                     // NOTE: Reset the tiles to original state
                     for (u32 y = 0; y < map.height; y++) {
                         for (u32 x = 0; x < map.width; x++) {
-                            map.tiles[y*map.width+x] = original_tilemap[y][x];
+                            map.tiles[y][x].type = (Tile_Type)original_tilemap[y][x];
                         }
                     }
                     // TODO: Set a starting tile for the target tile or the player will keep
@@ -341,7 +343,7 @@ int main() {
                     // NOTE: Reset the tiles to original state
                     for (u32 y = 0; y < map.height; y++) {
                         for (u32 x = 0; x < map.width; x++) {
-                            map.tiles[y*map.width+x] = original_tilemap[y][x];
+                            map.tiles[y][x].type = (Tile_Type)original_tilemap[y][x];
                         }
                     }
                 }

@@ -18,21 +18,21 @@ enum Tile_Type {
 };
 
 enum Tile_Flags {
-    TileFlag_fire = 1 << 0;
-    TileFlag_item = 1 << 1;
+    TileFlag_fire = 1 << 0,
+    TileFlag_item = 1 << 1,
 };
 
 struct Tile {
     Tile_Type  type;
-    Tile_flags flags;
-}
+    Tile_Flags flags;
+};
 
 struct Tilemap {
     u32 width;
     u32 height;
     u32 tile_size;
 
-    u32 *tiles;
+    Tile tiles[TILEMAP_HEIGHT][TILEMAP_WIDTH];
 };
 
 struct Player {
