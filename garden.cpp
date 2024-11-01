@@ -50,6 +50,19 @@ void GameOver(Player *player) {
     player->path_len = 0;
 }
 
+inline void AddFlag(*Tile tile, u32 flag) {
+    tile->flags |= flag;
+}
+
+inline void ClearFlag(*Tile tile, u32 flag) {
+    tile->flags &= ~flag;
+}
+
+inline b32 IsFlagSet(*Tile tile, u32 flag) {
+    b32 result = tile->flags & flag;
+    return result;
+}
+
 #if 0
 void FloodFill(Tilemap *tilemap, u32 x, u32 y, u32 replacement_tile) {
     if (TileType_grass == replacement_tile || TileType_dirt == replacement_tile) return;
@@ -151,12 +164,11 @@ void FloodFillFromPlayerPosition(Tilemap *tilemap, u32 start_x, u32 start_y) {
         if (x < 0 || x >= (u32)tilemap->width || y < 0 || y >= tilemap->height) continue;
 
         u32 index = TilemapIndex(*tilemap, (u32)x, (u32)y);
-        Tile_Type tile = tilemap->tiles[y][x].type;
+        Tile* tile = tilemap->tiles[y][x];
 
-        if (tile == TileType_grass) {
-            tilemap->tiles[y][x].type = TileType_temp_grass;
-        } else if (tile == TileType_dirt) {
-            tilemap->tiles[y][x].type = TileType_temp_dirt;
+        if (tile->type == TileType_grass || tile->type == TileType_dirt) {
+            AddFlag(tile, TileFlag_visited);
+            //tilemap->tiles[y][x].type = TileType_temp_grass;
         } else continue;
 
         // Add adjacent tiles 
@@ -175,16 +187,14 @@ void CheckEnclosedAreas(Tilemap *tilemap, u32 current_x, u32 current_y) {
     for (u32 y = 0; y < (s32)tilemap->height; y++) {
         for (u32 x = 0; x < (s32)tilemap->width; x++) {
             u32 index = TilemapIndex(*tilemap, x, y);
-            Tile_Type tile  = tilemap->tiles[y][x].type;
+            Tile *tile  = tilemap->tiles[y][x];
 
-            if (tile == TileType_grass || tile == TileType_dirt) {
-                // Tile is enclosed so fill it
-                tilemap->tiles[y][x].type = TileType_fire;
-            } else if (tile == TileType_temp_grass) {
-                // Restore originla tile type
-                tilemap->tiles[y][x].type = TileType_grass;
-            } else if (tile == TileType_temp_dirt) {
-                tilemap->tiles[y][x].type = TileType_dirt;
+            if (tile->type == TileType_grass || tile->type == TileType_dirt) {
+                if (!IsFlagSet(tile, TileFlag_visited)) {
+                    AddFlag(tile, TileFlag_fire);
+                }
+            } else {
+                ClearFlag(tile, TileFlag_visited);
             }
         }
     }
