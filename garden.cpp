@@ -8,9 +8,9 @@
 #include "garden.h"
 
 void TilemapInit(Tilemap *tilemap) {
-    tilemap->width     = TILEMAP_WIDTH;
-    tilemap->height    = TILEMAP_HEIGHT;
-    tilemap->tile_size = 20;
+    tilemap->width       = TILEMAP_WIDTH;
+    tilemap->height      = TILEMAP_HEIGHT;
+    tilemap->tile_size   = 20;
 }
 
 void StackInit(StackU32 *stack) {
@@ -50,15 +50,15 @@ void GameOver(Player *player) {
     player->path_len = 0;
 }
 
-inline void AddFlag(*Tile tile, u32 flag) {
+inline void AddFlag(Tile *tile, u32 flag) {
     tile->flags |= flag;
 }
 
-inline void ClearFlag(*Tile tile, u32 flag) {
+inline void ClearFlag(Tile *tile, u32 flag) {
     tile->flags &= ~flag;
 }
 
-inline b32 IsFlagSet(*Tile tile, u32 flag) {
+b32 IsFlagSet(Tile *tile, u32 flag) {
     b32 result = tile->flags & flag;
     return result;
 }
@@ -163,8 +163,7 @@ void FloodFillFromPlayerPosition(Tilemap *tilemap, u32 start_x, u32 start_y) {
     while(StackPop(&nodes, &x, &y)) {
         if (x < 0 || x >= (u32)tilemap->width || y < 0 || y >= tilemap->height) continue;
 
-        u32 index = TilemapIndex(*tilemap, (u32)x, (u32)y);
-        Tile* tile = tilemap->tiles[y][x];
+        Tile *tile = &tilemap->tiles[y][x];
 
         if (tile->type == TileType_grass || tile->type == TileType_dirt) {
             AddFlag(tile, TileFlag_visited);
@@ -186,8 +185,7 @@ void CheckEnclosedAreas(Tilemap *tilemap, u32 current_x, u32 current_y) {
     // Any grass or dirt tiles not marked are enclosed
     for (u32 y = 0; y < (s32)tilemap->height; y++) {
         for (u32 x = 0; x < (s32)tilemap->width; x++) {
-            u32 index = TilemapIndex(*tilemap, x, y);
-            Tile *tile  = tilemap->tiles[y][x];
+            Tile *tile  = &tilemap->tiles[y][x];
 
             if (tile->type == TileType_grass || tile->type == TileType_dirt) {
                 if (!IsFlagSet(tile, TileFlag_visited)) {
@@ -235,7 +233,8 @@ int main() {
     for (u32 y = 0; y < TILEMAP_HEIGHT; y++) {
         for (u32 x = 0; x < TILEMAP_WIDTH; x++) {
             original_tilemap[y][x] = tilemap[y][x];
-            map.tiles[y][x].type = (Tile_Type)tilemap[y][x];
+            map.tiles[y][x].type  = (Tile_Type)tilemap[y][x];
+            map.tiles[y][x].flags = 0;
         }
     }
 
@@ -262,11 +261,11 @@ int main() {
         {
             for (u32 y = 0; y < map.height; y++) {
                 for (u32 x = 0; x < map.width; x++) {
-                    Tile_Type tile = map.tiles[y][x].type;
+                    Tile tile = map.tiles[y][x];
                     Vector2 tile_pos = {(float)x * map.tile_size, (float)y * map.tile_size};
 
                     Color tile_col;
-                    switch (tile) {
+                    switch (tile.type) {
                         case TileType_none:  tile_col = BLACK;                break;
                         case TileType_wall:  tile_col = PURPLE;               break;
                         case TileType_wall2: tile_col = {140, 20, 140, 255};  break;
@@ -275,6 +274,10 @@ int main() {
                         case TileType_fire:  tile_col = {168, 0, 0, 255};     break;
                         case TileType_temp_grass: tile_col = {68, 68, 68, 255}; break;
                         case TileType_temp_dirt:  tile_col = {168, 168, 168, 255}; break;
+                    }
+
+                    if (IsFlagSet(&tile, TileFlag_fire)) {
+                        tile_col = {168, 0, 0, 255};
                     }
 
                     Vector2 tile_size = {(f32)map.tile_size, (f32)map.tile_size};

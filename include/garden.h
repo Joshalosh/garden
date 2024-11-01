@@ -24,7 +24,7 @@ enum Tile_Flags {
 
 struct Tile {
     Tile_Type  type;
-    Tile_Flags flags;
+    u32        flags;
 };
 
 struct Tilemap {
