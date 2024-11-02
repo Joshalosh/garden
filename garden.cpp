@@ -317,17 +317,18 @@ int main() {
                     target_tile_y > 0 && target_tile_y < map.height-1) {
 
                     u32 target_tile_index = target_tile_y * map.width + target_tile_x;
-                    Tile_Type target_tile = map.tiles[target_tile_y][target_tile_x].type;
+                    Tile *target_tile = &map.tiles[target_tile_y][target_tile_x];
 
-                    if (target_tile != TileType_wall  && 
-                        target_tile != TileType_wall2 && 
-                        target_tile != TileType_fire) {
+                    if (target_tile->type != TileType_wall  && 
+                        target_tile->type != TileType_wall2 && 
+                        target_tile->type != TileType_fire) {
                         // Start moving
                         player.target_pos = {(float)target_tile_x * map.tile_size, (float)target_tile_y * map.tile_size};
                         player.is_moving  = true;
 
                         //u32 current_tile_index = current_tile_y * map.width + current_tile_x;
-                        map.tiles[current_tile_y][current_tile_x].type = TileType_fire;
+                        Tile *current_tile = &map.tiles[current_tile_y][current_tile_x];
+                        AddFlag(current_tile, TileFlag_fire);
                     } 
                     else {
                         GameOver(&player);
