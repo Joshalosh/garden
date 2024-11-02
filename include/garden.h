@@ -18,8 +18,9 @@ enum Tile_Type {
 };
 
 enum Tile_Flags {
-    TileFlag_fire    = 1 << 0,
-    TileFlag_visited = 1 << 1,
+    TileFlag_none    = 1 << 0,
+    TileFlag_fire    = 1 << 1,
+    TileFlag_visited = 1 << 2,
 };
 
 struct Tile {

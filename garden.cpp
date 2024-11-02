@@ -165,10 +165,11 @@ void FloodFillFromPlayerPosition(Tilemap *tilemap, u32 start_x, u32 start_y) {
 
         Tile *tile = &tilemap->tiles[y][x];
 
-        if (tile->type == TileType_grass || tile->type == TileType_dirt) {
-            AddFlag(tile, TileFlag_visited);
-            //tilemap->tiles[y][x].type = TileType_temp_grass;
-        } else continue;
+        if (IsFlagSet(tile, TileFlag_visited))                           continue;
+        if (IsFlagSet(tile, TileFlag_fire))                              continue;
+        if (tile->type != TileType_grass && tile->type != TileType_dirt) continue;
+
+        AddFlag(tile, TileFlag_visited);
 
         // Add adjacent tiles 
         StackPush(&nodes, x+1, y);
@@ -190,10 +191,10 @@ void CheckEnclosedAreas(Tilemap *tilemap, u32 current_x, u32 current_y) {
             if (tile->type == TileType_grass || tile->type == TileType_dirt) {
                 if (!IsFlagSet(tile, TileFlag_visited)) {
                     AddFlag(tile, TileFlag_fire);
-                }
-            } else {
-                ClearFlag(tile, TileFlag_visited);
-            }
+                } 
+            } 
+
+            ClearFlag(tile, TileFlag_visited);
         }
     }
 }
