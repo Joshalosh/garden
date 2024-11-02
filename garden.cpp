@@ -337,6 +337,7 @@ int main() {
                         for (u32 y = 0; y < map.height; y++) {
                             for (u32 x = 0; x < map.width; x++) {
                                 map.tiles[y][x].type = (Tile_Type)original_tilemap[y][x];
+                                map.tiles[y][x].flags = 0;
                             }
                         }
                     }
@@ -347,6 +348,7 @@ int main() {
                     for (u32 y = 0; y < map.height; y++) {
                         for (u32 x = 0; x < map.width; x++) {
                             map.tiles[y][x].type = (Tile_Type)original_tilemap[y][x];
+                            map.tiles[y][x].flags = 0;
                         }
                     }
                     // TODO: Set a starting tile for the target tile or the player will keep
@@ -359,6 +361,7 @@ int main() {
                     for (u32 y = 0; y < map.height; y++) {
                         for (u32 x = 0; x < map.width; x++) {
                             map.tiles[y][x].type = (Tile_Type)original_tilemap[y][x];
+                            map.tiles[y][x].flags = 0;
                         }
                     }
                 }
