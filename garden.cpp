@@ -49,6 +49,7 @@ void GameOver(Player *player, Tilemap *tilemap) {
     player->target_pos = start_pos;
     player->path_len = 0;
 
+    // Reset the tilemap back to it's original orientation
     for (u32 y = 0; y < tilemap->height; y++) {
         for (u32 x = 0; x < tilemap->width; x++) {
             tilemap->tiles[y][x].type = (Tile_Type)tilemap->original_map[y][x];
