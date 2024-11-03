@@ -42,12 +42,19 @@ void PlayerInit(Player *player) {
     player->path_len   = 0;
 }
 
-void GameOver(Player *player) {
+void GameOver(Player *player, Tilemap *tilemap) {
     player->is_moving = false;
     Vector2 start_pos = {base_screen_width*0.5, base_screen_height*0.5};
     player->pos = start_pos;
     player->target_pos = start_pos;
     player->path_len = 0;
+
+    for (u32 y = 0; y < tilemap->height; y++) {
+        for (u32 x = 0; x < tilemap->width; x++) {
+            tilemap->tiles[y][x].type = (Tile_Type)tilemap->original_map[y][x];
+            tilemap->tiles[y][x].flags = 0;
+        }
+    }
 }
 
 inline void AddFlag(Tile *tile, u32 flag) {
@@ -230,12 +237,11 @@ int main() {
     };
     //map.tiles = (u32 *)tilemap;
 
-    u32 original_tilemap[TILEMAP_HEIGHT][TILEMAP_WIDTH];
     for (u32 y = 0; y < TILEMAP_HEIGHT; y++) {
         for (u32 x = 0; x < TILEMAP_WIDTH; x++) {
-            original_tilemap[y][x] = tilemap[y][x];
-            map.tiles[y][x].type  = (Tile_Type)tilemap[y][x];
-            map.tiles[y][x].flags = 0;
+            map.original_map[y][x] = tilemap[y][x];
+            map.tiles[y][x].type   = (Tile_Type)tilemap[y][x];
+            map.tiles[y][x].flags  = 0;
         }
     }
 
@@ -332,38 +338,15 @@ int main() {
                         AddFlag(current_tile, TileFlag_fire);
                     } 
                     else {
-                        GameOver(&player);
-                        // NOTE: Reset the tiles to original state
-                        for (u32 y = 0; y < map.height; y++) {
-                            for (u32 x = 0; x < map.width; x++) {
-                                map.tiles[y][x].type = (Tile_Type)original_tilemap[y][x];
-                                map.tiles[y][x].flags = 0;
-                            }
-                        }
+                        GameOver(&player, &map);
                     }
                 } else {
                     // Out of bounds
-                    GameOver(&player);
-                    // NOTE: Reset the tiles to original state
-                    for (u32 y = 0; y < map.height; y++) {
-                        for (u32 x = 0; x < map.width; x++) {
-                            map.tiles[y][x].type = (Tile_Type)original_tilemap[y][x];
-                            map.tiles[y][x].flags = 0;
-                        }
-                    }
-                    // TODO: Set a starting tile for the target tile or the player will keep
-                    // moving after restart
+                    GameOver(&player, &map);
                 }
 
                 if (is_in_path) {
-                    GameOver(&player);
-                    // NOTE: Reset the tiles to original state
-                    for (u32 y = 0; y < map.height; y++) {
-                        for (u32 x = 0; x < map.width; x++) {
-                            map.tiles[y][x].type = (Tile_Type)original_tilemap[y][x];
-                            map.tiles[y][x].flags = 0;
-                        }
-                    }
+                    GameOver(&player, &map);
                 }
             }
         } else {
