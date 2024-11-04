@@ -32,8 +32,8 @@ struct Tilemap {
     u32  height;
     u32  tile_size;
 
-    u32  original_map[TILEMAP_HEIGHT][TILEMAP_WIDTH];
-    Tile tiles[TILEMAP_HEIGHT][TILEMAP_WIDTH];
+    u32  *original_map;
+    Tile *tiles;
 };
 
 struct Player {

@@ -52,8 +52,9 @@ void GameOver(Player *player, Tilemap *tilemap) {
     // Reset the tilemap back to it's original orientation
     for (u32 y = 0; y < tilemap->height; y++) {
         for (u32 x = 0; x < tilemap->width; x++) {
-            tilemap->tiles[y][x].type = (Tile_Type)tilemap->original_map[y][x];
-            tilemap->tiles[y][x].flags = 0;
+            u32 index = y * tilemap->width + x;
+            tilemap->tiles[index].type = (Tile_Type)tilemap->original_map[index];
+            tilemap->tiles[index].flags = 0;
         }
     }
 }
@@ -171,7 +172,8 @@ void FloodFillFromPlayerPosition(Tilemap *tilemap, u32 start_x, u32 start_y) {
     while(StackPop(&nodes, &x, &y)) {
         if (x < 0 || x >= (u32)tilemap->width || y < 0 || y >= tilemap->height) continue;
 
-        Tile *tile = &tilemap->tiles[y][x];
+        u32 index = y * tilemap->width + x;
+        Tile *tile = &tilemap->tiles[index];
 
         if (IsFlagSet(tile, TileFlag_visited))                           continue;
         if (IsFlagSet(tile, TileFlag_fire))                              continue;
@@ -194,7 +196,8 @@ void CheckEnclosedAreas(Tilemap *tilemap, u32 current_x, u32 current_y) {
     // Any grass or dirt tiles not marked are enclosed
     for (u32 y = 0; y < (s32)tilemap->height; y++) {
         for (u32 x = 0; x < (s32)tilemap->width; x++) {
-            Tile *tile  = &tilemap->tiles[y][x];
+            u32 index = y * tilemap->width + x;
+            Tile *tile  = &tilemap->tiles[index];
 
             if (tile->type == TileType_grass || tile->type == TileType_dirt) {
                 if (!IsFlagSet(tile, TileFlag_visited)) {
@@ -237,14 +240,19 @@ int main() {
         {1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, },
     };
     //map.tiles = (u32 *)tilemap;
+    u32 original_map[TILEMAP_HEIGHT][TILEMAP_WIDTH];
+    Tile tiles[TILEMAP_HEIGHT][TILEMAP_WIDTH] = {};
 
     for (u32 y = 0; y < TILEMAP_HEIGHT; y++) {
         for (u32 x = 0; x < TILEMAP_WIDTH; x++) {
-            map.original_map[y][x] = tilemap[y][x];
-            map.tiles[y][x].type   = (Tile_Type)tilemap[y][x];
-            map.tiles[y][x].flags  = 0;
+            original_map[y][x] = tilemap[y][x];
+            tiles[y][x].type   = (Tile_Type)tilemap[y][x];
+            tiles[y][x].flags  = 0;
         }
     }
+
+    map.original_map = (u32 *)&original_map;
+    map.tiles        = (Tile *)&tiles;
 
     Player player;
     PlayerInit(&player);
@@ -269,7 +277,8 @@ int main() {
         {
             for (u32 y = 0; y < map.height; y++) {
                 for (u32 x = 0; x < map.width; x++) {
-                    Tile tile = map.tiles[y][x];
+                    u32 index = y * map.width + x;
+                    Tile tile = map.tiles[index];
                     Vector2 tile_pos = {(float)x * map.tile_size, (float)y * map.tile_size};
 
                     Color tile_col;
@@ -325,7 +334,7 @@ int main() {
                     target_tile_y > 0 && target_tile_y < map.height-1) {
 
                     u32 target_tile_index = target_tile_y * map.width + target_tile_x;
-                    Tile *target_tile = &map.tiles[target_tile_y][target_tile_x];
+                    Tile *target_tile = &map.tiles[target_tile_index];
 
                     if (target_tile->type != TileType_wall  && 
                         target_tile->type != TileType_wall2 && 
@@ -334,8 +343,8 @@ int main() {
                         player.target_pos = {(float)target_tile_x * map.tile_size, (float)target_tile_y * map.tile_size};
                         player.is_moving  = true;
 
-                        //u32 current_tile_index = current_tile_y * map.width + current_tile_x;
-                        Tile *current_tile = &map.tiles[current_tile_y][current_tile_x];
+                        u32 current_tile_index = current_tile_y * map.width + current_tile_x;
+                        Tile *current_tile = &map.tiles[current_tile_index];
                         AddFlag(current_tile, TileFlag_fire);
                     } 
                     else {
