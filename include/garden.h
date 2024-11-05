@@ -1,6 +1,7 @@
 
 #define TILEMAP_WIDTH  16
 #define TILEMAP_HEIGHT 16
+#define TILEMAP_SIZE 20
 #define MB(x) x*1024ULL*1024ULL
 #define ARENA_SIZE MB(500)
 const int base_screen_width  = 320;

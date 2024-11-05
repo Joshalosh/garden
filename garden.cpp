@@ -10,7 +10,7 @@
 void TilemapInit(Tilemap *tilemap) {
     tilemap->width       = TILEMAP_WIDTH;
     tilemap->height      = TILEMAP_HEIGHT;
-    tilemap->tile_size   = 20;
+    tilemap->tile_size   = TILEMAP_SIZE;
 }
 
 void StackInit(StackU32 *stack) {
@@ -33,26 +33,25 @@ bool StackPop(StackU32 *stack, u32 *x_val, u32 *y_val) {
     return true;
 }
 
+u32 TilemapIndex(u32 x, u32 y, u32 width) {
+    u32 result = y * width + x;
+    return result;
+}
+
 void PlayerInit(Player *player) {
     player->pos = {base_screen_width*0.5, base_screen_height*0.5};
     player->target_pos = player->pos;
     player->size       = {20, 20};
     player->speed      = 50.0f;
     player->is_moving  = false;
-    player->path_len   = 0;
-}
 
-u32 TilemapIndex(u32 x, u32 y, u32 width) {
-    u32 result = y * width + x;
-    return result;
+    // Set the starting square to be the first element of the path
+    player->path[0]    = {player->pos.x/TILEMAP_SIZE, player->pos.y/TILEMAP_SIZE};
+    player->path_len   = 1;
 }
 
 void GameOver(Player *player, Tilemap *tilemap) {
-    player->is_moving = false;
-    Vector2 start_pos = {base_screen_width*0.5, base_screen_height*0.5};
-    player->pos = start_pos;
-    player->target_pos = start_pos;
-    player->path_len = 0;
+    PlayerInit(player);
 
     // Reset the tilemap back to it's original orientation
     for (u32 y = 0; y < tilemap->height; y++) {
@@ -158,7 +157,7 @@ int main() {
     };
     //map.tiles = (u32 *)tilemap;
     u32 original_map[TILEMAP_HEIGHT][TILEMAP_WIDTH];
-    Tile tiles[TILEMAP_HEIGHT][TILEMAP_WIDTH] = {};
+    Tile tiles[TILEMAP_HEIGHT][TILEMAP_WIDTH];
 
     for (u32 y = 0; y < TILEMAP_HEIGHT; y++) {
         for (u32 x = 0; x < TILEMAP_WIDTH; x++) {
