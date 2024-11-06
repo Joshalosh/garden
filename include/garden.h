@@ -21,6 +21,7 @@ enum Tile_Type {
 enum Tile_Flags {
     TileFlag_fire    = 1 << 0,
     TileFlag_visited = 1 << 1,
+    TileFlag_powerup = 1 << 2,
 };
 
 struct Tile {
@@ -44,9 +45,6 @@ struct Player {
 
     float     speed;
     bool      is_moving;
-    // TODO: Do we really need path still? Get rid of it if not
-    Vector2   path[TILEMAP_WIDTH*TILEMAP_HEIGHT];
-    u32       path_len;
 };
 
 #define STACK_MAX_SIZE 4096

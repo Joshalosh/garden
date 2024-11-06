@@ -43,11 +43,7 @@ void PlayerInit(Player *player) {
     player->target_pos = player->pos;
     player->size       = {20, 20};
     player->speed      = 50.0f;
-    player->is_moving  = false;
-
-    // Set the starting square to be the first element of the path
-    player->path[0]    = {player->pos.x/TILEMAP_SIZE, player->pos.y/TILEMAP_SIZE};
-    player->path_len   = 1;
+    //player->is_moving  = false;
 }
 
 void GameOver(Player *player, Tilemap *tilemap) {
@@ -109,6 +105,7 @@ void CheckEnclosedAreas(Tilemap *tilemap, u32 current_x, u32 current_y) {
     // Flood fill from borders to mark reachable areas
     FloodFillFromPlayerPosition(tilemap, current_x, current_y);
 
+    bool has_flood_fill_happened = false;
     // Any grass or dirt tiles not marked are enclosed
     for (u32 y = 0; y < (s32)tilemap->height; y++) {
         for (u32 x = 0; x < (s32)tilemap->width; x++) {
@@ -118,10 +115,29 @@ void CheckEnclosedAreas(Tilemap *tilemap, u32 current_x, u32 current_y) {
             if (tile->type == TileType_grass || tile->type == TileType_dirt) {
                 if (!IsFlagSet(tile, TileFlag_visited)) {
                     AddFlag(tile, TileFlag_fire);
+                    has_flood_fill_happened = true;
                 } 
             } 
 
             ClearFlag(tile, TileFlag_visited);
+        }
+    }
+
+
+    if (has_flood_fill_happened) {
+        bool found_empty_tile = false;
+        Tile *tile;
+        while (!found_empty_tile) {
+            u32 random_x = GetRandomValue(1, tilemap->width - 2);
+            u32 random_y = GetRandomValue(1, tilemap->height - 2);
+
+            u32 index = TilemapIndex(random_x, random_y, tilemap->width);
+            tile = &tilemap->tiles[index];
+
+            if (!IsFlagSet(tile, TileFlag_fire)) {
+                AddFlag(tile, TileFlag_powerup);
+                found_empty_tile = true;
+            }
         }
     }
 }
@@ -213,6 +229,10 @@ int main() {
                         tile_col = {168, 0, 0, 255};
                     }
 
+                    if (IsFlagSet(&tile, TileFlag_powerup)) {
+                        tile_col = BLUE;
+                    }
+
                     Vector2 tile_size = {(f32)map.tile_size, (f32)map.tile_size};
                     DrawRectangleV(tile_pos, tile_size, tile_col);
                 }
@@ -235,26 +255,17 @@ int main() {
                 s32 target_tile_x = current_tile_x + u32(input_axis.x);
                 s32 target_tile_y = current_tile_y + u32(input_axis.y);
 
-                //player.collider = {(f32)target_tile_x*map.tile_size, (f32)target_tile_y*map.tile_size, (f32)map.tile_size, (f32)map.tile_size};
-
-                bool is_in_path = false;
-                for (u32 i = 0; i < player.path_len; i++) {
-                    if (player.path[i].x == (f32)target_tile_x && player.path[i].y == (f32)target_tile_y) {
-                        is_in_path = true;
-                        break;
-                    }
-                }
+                u32 target_tile_index = TilemapIndex(target_tile_x, target_tile_y, map.width);
+                Tile *target_tile = &map.tiles[target_tile_index];
 
                 // TODO: need to continue the refactor from here
                 if (target_tile_x > 0 && target_tile_x < map.width-1 &&
                     target_tile_y > 0 && target_tile_y < map.height-1) {
 
-                    u32 target_tile_index = TilemapIndex(target_tile_x, target_tile_y, map.width);
-                    Tile *target_tile = &map.tiles[target_tile_index];
-
                     if (target_tile->type != TileType_wall  && 
                         target_tile->type != TileType_wall2 && 
                         target_tile->type != TileType_fire) {
+                        
                         // Start moving
                         player.target_pos = {(float)target_tile_x * map.tile_size, (float)target_tile_y * map.tile_size};
                         player.is_moving  = true;
@@ -271,9 +282,10 @@ int main() {
                     GameOver(&player, &map);
                 }
 
-                if (is_in_path) {
+                if (IsFlagSet(target_tile, TileFlag_fire)) {
                     GameOver(&player, &map);
                 }
+
             }
         } else {
             // MOTE: Move towards target position
@@ -285,9 +297,6 @@ int main() {
 
                 u32 current_tile_x = (u32)player.pos.x / map.tile_size;
                 u32 current_tile_y = (u32)player.pos.y / map.tile_size;
-
-                player.path[player.path_len] = {(float)current_tile_x, (float)current_tile_y};
-                player.path_len++;
 
                 // Check for enclosed areas
                 CheckEnclosedAreas(&map, current_tile_x, current_tile_y);
