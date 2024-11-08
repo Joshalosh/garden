@@ -82,22 +82,22 @@ void FloodFillFromPlayerPosition(Tilemap *tilemap, u32 start_x, u32 start_y) {
 
     // Flood fill from players position
     while(StackPop(&nodes, &x, &y)) {
-        if (x < 0 || x >= (u32)tilemap->width || y < 0 || y >= tilemap->height) continue;
+        if (x >= (u32)tilemap->width || y >= tilemap->height) continue;
 
         u32 index = TilemapIndex(x, y, tilemap->width);
         Tile *tile = &tilemap->tiles[index];
 
         if (IsFlagSet(tile, TileFlag_visited))                           continue;
-        if (IsFlagSet(tile, TileFlag_fire))                              continue;
         if (tile->type != TileType_grass && tile->type != TileType_dirt) continue;
+        if (IsFlagSet(tile, TileFlag_fire))                              continue;
 
         AddFlag(tile, TileFlag_visited);
 
         // Add adjacent tiles 
-        StackPush(&nodes, x+1, y);
-        StackPush(&nodes, x-1, y);
-        StackPush(&nodes, x, y+1);
-        StackPush(&nodes, x, y-1);
+        if (x + 1 < tilemap->width)  StackPush(&nodes, x+1, y);
+        if (x > 0)                   StackPush(&nodes, x-1, y);
+        if (y + 1 < tilemap->height) StackPush(&nodes, x, y+1);
+        if (y > 0)                   StackPush(&nodes, x, y-1);
     }
 }
 
