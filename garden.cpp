@@ -90,14 +90,15 @@ void FloodFillFromPlayerPosition(Tilemap *tilemap, u32 start_x, u32 start_y) {
         if (IsFlagSet(tile, TileFlag_visited))                           continue;
         if (tile->type != TileType_grass && tile->type != TileType_dirt) continue;
         if (IsFlagSet(tile, TileFlag_fire))                              continue;
+        //if (x == start_x && y == start_y) continue;
 
         AddFlag(tile, TileFlag_visited);
 
         // Add adjacent tiles 
-        if (x + 1 < tilemap->width)  StackPush(&nodes, x+1, y);
-        if (x > 0)                   StackPush(&nodes, x-1, y);
-        if (y + 1 < tilemap->height) StackPush(&nodes, x, y+1);
-        if (y > 0)                   StackPush(&nodes, x, y-1);
+        StackPush(&nodes, x+1, y);
+        StackPush(&nodes, x-1, y);
+        StackPush(&nodes, x, y+1);
+        StackPush(&nodes, x, y-1);
     }
 }
 
@@ -115,6 +116,7 @@ void CheckEnclosedAreas(Tilemap *tilemap, u32 current_x, u32 current_y) {
             if (tile->type == TileType_grass || tile->type == TileType_dirt) {
                 if (!IsFlagSet(tile, TileFlag_visited)) {
                     AddFlag(tile, TileFlag_fire);
+                    tile->type = TileType_fire;
                     has_flood_fill_happened = true;
                 } 
             } 
@@ -137,6 +139,7 @@ void CheckEnclosedAreas(Tilemap *tilemap, u32 current_x, u32 current_y) {
             if (!IsFlagSet(tile, TileFlag_fire)) {
                 AddFlag(tile, TileFlag_powerup);
                 found_empty_tile = true;
+                has_flood_fill_happened = false;
             }
         }
     }
@@ -273,6 +276,7 @@ int main() {
                         u32 current_tile_index = TilemapIndex(current_tile_x, current_tile_y, map.width);
                         Tile *current_tile = &map.tiles[current_tile_index];
                         AddFlag(current_tile, TileFlag_fire);
+                        current_tile->type = TileType_fire;
                     } 
                     else {
                         GameOver(&player, &map);
