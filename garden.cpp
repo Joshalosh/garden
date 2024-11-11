@@ -113,11 +113,15 @@ void CheckEnclosedAreas(Tilemap *tilemap, u32 current_x, u32 current_y) {
             u32 index = TilemapIndex(x, y, tilemap->width);
             Tile *tile  = &tilemap->tiles[index];
 
-            if (tile->type == TileType_grass || tile->type == TileType_dirt) {
+            if ((tile->type == TileType_grass || tile->type == TileType_dirt) && !IsFlagSet(tile, TileFlag_fire)) {
                 if (!IsFlagSet(tile, TileFlag_visited)) {
                     AddFlag(tile, TileFlag_fire);
-                    tile->type = TileType_fire;
+                    //tile->type = TileType_fire;
                     has_flood_fill_happened = true;
+                    
+                    if (IsFlagSet(tile, TileFlag_powerup)) {
+                        ClearFlag(tile, TileFlag_powerup);
+                    }
                 } 
             } 
 
@@ -276,7 +280,7 @@ int main() {
                         u32 current_tile_index = TilemapIndex(current_tile_x, current_tile_y, map.width);
                         Tile *current_tile = &map.tiles[current_tile_index];
                         AddFlag(current_tile, TileFlag_fire);
-                        current_tile->type = TileType_fire;
+                        //current_tile->type = TileType_fire;
                     } 
                     else {
                         GameOver(&player, &map);
