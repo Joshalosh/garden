@@ -40,10 +40,11 @@ u32 TilemapIndex(u32 x, u32 y, u32 width) {
 
 void PlayerInit(Player *player) {
     player->pos = {base_screen_width*0.5, base_screen_height*0.5};
-    player->target_pos = player->pos;
-    player->size       = {20, 20};
-    player->speed      = 50.0f;
-    //player->is_moving  = false;
+    player->target_pos    = player->pos;
+    player->size          = {20, 20};
+    player->speed         = 50.0f;
+    player->is_moving     = false;
+    player->powerup_timer = 0;
 }
 
 void GameOver(Player *player, Tilemap *tilemap) {
@@ -193,7 +194,7 @@ int main() {
     map.original_map = (u32 *)&original_map;
     map.tiles        = (Tile *)&tiles;
 
-    Player player;
+    Player player = {};
     PlayerInit(&player);
     Vector2 input_axis = {0, 0};
 
@@ -279,7 +280,9 @@ int main() {
 
                         u32 current_tile_index = TilemapIndex(current_tile_x, current_tile_y, map.width);
                         Tile *current_tile = &map.tiles[current_tile_index];
-                        AddFlag(current_tile, TileFlag_fire);
+                        if (player.powerup_timer < GetTime()) {
+                            AddFlag(current_tile, TileFlag_fire);
+                        }
                         //current_tile->type = TileType_fire;
                     } 
                     else {
@@ -290,10 +293,22 @@ int main() {
                     GameOver(&player, &map);
                 }
 
+                if (IsFlagSet(target_tile, TileFlag_powerup)) {
+                    float powerup_duration = 15.0f;
+                    player.powerup_timer = GetTime() + powerup_duration;
+                    ClearFlag(target_tile, TileFlag_powerup);
+                    //AddFlag(target_tile, TileFlag_visited);
+                }
+
+                if (player.powerup_timer > GetTime()) {
+                    if (IsFlagSet(target_tile, TileFlag_fire)) {
+                        ClearFlag(target_tile, TileFlag_fire);
+                    }
+                }
+
                 if (IsFlagSet(target_tile, TileFlag_fire)) {
                     GameOver(&player, &map);
                 }
-
             }
         } else {
             // MOTE: Move towards target position
@@ -307,7 +322,9 @@ int main() {
                 u32 current_tile_y = (u32)player.pos.y / map.tile_size;
 
                 // Check for enclosed areas
-                CheckEnclosedAreas(&map, current_tile_x, current_tile_y);
+                if (player.powerup_timer < GetTime()) {
+                    CheckEnclosedAreas(&map, current_tile_x, current_tile_y);
+                }
             } else {
                 direction = VectorNorm(direction);
                 Vector2 movement = VectorScale(direction, player.speed * delta_t);

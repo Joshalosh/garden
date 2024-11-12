@@ -43,7 +43,8 @@ struct Player {
     Vector2   target_pos;
     Vector2   size;
 
-    float     speed;
+    f32       speed;
+    f64       powerup_timer;
     bool      is_moving;
 };
 
