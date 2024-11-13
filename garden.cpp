@@ -42,8 +42,10 @@ void PlayerInit(Player *player) {
     player->pos = {base_screen_width*0.5, base_screen_height*0.5};
     player->target_pos    = player->pos;
     player->size          = {20, 20};
+    player->col           = RED;
     player->speed         = 50.0f;
     player->is_moving     = false;
+    player->powered_up    = false;
     player->powerup_timer = 0;
 }
 
@@ -280,7 +282,7 @@ int main() {
 
                         u32 current_tile_index = TilemapIndex(current_tile_x, current_tile_y, map.width);
                         Tile *current_tile = &map.tiles[current_tile_index];
-                        if (player.powerup_timer < GetTime()) {
+                        if (!player.powered_up) {
                             AddFlag(current_tile, TileFlag_fire);
                         }
                         //current_tile->type = TileType_fire;
@@ -296,13 +298,24 @@ int main() {
                 if (IsFlagSet(target_tile, TileFlag_powerup)) {
                     float powerup_duration = 15.0f;
                     player.powerup_timer = GetTime() + powerup_duration;
+                    player.powered_up = true;
                     ClearFlag(target_tile, TileFlag_powerup);
-                    //AddFlag(target_tile, TileFlag_visited);
                 }
 
-                if (player.powerup_timer > GetTime()) {
+                if (player.powered_up && (player.powerup_timer < GetTime())) {
+                    player.powered_up = false;
+                }
+
+                if (player.powered_up) {
                     if (IsFlagSet(target_tile, TileFlag_fire)) {
                         ClearFlag(target_tile, TileFlag_fire);
+                    }
+
+                    double now = GetTime();
+                    if (((u32)(now * 4)) % 2 == 0) {
+                        player.col = BLUE;
+                    } else {
+                        player.col = RED;
                     }
                 }
 
@@ -331,7 +344,7 @@ int main() {
                 player.pos = VectorAdd(player.pos, movement);
             }
         }
-        DrawRectangleV(player.pos, player.size, RED);
+        DrawRectangleV(player.pos, player.size, player.col);
 
         EndTextureMode();
 

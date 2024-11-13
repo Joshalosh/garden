@@ -42,10 +42,12 @@ struct Player {
     Vector2   pos;
     Vector2   target_pos;
     Vector2   size;
+    Color     col;
 
     f32       speed;
     f64       powerup_timer;
     bool      is_moving;
+    bool      powered_up;
 };
 
 #define STACK_MAX_SIZE 4096
