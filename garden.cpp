@@ -312,7 +312,8 @@ int main() {
                     }
 
                     double now = GetTime();
-                    if (((u32)(now * 4)) % 2 == 0) {
+                    double blink_speed = 0.2f;
+                    if ((u32)(now / blink_speed) % 2 == 0) {
                         player.col = BLUE;
                     } else {
                         player.col = RED;
