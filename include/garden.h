@@ -46,8 +46,11 @@ struct Player {
 
     f32       speed;
     f64       powerup_timer;
+    f32       blink_time;
+    f32       blink_speed;
     bool      is_moving;
     bool      powered_up;
+    bool      col_bool;
 };
 
 #define STACK_MAX_SIZE 4096

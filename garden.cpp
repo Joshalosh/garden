@@ -47,6 +47,9 @@ void PlayerInit(Player *player) {
     player->is_moving     = false;
     player->powered_up    = false;
     player->powerup_timer = 0;
+    player->blink_speed   = 0;
+    player->blink_time    = 0;
+    player->col_bool      = false;
 }
 
 void GameOver(Player *player, Tilemap *tilemap) {
@@ -296,14 +299,12 @@ int main() {
                 }
 
                 if (IsFlagSet(target_tile, TileFlag_powerup)) {
-                    float powerup_duration = 15.0f;
+                    float powerup_duration = 10.0f;
                     player.powerup_timer = GetTime() + powerup_duration;
-                    player.powered_up = true;
+                    player.powered_up  = true;
+                    player.blink_speed = 5.0f;
+                    player.blink_time = player.blink_speed;
                     ClearFlag(target_tile, TileFlag_powerup);
-                }
-
-                if (player.powered_up && (player.powerup_timer < GetTime())) {
-                    player.powered_up = false;
                 }
 
                 if (player.powered_up) {
@@ -311,13 +312,14 @@ int main() {
                         ClearFlag(target_tile, TileFlag_fire);
                     }
 
-                    double now = GetTime();
-                    double blink_speed = 0.2f;
-                    if ((u32)(now / blink_speed) % 2 == 0) {
+
+#if 0
+                    if ((u32)now % 2 == 0) {
                         player.col = BLUE;
                     } else {
                         player.col = RED;
                     }
+#endif
                 }
 
                 if (IsFlagSet(target_tile, TileFlag_fire)) {
@@ -345,6 +347,33 @@ int main() {
                 player.pos = VectorAdd(player.pos, movement);
             }
         }
+
+        // NOTE: Powerup blinking
+        if (player.powered_up) {
+            f32 end_duration_signal = 3.0f;
+            if (player.powerup_timer < GetTime()) {
+                player.powered_up = false;
+                player.col_bool   = false;
+            } else {
+                if (player.powerup_timer - end_duration_signal < GetTime()) {
+                    player.blink_speed = 2.0f; 
+                }
+
+                if (player.blink_time > 0) {
+                player.blink_time -= 1.0f;
+                } else {
+                    player.blink_time =  player.blink_speed;
+                    player.col_bool   = !player.col_bool;
+                }
+            }
+
+            if (player.col_bool) {
+                player.col = WHITE;
+            } else {
+                player.col = RED;
+            }
+        }
+
         DrawRectangleV(player.pos, player.size, player.col);
 
         EndTextureMode();
