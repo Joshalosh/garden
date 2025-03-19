@@ -19,9 +19,10 @@ enum Tile_Type {
 };
 
 enum Tile_Flags {
-    TileFlag_fire    = 1 << 0,
-    TileFlag_visited = 1 << 1,
-    TileFlag_powerup = 1 << 2,
+    TileFlag_fire      = 1 << 0,
+    TileFlag_visited   = 1 << 1,
+    TileFlag_powerup   = 1 << 2,
+    TileFlag_has_enemy = 1 << 3,
 };
 
 struct Tile {
@@ -51,6 +52,15 @@ struct Player {
     bool      is_moving;
     bool      powered_up;
     bool      col_bool;
+};
+
+struct Enemy {
+    Vector2 pos;
+    Vector2 target_pos;
+    Vector2 size;
+    Color col;
+
+    f32 speed;
 };
 
 #define STACK_MAX_SIZE 4096
