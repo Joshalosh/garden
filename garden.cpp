@@ -39,7 +39,7 @@ u32 TilemapIndex(u32 x, u32 y, u32 width) {
 }
 
 void PlayerInit(Player *player) {
-    player->pos = {base_screen_width*0.5, base_screen_height*0.5};
+    player->pos           = {base_screen_width*0.5, base_screen_height*0.5};
     player->target_pos    = player->pos;
     player->size          = {20, 20};
     player->col           = RED;
@@ -50,6 +50,14 @@ void PlayerInit(Player *player) {
     player->blink_speed   = 0;
     player->blink_time    = 0;
     player->col_bool      = false;
+}
+
+void EnemyInit(Enemy *enemy) {
+    enemy->pos        = {5, 5};
+    enemy->target_pos = enemy->pos;
+    enemy->size       = {20, 20};
+    enemy->col        = YELLOW;
+    enemy->speed      = 25.0f;
 }
 
 void GameOver(Player *player, Tilemap *tilemap) {
@@ -202,6 +210,9 @@ int main() {
     Player player = {};
     PlayerInit(&player);
     Vector2 input_axis = {0, 0};
+
+    Enemy enemy = {};
+    EnemyInit(&enemy);
 
     RenderTexture2D target = LoadRenderTexture(base_screen_width, base_screen_height); 
     SetTargetFPS(60);
@@ -375,6 +386,7 @@ int main() {
         }
 
         DrawRectangleV(player.pos, player.size, player.col);
+        DrawRectangleV({enemy.pos.x * map.tile_size, enemy.pos.y * map.tile_size},  enemy.size,  enemy.col);
 
         EndTextureMode();
 
