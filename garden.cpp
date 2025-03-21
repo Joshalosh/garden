@@ -138,7 +138,7 @@ void CheckEnclosedAreas(Tilemap *tilemap, u32 current_x, u32 current_y) {
     FloodFillFromPlayerPosition(tilemap, current_x, current_y);
 
     bool has_flood_fill_happened = false;
-    bool enemy_slain             = false;
+    u32 enemy_slain              = 0;
     // Any grass or dirt tiles not marked are enclosed
     for (u32 y = 0; y < (s32)tilemap->height; y++) {
         for (u32 x = 0; x < (s32)tilemap->width; x++) {
@@ -156,7 +156,7 @@ void CheckEnclosedAreas(Tilemap *tilemap, u32 current_x, u32 current_y) {
                     }
                     if (IsFlagSet(tile, TileFlag_enemy)) {
                         ClearFlag(tile, TileFlag_enemy);
-                        enemy_slain = true;
+                        enemy_slain++;
                     }
                 } 
             } 
@@ -167,8 +167,9 @@ void CheckEnclosedAreas(Tilemap *tilemap, u32 current_x, u32 current_y) {
 
 
     if (has_flood_fill_happened) {
-        if (enemy_slain) {
+        while (enemy_slain) {
             ModifyRandomTile(tilemap, TileFlag_powerup);
+            enemy_slain--;
         }
         has_flood_fill_happened = false;
 #if 0
