@@ -43,7 +43,7 @@ void PlayerInit(Player *player) {
     player->target_pos    = player->pos;
     player->size          = {20, 20};
     player->col           = RED;
-    player->speed         = 50.0f;
+    player->speed         = 100.0f;
     player->is_moving     = false;
     player->powered_up    = false;
     player->powerup_timer = 0;
