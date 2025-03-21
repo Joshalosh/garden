@@ -22,7 +22,7 @@ enum Tile_Flags {
     TileFlag_fire      = 1 << 0,
     TileFlag_visited   = 1 << 1,
     TileFlag_powerup   = 1 << 2,
-    TileFlag_has_enemy = 1 << 3,
+    TileFlag_enemy     = 1 << 3,
 };
 
 struct Tile {

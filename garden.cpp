@@ -114,6 +114,23 @@ void FloodFillFromPlayerPosition(Tilemap *tilemap, u32 start_x, u32 start_y) {
         StackPush(&nodes, x, y+1);
         StackPush(&nodes, x, y-1);
     }
+} 
+
+void ModifyRandomTile(Tilemap *tilemap, Tile_Flags flag) {
+    bool found_empty_tile = false;
+    Tile *tile;
+    while (!found_empty_tile) {
+        u32 random_x = GetRandomValue(1, tilemap->width - 2);
+        u32 random_y = GetRandomValue(1, tilemap->height - 2);
+
+        u32 index = TilemapIndex(random_x, random_y, tilemap->width);
+        tile = &tilemap->tiles[index];
+
+        if (!IsFlagSet(tile, TileFlag_fire)) {
+            AddFlag(tile, flag);
+            found_empty_tile = true;
+        }
+    }
 }
 
 void CheckEnclosedAreas(Tilemap *tilemap, u32 current_x, u32 current_y) {
@@ -145,6 +162,9 @@ void CheckEnclosedAreas(Tilemap *tilemap, u32 current_x, u32 current_y) {
 
 
     if (has_flood_fill_happened) {
+        ModifyRandomTile(tilemap, TileFlag_powerup);
+        has_flood_fill_happened = false;
+#if 0
         bool found_empty_tile = false;
         Tile *tile;
         while (!found_empty_tile) {
@@ -160,6 +180,7 @@ void CheckEnclosedAreas(Tilemap *tilemap, u32 current_x, u32 current_y) {
                 has_flood_fill_happened = false;
             }
         }
+#endif
     }
 }
 
@@ -211,8 +232,8 @@ int main() {
     PlayerInit(&player);
     Vector2 input_axis = {0, 0};
 
-    Enemy enemy = {};
-    EnemyInit(&enemy);
+    f32 enemy_spawn_duration = 500.0f;
+    f32 spawn_timer          = enemy_spawn_duration;
 
     RenderTexture2D target = LoadRenderTexture(base_screen_width, base_screen_height); 
     SetTargetFPS(60);
@@ -239,22 +260,24 @@ int main() {
 
                     Color tile_col;
                     switch (tile.type) {
-                        case TileType_none:  tile_col = BLACK;                break;
-                        case TileType_wall:  tile_col = PURPLE;               break;
-                        case TileType_wall2: tile_col = {140, 20, 140, 255};  break;
-                        case TileType_grass: tile_col = {68, 68, 68, 255};    break;
-                        case TileType_dirt:  tile_col = {168, 168, 168, 255}; break;
-                        case TileType_fire:  tile_col = {168, 0, 0, 255};     break;
-                        case TileType_temp_grass: tile_col = {68, 68, 68, 255}; break;
+                        case TileType_none:       tile_col = BLACK;                break;
+                        case TileType_wall:       tile_col = PURPLE;               break;
+                        case TileType_wall2:      tile_col = {140, 20, 140, 255};  break;
+                        case TileType_grass:      tile_col = {68, 68, 68, 255};    break;
+                        case TileType_dirt:       tile_col = {168, 168, 168, 255}; break;
+                        case TileType_fire:       tile_col = {168, 0, 0, 255};     break;
+                        case TileType_temp_grass: tile_col = {68, 68, 68, 255};    break;
                         case TileType_temp_dirt:  tile_col = {168, 168, 168, 255}; break;
                     }
 
                     if (IsFlagSet(&tile, TileFlag_fire)) {
                         tile_col = {168, 0, 0, 255};
                     }
-
                     if (IsFlagSet(&tile, TileFlag_powerup)) {
                         tile_col = BLUE;
+                    }
+                    if (IsFlagSet(&tile, TileFlag_enemy)) {
+                        tile_col = YELLOW;
                     }
 
                     Vector2 tile_size = {(f32)map.tile_size, (f32)map.tile_size};
@@ -385,8 +408,14 @@ int main() {
             }
         }
 
+        if (spawn_timer > 0) {
+            spawn_timer -= 1.0f;
+        } else {
+            ModifyRandomTile(&map, TileFlag_enemy);
+            spawn_timer = enemy_spawn_duration;
+        }
+
         DrawRectangleV(player.pos, player.size, player.col);
-        DrawRectangleV({enemy.pos.x * map.tile_size, enemy.pos.y * map.tile_size},  enemy.size,  enemy.col);
 
         EndTextureMode();
 
