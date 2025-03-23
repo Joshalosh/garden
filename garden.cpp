@@ -134,6 +134,13 @@ void ModifyRandomTile(Tilemap *tilemap, Tile_Flags flag) {
     }
 }
 
+void CheckAdjacentTiles(Tilemap *tilemap, u32 index) {
+    u32 right_tile   = index + 1;
+    u32 left_tile    = index - 1;
+    u32 bottom_tile  = index + tilmap->width;
+    u32 top_tile     = index - tilmap->width;
+}
+
 void CheckEnclosedAreas(Tilemap *tilemap, u32 current_x, u32 current_y) {
     // Flood fill from borders to mark reachable areas
     FloodFillFromPlayerPosition(tilemap, current_x, current_y);
@@ -141,8 +148,8 @@ void CheckEnclosedAreas(Tilemap *tilemap, u32 current_x, u32 current_y) {
     bool has_flood_fill_happened = false;
     u32 enemy_slain              = 0;
     // Any grass or dirt tiles not marked are enclosed
-    for (u32 y = 0; y < (s32)tilemap->height; y++) {
-        for (u32 x = 0; x < (s32)tilemap->width; x++) {
+    for (u32 y = 0; y < (u32)tilemap->height; y++) {
+        for (u32 x = 0; x < (u32)tilemap->width; x++) {
             u32 index = TilemapIndex(x, y, tilemap->width);
             Tile *tile  = &tilemap->tiles[index];
 
@@ -354,15 +361,6 @@ int main() {
                     if (IsFlagSet(target_tile, TileFlag_fire)) {
                         ClearFlag(target_tile, TileFlag_fire);
                     }
-
-
-#if 0
-                    if ((u32)now % 2 == 0) {
-                        player.col = BLUE;
-                    } else {
-                        player.col = RED;
-                    }
-#endif
                 }
 
                 if (IsFlagSet(target_tile, TileFlag_fire) || IsFlagSet(target_tile, TileFlag_enemy)) {
