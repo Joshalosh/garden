@@ -126,7 +126,8 @@ void ModifyRandomTile(Tilemap *tilemap, Tile_Flags flag) {
         u32 index = TilemapIndex(random_x, random_y, tilemap->width);
         tile = &tilemap->tiles[index];
 
-        if (!IsFlagSet(tile, TileFlag_fire)) {
+        if (!IsFlagSet(tile, TileFlag_fire) && !IsFlagSet(tile, TileFlag_powerup) && 
+            !IsFlagSet(tile, TileFlag_enemy)) {
             AddFlag(tile, flag);
             found_empty_tile = true;
         }
@@ -364,7 +365,7 @@ int main() {
 #endif
                 }
 
-                if (IsFlagSet(target_tile, TileFlag_fire)) {
+                if (IsFlagSet(target_tile, TileFlag_fire) || IsFlagSet(target_tile, TileFlag_enemy)) {
                     GameOver(&player, &map);
                 }
             }
