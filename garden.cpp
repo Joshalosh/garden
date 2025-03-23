@@ -381,9 +381,9 @@ int main() {
                 u32 current_tile_y = (u32)player.pos.y / map.tile_size;
 
                 // Check for enclosed areas
-                if (player.powerup_timer < GetTime()) {
+                //if (player.powerup_timer < GetTime()) {
                     CheckEnclosedAreas(&map, current_tile_x, current_tile_y);
-                }
+                //}
             } else {
                 direction = VectorNorm(direction);
                 Vector2 movement = VectorScale(direction, player.speed * delta_t);
