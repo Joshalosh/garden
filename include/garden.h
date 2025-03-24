@@ -4,6 +4,7 @@
 #define TILEMAP_SIZE 20
 #define MB(x) x*1024ULL*1024ULL
 #define ARENA_SIZE MB(500)
+#define ARRAY_COUNT(array) (sizeof(array) / sizeof((array)[0]))
 const int base_screen_width  = 320;
 const int base_screen_height = 320; //180;
 

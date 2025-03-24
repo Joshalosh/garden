@@ -139,6 +139,21 @@ void CheckAdjacentTiles(Tilemap *tilemap, u32 index) {
     u32 left_tile    = index - 1;
     u32 bottom_tile  = index + tilmap->width;
     u32 top_tile     = index - tilmap->width;
+
+    u32 adjacent_tile_count = 4;
+    u32 adjacent_tile_indexes[adjacent_tile_count] = {right_tile, left_tile, bottom_tile, top_tile};
+    Tile *tile;
+
+    for (int index = 0; index < ARRAY_COUNT(adjacent_tile_indexes); index++) {
+        tile = &tilemap->tiles[adjacent_tile_indexes[index]];
+
+        if(tile->type == TileType_grass || tile->typ TileType_dirt) {
+            if (!IsFlagSet(tile, TileFlag_fire) && !IsFlagSet(tile, TileFlag_powerup) && 
+                !IsTileFlagSet(tile, TileFlag_enemy)) {
+                // TODO: Allow tile to be moved towards
+            }
+        }
+    }
 }
 
 void CheckEnclosedAreas(Tilemap *tilemap, u32 current_x, u32 current_y) {
