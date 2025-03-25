@@ -134,26 +134,41 @@ void ModifyRandomTile(Tilemap *tilemap, Tile_Flags flag) {
     }
 }
 
-void CheckAdjacentTiles(Tilemap *tilemap, u32 index) {
+Tile *CheckAdjacentTiles(Tilemap *tilemap, u32 index) {
     u32 right_tile   = index + 1;
     u32 left_tile    = index - 1;
-    u32 bottom_tile  = index + tilmap->width;
-    u32 top_tile     = index - tilmap->width;
+    u32 bottom_tile  = index + tilemap->width;
+    u32 top_tile     = index - tilemap->width;
 
-    u32 adjacent_tile_count = 4;
-    u32 adjacent_tile_indexes[adjacent_tile_count] = {right_tile, left_tile, bottom_tile, top_tile};
+    u32 adjacent_tile_indexes[ADJACENT_COUNT] = {right_tile, left_tile, bottom_tile, top_tile};
+    u32 candidate_tiles[ADJACENT_COUNT];
+    u32 candidate_count = 0;
     Tile *tile;
 
     for (int index = 0; index < ARRAY_COUNT(adjacent_tile_indexes); index++) {
         tile = &tilemap->tiles[adjacent_tile_indexes[index]];
 
-        if(tile->type == TileType_grass || tile->typ TileType_dirt) {
+        if(tile->type == TileType_grass || tile->type == TileType_dirt) {
             if (!IsFlagSet(tile, TileFlag_fire) && !IsFlagSet(tile, TileFlag_powerup) && 
-                !IsTileFlagSet(tile, TileFlag_enemy)) {
-                // TODO: Allow tile to be moved towards
+                !IsFlagSet(tile, TileFlag_enemy)) {
+                candidate_tiles[candidate_count] = adjacent_tile_indexes[index];
+                candidate_count++;
             }
         }
     }
+
+    tile = NULL;
+    if (candidate_count) {
+        u32 candidate_index = candidate_count - 1;
+        if (candidate_count > 1) {
+            u32 random_index = GetRandomValue(0, candidate_index);
+            tile = &tilemap->tiles[candidate_tiles[random_index]];
+        } else {
+            tile = &tilemap->tiles[candidate_tiles[candidate_index]];
+        }
+    }
+
+    return tile;
 }
 
 void CheckEnclosedAreas(Tilemap *tilemap, u32 current_x, u32 current_y) {
@@ -195,23 +210,6 @@ void CheckEnclosedAreas(Tilemap *tilemap, u32 current_x, u32 current_y) {
             enemy_slain--;
         }
         has_flood_fill_happened = false;
-#if 0
-        bool found_empty_tile = false;
-        Tile *tile;
-        while (!found_empty_tile) {
-            u32 random_x = GetRandomValue(1, tilemap->width - 2);
-            u32 random_y = GetRandomValue(1, tilemap->height - 2);
-
-            u32 index = TilemapIndex(random_x, random_y, tilemap->width);
-            tile = &tilemap->tiles[index];
-
-            if (!IsFlagSet(tile, TileFlag_fire)) {
-                AddFlag(tile, TileFlag_powerup);
-                found_empty_tile = true;
-                has_flood_fill_happened = false;
-            }
-        }
-#endif
     }
 }
 

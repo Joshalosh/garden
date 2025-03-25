@@ -2,6 +2,7 @@
 #define TILEMAP_WIDTH  16
 #define TILEMAP_HEIGHT 16
 #define TILEMAP_SIZE 20
+#define ADJACENT_COUNT 4
 #define MB(x) x*1024ULL*1024ULL
 #define ARENA_SIZE MB(500)
 #define ARRAY_COUNT(array) (sizeof(array) / sizeof((array)[0]))
