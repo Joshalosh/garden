@@ -134,15 +134,15 @@ void ModifyRandomTile(Tilemap *tilemap, Tile_Flags flag) {
     }
 }
 
-Tile *CheckAdjacentTiles(Tilemap *tilemap, u32 index) {
+Tile *FindEligibleTile(Tilemap *tilemap, u32 index) {
     u32 right_tile   = index + 1;
     u32 left_tile    = index - 1;
     u32 bottom_tile  = index + tilemap->width;
     u32 top_tile     = index - tilemap->width;
 
     u32 adjacent_tile_indexes[ADJACENT_COUNT] = {right_tile, left_tile, bottom_tile, top_tile};
-    u32 candidate_tiles[ADJACENT_COUNT];
-    u32 candidate_count = 0;
+    u32 eligible_tiles[ADJACENT_COUNT];
+    u32 eligible_count = 0;
     Tile *tile;
 
     for (int index = 0; index < ARRAY_COUNT(adjacent_tile_indexes); index++) {
@@ -151,20 +151,20 @@ Tile *CheckAdjacentTiles(Tilemap *tilemap, u32 index) {
         if(tile->type == TileType_grass || tile->type == TileType_dirt) {
             if (!IsFlagSet(tile, TileFlag_fire) && !IsFlagSet(tile, TileFlag_powerup) && 
                 !IsFlagSet(tile, TileFlag_enemy)) {
-                candidate_tiles[candidate_count] = adjacent_tile_indexes[index];
-                candidate_count++;
+                eligible_tiles[eligible_count] = adjacent_tile_indexes[index];
+                eligible_count++;
             }
         }
     }
 
     tile = NULL;
-    if (candidate_count) {
-        u32 candidate_index = candidate_count - 1;
-        if (candidate_count > 1) {
-            u32 random_index = GetRandomValue(0, candidate_index);
-            tile = &tilemap->tiles[candidate_tiles[random_index]];
+    if (eligible_count) {
+        u32 eligible_index = eligible_count - 1;
+        if (eligible_count > 1) {
+            u32 random_index = GetRandomValue(0, eligible_index);
+            tile = &tilemap->tiles[eligible_tiles[random_index]];
         } else {
-            tile = &tilemap->tiles[candidate_tiles[candidate_index]];
+            tile = &tilemap->tiles[eligible_tiles[eligible_index]];
         }
     }
 
