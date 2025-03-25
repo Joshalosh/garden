@@ -118,13 +118,12 @@ void FloodFillFromPlayerPosition(Tilemap *tilemap, u32 start_x, u32 start_y) {
 
 void ModifyRandomTile(Tilemap *tilemap, Tile_Flags flag) {
     bool found_empty_tile = false;
-    Tile *tile;
     while (!found_empty_tile) {
         u32 random_x = GetRandomValue(1, tilemap->width - 2);
         u32 random_y = GetRandomValue(1, tilemap->height - 2);
 
         u32 index = TilemapIndex(random_x, random_y, tilemap->width);
-        tile = &tilemap->tiles[index];
+        Tile *tile = &tilemap->tiles[index];
 
         if (!IsFlagSet(tile, TileFlag_fire) && !IsFlagSet(tile, TileFlag_powerup) && 
             !IsFlagSet(tile, TileFlag_enemy)) {
@@ -134,6 +133,8 @@ void ModifyRandomTile(Tilemap *tilemap, Tile_Flags flag) {
     }
 }
 
+// TODO: Enemies aren't moving as intended, I should check this function and see 
+// if eligible tiles are being calculated correctly
 Tile *FindEligibleTile(Tilemap *tilemap, u32 index) {
     u32 right_tile   = index + 1;
     u32 left_tile    = index - 1;
@@ -263,6 +264,8 @@ int main() {
 
     f32 enemy_spawn_duration = 500.0f;
     f32 spawn_timer          = enemy_spawn_duration;
+    f32 enemy_move_duration  = 250.0f;
+    f32 enemy_move_timer     = enemy_move_duration;
 
     RenderTexture2D target = LoadRenderTexture(base_screen_width, base_screen_height); 
     SetTargetFPS(60);
@@ -434,6 +437,29 @@ int main() {
             ModifyRandomTile(&map, TileFlag_enemy);
             spawn_timer = enemy_spawn_duration;
         }
+
+#if 1
+        if (enemy_move_timer > 0) {
+            enemy_move_timer -= 1.0f;
+        } else {
+            for (u32 y = 0; y < map.height; y++) {
+                for (u32 x = 0; x < map.width; x++) {
+                    u32 tile_index = TilemapIndex(x, y, map.width); 
+                    Tile *tile = &map.tiles[tile_index];
+
+                    if (IsFlagSet(tile, TileFlag_enemy)) {
+                        Tile *eligible_tile = FindEligibleTile(&map, tile_index); 
+
+                        if (eligible_tile) {
+                            ClearFlag(tile, TileFlag_enemy);
+                            AddFlag(eligible_tile, TileFlag_enemy);
+                        }
+                    }
+                }
+            }
+            enemy_move_timer = enemy_move_duration;
+        }
+#endif
 
         DrawRectangleV(player.pos, player.size, player.col);
 
