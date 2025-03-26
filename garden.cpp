@@ -146,13 +146,13 @@ Tile *FindEligibleTile(Tilemap *tilemap, u32 index) {
     u32 eligible_count = 0;
     Tile *tile;
 
-    for (int index = 0; index < ARRAY_COUNT(adjacent_tile_indexes); index++) {
-        tile = &tilemap->tiles[adjacent_tile_indexes[index]];
+    for (int indexes_index = 0; indexes_index < ARRAY_COUNT(adjacent_tile_indexes); indexes_index++) {
+        tile = &tilemap->tiles[adjacent_tile_indexes[indexes_index]];
 
         if(tile->type == TileType_grass || tile->type == TileType_dirt) {
             if (!IsFlagSet(tile, TileFlag_fire) && !IsFlagSet(tile, TileFlag_powerup) && 
                 !IsFlagSet(tile, TileFlag_enemy)) {
-                eligible_tiles[eligible_count] = adjacent_tile_indexes[index];
+                eligible_tiles[eligible_count] = adjacent_tile_indexes[indexes_index];
                 eligible_count++;
             }
         }
@@ -161,12 +161,16 @@ Tile *FindEligibleTile(Tilemap *tilemap, u32 index) {
     tile = NULL;
     if (eligible_count) {
         u32 eligible_index = eligible_count - 1;
+#if 0
         if (eligible_count > 1) {
             u32 random_index = GetRandomValue(0, eligible_index);
             tile = &tilemap->tiles[eligible_tiles[random_index]];
         } else {
             tile = &tilemap->tiles[eligible_tiles[eligible_index]];
         }
+#endif
+        u32 random_index = GetRandomValue(0, eligible_index);
+        tile = &tilemap->tiles[eligible_tiles[random_index]];
     }
 
     return tile;
