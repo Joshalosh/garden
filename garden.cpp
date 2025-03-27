@@ -142,7 +142,7 @@ Tile *FindEligibleTile(Tilemap *tilemap, u32 index) {
     u32 top_tile     = index - tilemap->width;
 
     u32 adjacent_tile_indexes[ADJACENT_COUNT] = {right_tile, left_tile, bottom_tile, top_tile};
-    u32 eligible_tiles[ADJACENT_COUNT];
+    u32 eligible_tiles[ADJACENT_COUNT] = {};
     u32 eligible_count = 0;
     Tile *tile;
 
@@ -251,6 +251,7 @@ int main() {
     u32 original_map[TILEMAP_HEIGHT][TILEMAP_WIDTH];
     Tile tiles[TILEMAP_HEIGHT][TILEMAP_WIDTH];
 
+    // NOTE: TILE INIT
     for (u32 y = 0; y < TILEMAP_HEIGHT; y++) {
         for (u32 x = 0; x < TILEMAP_WIDTH; x++) {
             original_map[y][x] = tilemap[y][x];
@@ -291,11 +292,11 @@ int main() {
             for (u32 y = 0; y < map.height; y++) {
                 for (u32 x = 0; x < map.width; x++) {
                     u32 index = TilemapIndex(x, y, map.width);
-                    Tile tile = map.tiles[index];
+                    Tile *tile = &map.tiles[index];
                     Vector2 tile_pos = {(float)x * map.tile_size, (float)y * map.tile_size};
 
                     Color tile_col;
-                    switch (tile.type) {
+                    switch (tile->type) {
                         case TileType_none:       tile_col = BLACK;                break;
                         case TileType_wall:       tile_col = PURPLE;               break;
                         case TileType_wall2:      tile_col = {140, 20, 140, 255};  break;
@@ -306,14 +307,17 @@ int main() {
                         case TileType_temp_dirt:  tile_col = {168, 168, 168, 255}; break;
                     }
 
-                    if (IsFlagSet(&tile, TileFlag_fire)) {
+                    if (IsFlagSet(tile, TileFlag_fire)) {
                         tile_col = {168, 0, 0, 255};
                     }
-                    if (IsFlagSet(&tile, TileFlag_powerup)) {
+                    if (IsFlagSet(tile, TileFlag_powerup)) {
                         tile_col = BLUE;
                     }
-                    if (IsFlagSet(&tile, TileFlag_enemy)) {
+                    if (IsFlagSet(tile, TileFlag_enemy)) {
                         tile_col = YELLOW;
+                    }
+                    if (IsFlagSet(tile, TileFlag_moved)) {
+                        ClearFlag(tile, TileFlag_moved);
                     }
 
                     Vector2 tile_size = {(f32)map.tile_size, (f32)map.tile_size};
@@ -451,12 +455,13 @@ int main() {
                     u32 tile_index = TilemapIndex(x, y, map.width); 
                     Tile *tile = &map.tiles[tile_index];
 
-                    if (IsFlagSet(tile, TileFlag_enemy)) {
+                    if (IsFlagSet(tile, TileFlag_enemy) && !IsFlagSet(tile, TileFlag_moved)) {
                         Tile *eligible_tile = FindEligibleTile(&map, tile_index); 
 
                         if (eligible_tile) {
                             ClearFlag(tile, TileFlag_enemy);
                             AddFlag(eligible_tile, TileFlag_enemy);
+                            AddFlag(eligible_tile, TileFlag_moved);
                         }
                     }
                 }

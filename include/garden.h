@@ -25,6 +25,7 @@ enum Tile_Flags {
     TileFlag_visited   = 1 << 1,
     TileFlag_powerup   = 1 << 2,
     TileFlag_enemy     = 1 << 3,
+    TileFlag_moved     = 1 << 4,
 };
 
 struct Tile {
