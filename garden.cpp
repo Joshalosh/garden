@@ -161,14 +161,6 @@ Tile *FindEligibleTile(Tilemap *tilemap, u32 index) {
     tile = NULL;
     if (eligible_count) {
         u32 eligible_index = eligible_count - 1;
-#if 0
-        if (eligible_count > 1) {
-            u32 random_index = GetRandomValue(0, eligible_index);
-            tile = &tilemap->tiles[eligible_tiles[random_index]];
-        } else {
-            tile = &tilemap->tiles[eligible_tiles[eligible_index]];
-        }
-#endif
         u32 random_index = GetRandomValue(0, eligible_index);
         tile = &tilemap->tiles[eligible_tiles[random_index]];
     }
