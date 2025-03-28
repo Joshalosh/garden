@@ -146,13 +146,13 @@ Tile *FindEligibleTile(Tilemap *tilemap, u32 index) {
     u32 eligible_count = 0;
     Tile *tile;
 
-    for (int indexes_index = 0; indexes_index < ARRAY_COUNT(adjacent_tile_indexes); indexes_index++) {
-        tile = &tilemap->tiles[adjacent_tile_indexes[indexes_index]];
+    for (int adjacent_index = 0; adjacent_index < ARRAY_COUNT(adjacent_tile_indexes); adjacent_index++) {
+        tile = &tilemap->tiles[adjacent_tile_indexes[adjacent_index]];
 
         if(tile->type == TileType_grass || tile->type == TileType_dirt) {
             if (!IsFlagSet(tile, TileFlag_fire) && !IsFlagSet(tile, TileFlag_powerup) && 
                 !IsFlagSet(tile, TileFlag_enemy)) {
-                eligible_tiles[eligible_count] = adjacent_tile_indexes[indexes_index];
+                eligible_tiles[eligible_count] = adjacent_tile_indexes[adjacent_index];
                 eligible_count++;
             }
         }
