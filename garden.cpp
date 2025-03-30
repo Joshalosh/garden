@@ -60,9 +60,12 @@ void EnemyInit(Enemy *enemy) {
     enemy->speed      = 25.0f;
 }
 
-void GameOver(Player *player, Tilemap *tilemap, u32 *score) {
+void GameOver(Player *player, Tilemap *tilemap, u32 *score, u32 *high_score) {
     PlayerInit(player);
-    score = 0;
+    if (*score > *high_score) {
+        *high_score = *score;
+    }
+    *score = 0;
 
     // Reset the tilemap back to it's original orientation
     for (u32 y = 0; y < tilemap->height; y++) {
@@ -266,6 +269,7 @@ int main() {
     f32 enemy_move_timer     = enemy_move_duration;
 
     u32 score                = 0;
+    u32 high_score           = 0;
 
     RenderTexture2D target = LoadRenderTexture(base_screen_width, base_screen_height); 
     SetTargetFPS(60);
@@ -360,11 +364,11 @@ int main() {
                         //current_tile->type = TileType_fire;
                     } 
                     else {
-                        GameOver(&player, &map, &score);
+                        GameOver(&player, &map, &score, &high_score);
                     }
                 } else {
                     // Out of bounds
-                    GameOver(&player, &map, &score);
+                    GameOver(&player, &map, &score, &high_score);
                 }
 
                 if (IsFlagSet(target_tile, TileFlag_powerup)) {
@@ -384,7 +388,7 @@ int main() {
                 }
 
                 if (IsFlagSet(target_tile, TileFlag_fire) || IsFlagSet(target_tile, TileFlag_enemy)) {
-                    GameOver(&player, &map, &score);
+                    GameOver(&player, &map, &score, &high_score);
                 }
             }
         } else {
@@ -493,6 +497,7 @@ int main() {
         DrawTexturePro(target.texture, rect,
                        dest_rect, zero_vec, 0.0f, WHITE);
         DrawText(TextFormat("Score: %d", score), 25, 25, 38, WHITE);
+        DrawText(TextFormat("High Score: %d", high_score), window_width - 300, 25, 38, WHITE);
         EndDrawing();
         // -----------------------------------
     }
