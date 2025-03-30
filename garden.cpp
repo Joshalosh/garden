@@ -60,8 +60,9 @@ void EnemyInit(Enemy *enemy) {
     enemy->speed      = 25.0f;
 }
 
-void GameOver(Player *player, Tilemap *tilemap) {
+void GameOver(Player *player, Tilemap *tilemap, u32 *score) {
     PlayerInit(player);
+    score = 0;
 
     // Reset the tilemap back to it's original orientation
     for (u32 y = 0; y < tilemap->height; y++) {
@@ -264,6 +265,8 @@ int main() {
     f32 enemy_move_duration  = 250.0f;
     f32 enemy_move_timer     = enemy_move_duration;
 
+    u32 score                = 0;
+
     RenderTexture2D target = LoadRenderTexture(base_screen_width, base_screen_height); 
     SetTargetFPS(60);
     // -------------------------------------
@@ -357,11 +360,11 @@ int main() {
                         //current_tile->type = TileType_fire;
                     } 
                     else {
-                        GameOver(&player, &map);
+                        GameOver(&player, &map, &score);
                     }
                 } else {
                     // Out of bounds
-                    GameOver(&player, &map);
+                    GameOver(&player, &map, &score);
                 }
 
                 if (IsFlagSet(target_tile, TileFlag_powerup)) {
@@ -376,11 +379,12 @@ int main() {
                 if (player.powered_up) {
                     if (IsFlagSet(target_tile, TileFlag_fire)) {
                         ClearFlag(target_tile, TileFlag_fire);
+                        score += 10;
                     }
                 }
 
                 if (IsFlagSet(target_tile, TileFlag_fire) || IsFlagSet(target_tile, TileFlag_enemy)) {
-                    GameOver(&player, &map);
+                    GameOver(&player, &map, &score);
                 }
             }
         } else {
@@ -488,6 +492,7 @@ int main() {
         Vector2 zero_vec = {0, 0};
         DrawTexturePro(target.texture, rect,
                        dest_rect, zero_vec, 0.0f, WHITE);
+        DrawText(TextFormat("Score: %d", score), 25, 25, 38, WHITE);
         EndDrawing();
         // -----------------------------------
     }
