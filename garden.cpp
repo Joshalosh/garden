@@ -271,6 +271,8 @@ int main() {
     u32 score                = 0;
     u32 high_score           = 0;
 
+    b32 game_start           = true;
+
     RenderTexture2D target = LoadRenderTexture(base_screen_width, base_screen_height); 
     SetTargetFPS(60);
     // -------------------------------------
@@ -286,6 +288,7 @@ int main() {
         BeginTextureMode(target);
         ClearBackground(BLACK);
 
+        b32 fire_cleared = true;
         // Draw tiles in background
         {
             for (u32 y = 0; y < map.height; y++) {
@@ -308,6 +311,7 @@ int main() {
 
                     if (IsFlagSet(tile, TileFlag_fire)) {
                         tile_col = {168, 0, 0, 255};
+                        fire_cleared = false;
                     }
                     if (IsFlagSet(tile, TileFlag_powerup)) {
                         tile_col = BLUE;
@@ -472,6 +476,7 @@ int main() {
 
         DrawRectangleV(player.pos, player.size, player.col);
 
+
         EndTextureMode();
 
         // -----------------------------------
@@ -498,6 +503,13 @@ int main() {
                        dest_rect, zero_vec, 0.0f, WHITE);
         DrawText(TextFormat("Score: %d", score), 25, 25, 38, WHITE);
         DrawText(TextFormat("High Score: %d", high_score), window_width - 300, 25, 38, WHITE);
+        if (!game_start) {
+            if (fire_cleared) {
+                DrawText("WIN", window_width*0.5, window_height*0.5, 69, WHITE);
+            }
+        }
+
+        game_start = false;
         EndDrawing();
         // -----------------------------------
     }
