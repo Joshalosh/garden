@@ -272,6 +272,7 @@ int main() {
     u32 high_score           = 0;
 
     b32 game_start           = true;
+    b32 game_win             = false;
 
     RenderTexture2D target = LoadRenderTexture(base_screen_width, base_screen_height); 
     SetTargetFPS(60);
@@ -281,237 +282,241 @@ int main() {
         // -----------------------------------
         // Update
         // -----------------------------------
+        
+        // TODO: Need to figure out a better way to stop everything when a win has occured
+        if (!game_win) {
+            float delta_t = GetFrameTime();
 
-        float delta_t = GetFrameTime();
+            // Draw to render texture
+            BeginTextureMode(target);
+            ClearBackground(BLACK);
 
-        // Draw to render texture
-        BeginTextureMode(target);
-        ClearBackground(BLACK);
+            b32 fire_cleared = true;
+            // Draw tiles in background
+            {
+                for (u32 y = 0; y < map.height; y++) {
+                    for (u32 x = 0; x < map.width; x++) {
+                        u32 index = TilemapIndex(x, y, map.width);
+                        Tile *tile = &map.tiles[index];
+                        Vector2 tile_pos = {(float)x * map.tile_size, (float)y * map.tile_size};
 
-        b32 fire_cleared = true;
-        // Draw tiles in background
-        {
-            for (u32 y = 0; y < map.height; y++) {
-                for (u32 x = 0; x < map.width; x++) {
-                    u32 index = TilemapIndex(x, y, map.width);
-                    Tile *tile = &map.tiles[index];
-                    Vector2 tile_pos = {(float)x * map.tile_size, (float)y * map.tile_size};
+                        Color tile_col;
+                        switch (tile->type) {
+                            case TileType_none:       tile_col = BLACK;                break;
+                            case TileType_wall:       tile_col = PURPLE;               break;
+                            case TileType_wall2:      tile_col = {140, 20, 140, 255};  break;
+                            case TileType_grass:      tile_col = {68, 68, 68, 255};    break;
+                            case TileType_dirt:       tile_col = {168, 168, 168, 255}; break;
+                            case TileType_fire:       tile_col = {168, 0, 0, 255};     break;
+                            case TileType_temp_grass: tile_col = {68, 68, 68, 255};    break;
+                            case TileType_temp_dirt:  tile_col = {168, 168, 168, 255}; break;
+                        }
 
-                    Color tile_col;
-                    switch (tile->type) {
-                        case TileType_none:       tile_col = BLACK;                break;
-                        case TileType_wall:       tile_col = PURPLE;               break;
-                        case TileType_wall2:      tile_col = {140, 20, 140, 255};  break;
-                        case TileType_grass:      tile_col = {68, 68, 68, 255};    break;
-                        case TileType_dirt:       tile_col = {168, 168, 168, 255}; break;
-                        case TileType_fire:       tile_col = {168, 0, 0, 255};     break;
-                        case TileType_temp_grass: tile_col = {68, 68, 68, 255};    break;
-                        case TileType_temp_dirt:  tile_col = {168, 168, 168, 255}; break;
+                        if (IsFlagSet(tile, TileFlag_fire)) {
+                            tile_col = {168, 0, 0, 255};
+                            fire_cleared = false;
+                        }
+                        if (IsFlagSet(tile, TileFlag_powerup)) {
+                            tile_col = BLUE;
+                        }
+                        if (IsFlagSet(tile, TileFlag_enemy)) {
+                            tile_col = YELLOW;
+                        }
+                        if (IsFlagSet(tile, TileFlag_moved)) {
+                            ClearFlag(tile, TileFlag_moved);
+                        }
+
+                        Vector2 tile_size = {(f32)map.tile_size, (f32)map.tile_size};
+                        DrawRectangleV(tile_pos, tile_size, tile_col);
                     }
-
-                    if (IsFlagSet(tile, TileFlag_fire)) {
-                        tile_col = {168, 0, 0, 255};
-                        fire_cleared = false;
-                    }
-                    if (IsFlagSet(tile, TileFlag_powerup)) {
-                        tile_col = BLUE;
-                    }
-                    if (IsFlagSet(tile, TileFlag_enemy)) {
-                        tile_col = YELLOW;
-                    }
-                    if (IsFlagSet(tile, TileFlag_moved)) {
-                        ClearFlag(tile, TileFlag_moved);
-                    }
-
-                    Vector2 tile_size = {(f32)map.tile_size, (f32)map.tile_size};
-                    DrawRectangleV(tile_pos, tile_size, tile_col);
                 }
             }
-        }
 
-        if      (IsKeyDown(KEY_RIGHT) || IsKeyDown(KEY_D)) input_axis = {1.0f, 0};
-        else if (IsKeyDown(KEY_LEFT)  || IsKeyDown(KEY_A)) input_axis = {-1.0f, 0};
-        else if (IsKeyDown(KEY_UP)    || IsKeyDown(KEY_W)) input_axis = {0, -1.0f};
-        else if (IsKeyDown(KEY_DOWN)  || IsKeyDown(KEY_S)) input_axis = {0, 1.0f};
+            if      (IsKeyDown(KEY_RIGHT) || IsKeyDown(KEY_D)) input_axis = {1.0f, 0};
+            else if (IsKeyDown(KEY_LEFT)  || IsKeyDown(KEY_A)) input_axis = {-1.0f, 0};
+            else if (IsKeyDown(KEY_UP)    || IsKeyDown(KEY_W)) input_axis = {0, -1.0f};
+            else if (IsKeyDown(KEY_DOWN)  || IsKeyDown(KEY_S)) input_axis = {0, 1.0f};
 
-        // - New player movement
-        if (!player.is_moving) {
+            // - New player movement
+            if (!player.is_moving) {
 
-            if (input_axis.x != 0 || input_axis.y != 0) {
-                // NOTE: Calculate the next tile position
-                s32 current_tile_x = (u32)player.pos.x / map.tile_size;
-                s32 current_tile_y = (u32)player.pos.y / map.tile_size;
+                if (input_axis.x != 0 || input_axis.y != 0) {
+                    // NOTE: Calculate the next tile position
+                    s32 current_tile_x = (u32)player.pos.x / map.tile_size;
+                    s32 current_tile_y = (u32)player.pos.y / map.tile_size;
 
-                s32 target_tile_x = current_tile_x + u32(input_axis.x);
-                s32 target_tile_y = current_tile_y + u32(input_axis.y);
+                    s32 target_tile_x = current_tile_x + u32(input_axis.x);
+                    s32 target_tile_y = current_tile_y + u32(input_axis.y);
 
-                u32 target_tile_index = TilemapIndex(target_tile_x, target_tile_y, map.width);
-                Tile *target_tile = &map.tiles[target_tile_index];
+                    u32 target_tile_index = TilemapIndex(target_tile_x, target_tile_y, map.width);
+                    Tile *target_tile = &map.tiles[target_tile_index];
 
-                // TODO: need to continue the refactor from here
-                if (target_tile_x > 0 && target_tile_x < map.width-1 &&
-                    target_tile_y > 0 && target_tile_y < map.height-1) {
+                    // TODO: need to continue the refactor from here
+                    if (target_tile_x > 0 && target_tile_x < map.width-1 &&
+                        target_tile_y > 0 && target_tile_y < map.height-1) {
 
-                    if (target_tile->type != TileType_wall  && 
-                        target_tile->type != TileType_wall2 && 
-                        target_tile->type != TileType_fire) {
-                        
-                        // Start moving
-                        player.target_pos = {(float)target_tile_x * map.tile_size, (float)target_tile_y * map.tile_size};
-                        player.is_moving  = true;
+                        if (target_tile->type != TileType_wall  && 
+                            target_tile->type != TileType_wall2 && 
+                            target_tile->type != TileType_fire) {
+                            
+                            // Start moving
+                            player.target_pos = {(float)target_tile_x * map.tile_size, (float)target_tile_y * map.tile_size};
+                            player.is_moving  = true;
 
-                        u32 current_tile_index = TilemapIndex(current_tile_x, current_tile_y, map.width);
-                        Tile *current_tile = &map.tiles[current_tile_index];
-                        if (!player.powered_up) {
-                            AddFlag(current_tile, TileFlag_fire);
+                            u32 current_tile_index = TilemapIndex(current_tile_x, current_tile_y, map.width);
+                            Tile *current_tile = &map.tiles[current_tile_index];
+                            if (!player.powered_up) {
+                                AddFlag(current_tile, TileFlag_fire);
+                            }
+                            //current_tile->type = TileType_fire;
+                        } 
+                        else {
+                            GameOver(&player, &map, &score, &high_score);
                         }
-                        //current_tile->type = TileType_fire;
-                    } 
-                    else {
+                    } else {
+                        // Out of bounds
                         GameOver(&player, &map, &score, &high_score);
                     }
+
+                    if (IsFlagSet(target_tile, TileFlag_powerup)) {
+                        float powerup_duration = 10.0f;
+                        player.powerup_timer = GetTime() + powerup_duration;
+                        player.powered_up  = true;
+                        player.blink_speed = 5.0f;
+                        player.blink_time = player.blink_speed;
+                        ClearFlag(target_tile, TileFlag_powerup);
+                    }
+
+                    if (player.powered_up) {
+                        if (IsFlagSet(target_tile, TileFlag_fire)) {
+                            ClearFlag(target_tile, TileFlag_fire);
+                            score += 10;
+                        }
+                    }
+
+                    if (IsFlagSet(target_tile, TileFlag_fire) || IsFlagSet(target_tile, TileFlag_enemy)) {
+                        GameOver(&player, &map, &score, &high_score);
+                    }
+                }
+            } else {
+                // MOTE: Move towards target position
+                Vector2 direction = VectorSub(player.target_pos, player.pos);
+                float distance    = Length(direction);
+                if (distance <= player.speed * delta_t) {
+                    player.pos = player.target_pos;
+                    player.is_moving  = false;
+
+                    u32 current_tile_x = (u32)player.pos.x / map.tile_size;
+                    u32 current_tile_y = (u32)player.pos.y / map.tile_size;
+
+                    // Check for enclosed areas
+                    //if (player.powerup_timer < GetTime()) {
+                        CheckEnclosedAreas(&map, current_tile_x, current_tile_y);
+                    //}
                 } else {
-                    // Out of bounds
-                    GameOver(&player, &map, &score, &high_score);
+                    direction = VectorNorm(direction);
+                    Vector2 movement = VectorScale(direction, player.speed * delta_t);
+                    player.pos = VectorAdd(player.pos, movement);
                 }
+            }
 
-                if (IsFlagSet(target_tile, TileFlag_powerup)) {
-                    float powerup_duration = 10.0f;
-                    player.powerup_timer = GetTime() + powerup_duration;
-                    player.powered_up  = true;
-                    player.blink_speed = 5.0f;
-                    player.blink_time = player.blink_speed;
-                    ClearFlag(target_tile, TileFlag_powerup);
-                }
+            // NOTE: Powerup blinking
+            if (player.powered_up) {
+                f32 end_duration_signal = 3.0f;
+                if (player.powerup_timer < GetTime()) {
+                    player.powered_up = false;
+                    player.col_bool   = false;
+                } else {
+                    if (player.powerup_timer - end_duration_signal < GetTime()) {
+                        player.blink_speed = 2.0f; 
+                    }
 
-                if (player.powered_up) {
-                    if (IsFlagSet(target_tile, TileFlag_fire)) {
-                        ClearFlag(target_tile, TileFlag_fire);
-                        score += 10;
+                    if (player.blink_time > 0) {
+                    player.blink_time -= 1.0f;
+                    } else {
+                        player.blink_time =  player.blink_speed;
+                        player.col_bool   = !player.col_bool;
                     }
                 }
 
-                if (IsFlagSet(target_tile, TileFlag_fire) || IsFlagSet(target_tile, TileFlag_enemy)) {
-                    GameOver(&player, &map, &score, &high_score);
-                }
-            }
-        } else {
-            // MOTE: Move towards target position
-            Vector2 direction = VectorSub(player.target_pos, player.pos);
-            float distance    = Length(direction);
-            if (distance <= player.speed * delta_t) {
-                player.pos = player.target_pos;
-                player.is_moving  = false;
-
-                u32 current_tile_x = (u32)player.pos.x / map.tile_size;
-                u32 current_tile_y = (u32)player.pos.y / map.tile_size;
-
-                // Check for enclosed areas
-                //if (player.powerup_timer < GetTime()) {
-                    CheckEnclosedAreas(&map, current_tile_x, current_tile_y);
-                //}
-            } else {
-                direction = VectorNorm(direction);
-                Vector2 movement = VectorScale(direction, player.speed * delta_t);
-                player.pos = VectorAdd(player.pos, movement);
-            }
-        }
-
-        // NOTE: Powerup blinking
-        if (player.powered_up) {
-            f32 end_duration_signal = 3.0f;
-            if (player.powerup_timer < GetTime()) {
-                player.powered_up = false;
-                player.col_bool   = false;
-            } else {
-                if (player.powerup_timer - end_duration_signal < GetTime()) {
-                    player.blink_speed = 2.0f; 
-                }
-
-                if (player.blink_time > 0) {
-                player.blink_time -= 1.0f;
+                if (player.col_bool) {
+                    player.col = WHITE;
                 } else {
-                    player.blink_time =  player.blink_speed;
-                    player.col_bool   = !player.col_bool;
+                    player.col = RED;
                 }
             }
 
-            if (player.col_bool) {
-                player.col = WHITE;
+            if (spawn_timer > 0) {
+                spawn_timer -= 1.0f;
             } else {
-                player.col = RED;
+                ModifyRandomTile(&map, TileFlag_enemy);
+                spawn_timer = enemy_spawn_duration;
             }
-        }
-
-        if (spawn_timer > 0) {
-            spawn_timer -= 1.0f;
-        } else {
-            ModifyRandomTile(&map, TileFlag_enemy);
-            spawn_timer = enemy_spawn_duration;
-        }
 
 #if 1
-        if (enemy_move_timer > 0) {
-            enemy_move_timer -= 1.0f;
-        } else {
-            for (u32 y = 0; y < map.height; y++) {
-                for (u32 x = 0; x < map.width; x++) {
-                    u32 tile_index = TilemapIndex(x, y, map.width); 
-                    Tile *tile = &map.tiles[tile_index];
+            if (enemy_move_timer > 0) {
+                enemy_move_timer -= 1.0f;
+            } else {
+                for (u32 y = 0; y < map.height; y++) {
+                    for (u32 x = 0; x < map.width; x++) {
+                        u32 tile_index = TilemapIndex(x, y, map.width); 
+                        Tile *tile = &map.tiles[tile_index];
 
-                    if (IsFlagSet(tile, TileFlag_enemy) && !IsFlagSet(tile, TileFlag_moved)) {
-                        Tile *eligible_tile = FindEligibleTile(&map, tile_index); 
+                        if (IsFlagSet(tile, TileFlag_enemy) && !IsFlagSet(tile, TileFlag_moved)) {
+                            Tile *eligible_tile = FindEligibleTile(&map, tile_index); 
 
-                        if (eligible_tile) {
-                            ClearFlag(tile, TileFlag_enemy);
-                            AddFlag(eligible_tile, TileFlag_enemy);
-                            AddFlag(eligible_tile, TileFlag_moved);
+                            if (eligible_tile) {
+                                ClearFlag(tile, TileFlag_enemy);
+                                AddFlag(eligible_tile, TileFlag_enemy);
+                                AddFlag(eligible_tile, TileFlag_moved);
+                            }
                         }
                     }
                 }
+                enemy_move_timer = enemy_move_duration;
             }
-            enemy_move_timer = enemy_move_duration;
-        }
 #endif
 
-        DrawRectangleV(player.pos, player.size, player.col);
+            DrawRectangleV(player.pos, player.size, player.col);
 
 
-        EndTextureMode();
+            EndTextureMode();
 
-        // -----------------------------------
-        // Draw
-        // -----------------------------------
+            // -----------------------------------
+            // Draw
+            // -----------------------------------
 
-        // NOTE: Draw the render texture to the screen, scaling it with window size
-        BeginDrawing();
-        ClearBackground(DARKGRAY);
+            // NOTE: Draw the render texture to the screen, scaling it with window size
+            BeginDrawing();
+            ClearBackground(DARKGRAY);
 
-        float scale_x = (float)window_width  / base_screen_width;
-        float scale_y = (float)window_height / base_screen_height;
+            float scale_x = (float)window_width  / base_screen_width;
+            float scale_y = (float)window_height / base_screen_height;
 
-        Rectangle dest_rect = {
-            (window_width - (base_screen_width * scale_x)) * 0.5f,
-            (window_height - (base_screen_height * scale_y)) * 0.5f,
-            base_screen_width * scale_x,
-            base_screen_height * scale_y,
-        };
+            Rectangle dest_rect = {
+                (window_width - (base_screen_width * scale_x)) * 0.5f,
+                (window_height - (base_screen_height * scale_y)) * 0.5f,
+                base_screen_width * scale_x,
+                base_screen_height * scale_y,
+            };
 
-        Rectangle rect = {0.0f, 0.0f, (float)target.texture.width, -(float)target.texture.height}; 
-        Vector2 zero_vec = {0, 0};
-        DrawTexturePro(target.texture, rect,
-                       dest_rect, zero_vec, 0.0f, WHITE);
-        DrawText(TextFormat("Score: %d", score), 25, 25, 38, WHITE);
-        DrawText(TextFormat("High Score: %d", high_score), window_width - 300, 25, 38, WHITE);
-        if (!game_start) {
-            if (fire_cleared) {
-                DrawText("WIN", window_width*0.5, window_height*0.5, 69, WHITE);
+            Rectangle rect = {0.0f, 0.0f, (float)target.texture.width, -(float)target.texture.height}; 
+            Vector2 zero_vec = {0, 0};
+            DrawTexturePro(target.texture, rect,
+                           dest_rect, zero_vec, 0.0f, WHITE);
+            DrawText(TextFormat("Score: %d", score), 25, 25, 38, WHITE);
+            DrawText(TextFormat("High Score: %d", high_score), window_width - 300, 25, 38, WHITE);
+            if (!game_start) {
+                if (fire_cleared && player.powered_up) {
+                    DrawText("WIN", window_width*0.5, window_height*0.5, 69, WHITE);
+                    game_win = true;
+                }
             }
-        }
 
-        game_start = false;
-        EndDrawing();
-        // -----------------------------------
+            game_start = false;
+            EndDrawing();
+            // -----------------------------------
+        }
     }
     // -------------------------------------
     // De-Initialisation
