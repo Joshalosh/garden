@@ -28,6 +28,12 @@ enum Tile_Flags {
     TileFlag_moved     = 1 << 4,
 };
 
+enum Game_State {
+    GameState_play,
+    GameState_lose,
+    GameState_win,
+};
+
 struct Tile {
     Tile_Type  type;
     u32        flags;

@@ -271,8 +271,8 @@ int main() {
     u32 score                = 0;
     u32 high_score           = 0;
 
-    b32 game_start           = true;
     b32 game_win             = false;
+    Game_State state         = GameState_play;
 
     RenderTexture2D target = LoadRenderTexture(base_screen_width, base_screen_height); 
     SetTargetFPS(60);
@@ -284,7 +284,7 @@ int main() {
         // -----------------------------------
         
         // TODO: Need to figure out a better way to stop everything when a win has occured
-        if (!game_win) {
+        if (state == GameState_play) {
             float delta_t = GetFrameTime();
 
             // Draw to render texture
@@ -453,7 +453,7 @@ int main() {
                 spawn_timer = enemy_spawn_duration;
             }
 
-#if 1
+            // NOTE: Enemy spawning
             if (enemy_move_timer > 0) {
                 enemy_move_timer -= 1.0f;
             } else {
@@ -475,7 +475,6 @@ int main() {
                 }
                 enemy_move_timer = enemy_move_duration;
             }
-#endif
 
             DrawRectangleV(player.pos, player.size, player.col);
 
@@ -506,14 +505,12 @@ int main() {
                            dest_rect, zero_vec, 0.0f, WHITE);
             DrawText(TextFormat("Score: %d", score), 25, 25, 38, WHITE);
             DrawText(TextFormat("High Score: %d", high_score), window_width - 300, 25, 38, WHITE);
-            if (!game_start) {
-                if (fire_cleared && player.powered_up) {
-                    DrawText("WIN", window_width*0.5, window_height*0.5, 69, WHITE);
-                    game_win = true;
-                }
+
+            if (fire_cleared && player.powered_up) {
+                DrawText("WIN", window_width*0.5, window_height*0.5, 69, WHITE);
+                state = GameState_win;
             }
 
-            game_start = false;
             EndDrawing();
             // -----------------------------------
         }
