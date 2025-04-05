@@ -521,28 +521,6 @@ int main() {
                 }
             }
             
-#if 0
-            // MOTE: Move towards target position
-            Vector2 direction = VectorSub(player.target_pos, player.pos);
-            float distance    = Length(direction);
-            if (distance <= player.speed * delta_t) {
-                player.pos = player.target_pos;
-                player.is_moving  = false;
-
-                u32 current_tile_x = (u32)player.pos.x / map.tile_size;
-                u32 current_tile_y = (u32)player.pos.y / map.tile_size;
-
-                // Check for enclosed areas
-                //if (player.powerup_timer < GetTime()) {
-                    CheckEnclosedAreas(&map, current_tile_x, current_tile_y);
-                //}
-            } else {
-                direction = VectorNorm(direction);
-                Vector2 movement = VectorScale(direction, player.speed * delta_t);
-                player.pos = VectorAdd(player.pos, movement);
-            }
-#endif
-
             if (IsKeyPressed(KEY_SPACE)) {
                 GameOver(&player, &map, &score, &high_score, &state);
             }
