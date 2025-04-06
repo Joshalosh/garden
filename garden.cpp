@@ -222,8 +222,8 @@ void CheckEnclosedAreas(Tilemap *tilemap, u32 current_x, u32 current_y) {
 }
 
 Rectangle GetTileSourceRec(Tile_Type type) {
-    const u32 atlas_tile_width = 16;
-    const u32 atlas_tile_height = 16;
+    const u32 atlas_tile_width  = 20;
+    const u32 atlas_tile_height = 20;
     Rectangle source_rec = {0, 0, atlas_tile_width, atlas_tile_height};
 
     switch (type) {
@@ -301,7 +301,7 @@ int main() {
 
     b32 fire_cleared;
 
-    Texture2D tile_atlas = LoadTexture("../tile_atlas.png");
+    Texture2D tile_atlas = LoadTexture("../tile_row.png");
     RenderTexture2D target = LoadRenderTexture(base_screen_width, base_screen_height); 
     SetTargetFPS(60);
     // -------------------------------------
@@ -340,6 +340,33 @@ int main() {
                             case TileType_temp_dirt:  tile_col = {168, 168, 168, 255}; break;
                         }
 
+                        Vector2 tile_size = {(f32)map.tile_size, (f32)map.tile_size};
+
+#if 1
+                        Rectangle source_rec = GetTileSourceRec(tile->type);
+
+                        if (tile->type == TileType_grass || tile->type == TileType_dirt) {
+                            DrawTextureRec(tile_atlas, source_rec, tile_pos, WHITE);
+                        } else {
+                            DrawRectangleV(tile_pos, tile_size, tile_col);
+                        }
+                        if (IsFlagSet(tile, TileFlag_fire)) {
+                            tile_col = {168, 0, 0, 255};
+                            fire_cleared = false;
+                            DrawRectangleV(tile_pos, tile_size, tile_col);
+                        }
+                        if (IsFlagSet(tile, TileFlag_powerup)) {
+                            tile_col = BLUE;
+                            DrawRectangleV(tile_pos, tile_size, tile_col);
+                        }
+                        if (IsFlagSet(tile, TileFlag_enemy)) {
+                            tile_col = YELLOW;
+                            DrawRectangleV(tile_pos, tile_size, tile_col);
+                        }
+                        if (IsFlagSet(tile, TileFlag_moved)) {
+                            ClearFlag(tile, TileFlag_moved);
+                        }
+#else
                         if (IsFlagSet(tile, TileFlag_fire)) {
                             tile_col = {168, 0, 0, 255};
                             fire_cleared = false;
@@ -354,19 +381,9 @@ int main() {
                             ClearFlag(tile, TileFlag_moved);
                         }
 
-                        Vector2 tile_size = {(f32)map.tile_size, (f32)map.tile_size};
-
-#if 0
-                         Rectangle source_rec = GetTileSourceRec(tile->type);
-
-                        if (tile->type == TileType_grass || tile->type == TileType_dirt) {
-                            DrawTextureRec(tile_atlas, source_rec, tile_pos, WHITE);
-                        } else {
-                            DrawRectangleV(tile_pos, tile_size, tile_col);
-                        }
-#else 
                         DrawRectangleV(tile_pos, tile_size, tile_col);
 #endif
+
 
                     }
                 }
@@ -596,7 +613,7 @@ int main() {
         DrawText(TextFormat("High Score: %d", manager.high_score), window_width - 300, 25, 38, WHITE);
 
 #if 0
-        Rectangle rec = {0, 0, 80, 80};
+        Rectangle rec = {0, 0, 340, 20};
         Vector2 pos = {100, 100};
         DrawTextureRec(tile_atlas, rec, pos, WHITE);
 #endif
