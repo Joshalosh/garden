@@ -523,7 +523,9 @@ int main() {
                     }
                 }
             }
-            
+
+            input_axis = {0, 0};
+        
             if (IsKeyPressed(KEY_SPACE)) {
                 GameOver(&player, &map, &manager);
             }
