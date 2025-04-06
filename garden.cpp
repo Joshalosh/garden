@@ -221,6 +221,27 @@ void CheckEnclosedAreas(Tilemap *tilemap, u32 current_x, u32 current_y) {
     }
 }
 
+Rectangle GetTileSourceRec(Tile_Type type) {
+    const u32 atlas_tile_width = 16;
+    const u32 atlas_tile_height = 16;
+    Rectangle source_rec = {0, 0, atlas_tile_width, atlas_tile_height};
+
+    switch (type) {
+        case TileType_grass: {
+            source_rec.x = 0;
+            source_rec.y = 0;
+        } break;
+        case TileType_dirt: {
+            source_rec.x = 4 * atlas_tile_width;
+            source_rec.y = 0;
+        } break;
+        default: {
+        } break;
+    }
+
+    return source_rec;
+}
+
 int main() {
     // -------------------------------------
     // Initialisation
@@ -280,6 +301,7 @@ int main() {
 
     b32 fire_cleared;
 
+    Texture2D tile_atlas = LoadTexture("../tile_atlas.png");
     RenderTexture2D target = LoadRenderTexture(base_screen_width, base_screen_height); 
     SetTargetFPS(60);
     // -------------------------------------
@@ -333,7 +355,19 @@ int main() {
                         }
 
                         Vector2 tile_size = {(f32)map.tile_size, (f32)map.tile_size};
+
+#if 0
+                         Rectangle source_rec = GetTileSourceRec(tile->type);
+
+                        if (tile->type == TileType_grass || tile->type == TileType_dirt) {
+                            DrawTextureRec(tile_atlas, source_rec, tile_pos, WHITE);
+                        } else {
+                            DrawRectangleV(tile_pos, tile_size, tile_col);
+                        }
+#else 
                         DrawRectangleV(tile_pos, tile_size, tile_col);
+#endif
+
                     }
                 }
             }
@@ -483,6 +517,9 @@ int main() {
             }
 
             DrawRectangleV(player.pos, player.size, player.col);
+
+
+
         } else if (manager.state == GameState_win) {
             // Draw tiles in background
             {
@@ -531,7 +568,6 @@ int main() {
             }
         }
 
-
         EndTextureMode();
 
         // -----------------------------------
@@ -559,10 +595,19 @@ int main() {
         DrawText(TextFormat("Score: %d", manager.score), 25, 25, 38, WHITE);
         DrawText(TextFormat("High Score: %d", manager.high_score), window_width - 300, 25, 38, WHITE);
 
+#if 0
+        Rectangle rec = {0, 0, 80, 80};
+        Vector2 pos = {100, 100};
+        DrawTextureRec(tile_atlas, rec, pos, WHITE);
+#endif
+
+
+
         if (fire_cleared && player.powered_up) {
             DrawText("WIN", window_width*0.5, window_height*0.5, 69, WHITE);
             manager.state = GameState_win;
         }
+
 
         EndDrawing();
         // -----------------------------------
