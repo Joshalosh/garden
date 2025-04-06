@@ -78,8 +78,9 @@ void GameOver(Player *player, Tilemap *tilemap, GameManager *manager) {
     for (u32 y = 0; y < tilemap->height; y++) {
         for (u32 x = 0; x < tilemap->width; x++) {
             u32 index = TilemapIndex(x, y, tilemap->width);
-            tilemap->tiles[index].type = (Tile_Type)tilemap->original_map[index];
+            tilemap->tiles[index].type  = (Tile_Type)tilemap->original_map[index];
             tilemap->tiles[index].flags = 0;
+            tilemap->tiles[index].seed  = GetRandomValue(0, ATLAS_COUNT - 1);
         }
     }
 }
@@ -221,18 +222,15 @@ void CheckEnclosedAreas(Tilemap *tilemap, u32 current_x, u32 current_y) {
     }
 }
 
-Rectangle GetTileSourceRec(Tile_Type type) {
-    const u32 atlas_tile_width  = 20;
-    const u32 atlas_tile_height = 20;
+Rectangle GetTileSourceRec(Tile_Type type, u32 seed) {
+    const u32 atlas_tile_width  = TILEMAP_SIZE;
+    const u32 atlas_tile_height = TILEMAP_SIZE;
     Rectangle source_rec = {0, 0, atlas_tile_width, atlas_tile_height};
 
     switch (type) {
-        case TileType_grass: {
-            source_rec.x = 0;
-            source_rec.y = 0;
-        } break;
+        case TileType_grass:
         case TileType_dirt: {
-            source_rec.x = 4 * atlas_tile_width;
+            source_rec.x = seed * atlas_tile_width;
             source_rec.y = 0;
         } break;
         default: {
@@ -281,6 +279,7 @@ int main() {
             original_map[y][x] = tilemap[y][x];
             tiles[y][x].type   = (Tile_Type)tilemap[y][x];
             tiles[y][x].flags  = 0;
+            tiles[y][x].seed   = GetRandomValue(0, ATLAS_COUNT - 1);
         }
     }
 
@@ -343,7 +342,7 @@ int main() {
                         Vector2 tile_size = {(f32)map.tile_size, (f32)map.tile_size};
 
 #if 1
-                        Rectangle source_rec = GetTileSourceRec(tile->type);
+                        Rectangle source_rec = GetTileSourceRec(tile->type, tile->seed);
 
                         if (tile->type == TileType_grass || tile->type == TileType_dirt) {
                             DrawTextureRec(tile_atlas, source_rec, tile_pos, WHITE);

@@ -2,6 +2,7 @@
 #define TILEMAP_WIDTH  16
 #define TILEMAP_HEIGHT 16
 #define TILEMAP_SIZE 20
+#define ATLAS_COUNT 17
 #define ADJACENT_COUNT 4
 #define MB(x) x*1024ULL*1024ULL
 #define ARENA_SIZE MB(500)
@@ -43,6 +44,7 @@ struct GameManager {
 struct Tile {
     Tile_Type  type;
     u32        flags;
+    u32        seed;
 };
 
 struct Tilemap {
