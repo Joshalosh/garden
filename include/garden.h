@@ -34,6 +34,12 @@ enum Game_State {
     GameState_win,
 };
 
+struct GameManager {
+    u32 score;
+    u32 high_score;
+    Game_State state;
+};
+
 struct Tile {
     Tile_Type  type;
     u32        flags;
