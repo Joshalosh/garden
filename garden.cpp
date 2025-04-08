@@ -365,25 +365,6 @@ int main() {
                         if (IsFlagSet(tile, TileFlag_moved)) {
                             ClearFlag(tile, TileFlag_moved);
                         }
-#else
-                        if (IsFlagSet(tile, TileFlag_fire)) {
-                            tile_col = {168, 0, 0, 255};
-                            fire_cleared = false;
-                        }
-                        if (IsFlagSet(tile, TileFlag_powerup)) {
-                            tile_col = BLUE;
-                        }
-                        if (IsFlagSet(tile, TileFlag_enemy)) {
-                            tile_col = YELLOW;
-                        }
-                        if (IsFlagSet(tile, TileFlag_moved)) {
-                            ClearFlag(tile, TileFlag_moved);
-                        }
-
-                        DrawRectangleV(tile_pos, tile_size, tile_col);
-#endif
-
-
                     }
                 }
             }
@@ -610,14 +591,6 @@ int main() {
                        dest_rect, zero_vec, 0.0f, WHITE);
         DrawText(TextFormat("Score: %d", manager.score), 25, 25, 38, WHITE);
         DrawText(TextFormat("High Score: %d", manager.high_score), window_width - 300, 25, 38, WHITE);
-
-#if 0
-        Rectangle rec = {0, 0, 340, 20};
-        Vector2 pos = {100, 100};
-        DrawTextureRec(tile_atlas, rec, pos, WHITE);
-#endif
-
-
 
         if (fire_cleared && player.powered_up) {
             DrawText("WIN", window_width*0.5, window_height*0.5, 69, WHITE);
