@@ -341,7 +341,6 @@ int main() {
 
                         Vector2 tile_size = {(f32)map.tile_size, (f32)map.tile_size};
 
-#if 1
                         Rectangle source_rec = GetTileSourceRec(tile->type, tile->seed);
 
                         if (tile->type == TileType_grass || tile->type == TileType_dirt) {
@@ -596,7 +595,6 @@ int main() {
             DrawText("WIN", window_width*0.5, window_height*0.5, 69, WHITE);
             manager.state = GameState_win;
         }
-
 
         EndDrawing();
         // -----------------------------------
