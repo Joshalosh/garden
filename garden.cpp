@@ -300,7 +300,12 @@ int main() {
 
     b32 fire_cleared;
 
-    Texture2D tile_atlas = LoadTexture("../tile_row.png");
+    Texture2D tile_atlas          = LoadTexture("../tile_row.png");
+    Texture2D player_texture      = LoadTexture("../assets/sprites/thing.png");
+    Rectangle player_texture_rec = {0.0f, 0.0f, (f32)player_texture.width/6, (f32)player_texture.height}; 
+    u32 current_frame             = 0;
+    u32 frame_counter             = 0;
+
     RenderTexture2D target = LoadRenderTexture(base_screen_width, base_screen_height); 
     SetTargetFPS(60);
     // -------------------------------------
@@ -312,6 +317,19 @@ int main() {
         
         // TODO: Need to figure out a better way to stop everything when a win has occured
         float delta_t = GetFrameTime();
+
+        frame_counter++;
+
+        if (frame_counter >= 60/FRAME_SPEED) {
+            frame_counter = 0;
+            current_frame++;
+            
+            if (current_frame > 5) {
+                current_frame = 0;
+            }
+
+            player_texture_rec.x = (f32)current_frame*(f32)player_texture.width/6;
+        }
         if (manager.state == GameState_play) {
 
             // Draw to render texture
@@ -512,7 +530,13 @@ int main() {
                 enemy_move_timer = enemy_move_duration;
             }
 
-            DrawRectangleV(player.pos, player.size, player.col);
+            //DrawRectangleV(player.pos, player.size, player.col);
+            Rectangle dest_rect = {player.pos.x, player.pos.y, (f32)player_texture_rec.width, (f32)player_texture.height*2}; 
+            //DrawTextureRec(player_texture, player_texture_rec, player.pos, WHITE);
+
+            Vector2 zero_vec = {0.0f, 20.0f};
+            DrawTexturePro(player_texture, player_texture_rec,
+                           dest_rect, zero_vec, 0.0f, WHITE);
 
 
 
