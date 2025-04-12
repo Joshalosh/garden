@@ -57,6 +57,12 @@ struct Tilemap {
     Tile *tiles;
 };
 
+struct Animation {
+    Texture2D texture;
+    Rectangle frame_rec;
+    u32 current_frame;
+};
+
 struct Player {
     Vector2   pos;
     Vector2   target_pos;
