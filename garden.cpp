@@ -50,6 +50,7 @@ void PlayerInit(Player *player) {
     player->blink_speed   = 0;
     player->blink_time    = 0;
     player->col_bool      = false;
+    player->facing        = DirectionFacing_down;
 }
 
 void EnemyInit(Enemy *enemy) {
@@ -288,11 +289,13 @@ int main() {
 
     Player player = {};
     PlayerInit(&player);
-    player.animator.texture       = LoadTexture("../assets/sprites/thing.png");
-    player.animator.frame_rec     = {0.0f, 0.0f, 
-                                     (f32)player.animator.texture.width/6, 
-                                     (f32)player.animator.texture.height}; 
-    player.animator.current_frame = 0;
+    player.animator.texture                       = {};
+    player.animator.texture[DirectionFacing_down] = LoadTexture("../assets/sprites/thing.png");
+    player.animator.texture[DirectionFacing_up]   = LoadTexture("../assets/sprites/thing_back.png");
+    player.animator.frame_rec                     = {0.0f, 0.0f, 
+                                                     (f32)player.animator.texture.width/6, 
+                                                     (f32)player.animator.texture.height}; 
+    player.animator.current_frame                 = 0;
 
     Vector2 input_axis       = {0, 0};
 
@@ -332,7 +335,7 @@ int main() {
             }
 
             player.animator.frame_rec.x = (f32)player.animator.current_frame *
-                                          (f32)player.animator.texture.width/6;
+                                          (f32)player.animator.texture[player.facing].width/6;
         }
         if (manager.state == GameState_play) {
 

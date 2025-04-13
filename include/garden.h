@@ -36,6 +36,13 @@ enum Game_State {
     GameState_win,
 };
 
+enum Direction_Facing {
+    DirectionFacing_down,
+    DirectionFacing_up,
+    DirectionFacing_left,
+    DirectionFacing_right,
+};
+
 struct GameManager {
     u32 score;
     u32 high_score;
@@ -58,7 +65,7 @@ struct Tilemap {
 };
 
 struct Animation {
-    Texture2D texture;
+    Texture2D texture[10];
     Rectangle frame_rec;
     u32 current_frame;
 };
@@ -78,6 +85,7 @@ struct Player {
     bool      col_bool;
 
     Animation animator;
+    Direction_Facing facing;
 };
 
 struct Enemy {
