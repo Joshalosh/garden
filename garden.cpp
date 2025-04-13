@@ -289,12 +289,11 @@ int main() {
 
     Player player = {};
     PlayerInit(&player);
-    player.animator.texture                       = {};
     player.animator.texture[DirectionFacing_down] = LoadTexture("../assets/sprites/thing.png");
     player.animator.texture[DirectionFacing_up]   = LoadTexture("../assets/sprites/thing_back.png");
     player.animator.frame_rec                     = {0.0f, 0.0f, 
-                                                     (f32)player.animator.texture.width/6, 
-                                                     (f32)player.animator.texture.height}; 
+                                                     (f32)player.animator.texture[DirectionFacing_down].width/6, 
+                                                     (f32)player.animator.texture[DirectionFacing_down].height}; 
     player.animator.current_frame                 = 0;
 
     Vector2 input_axis       = {0, 0};
@@ -539,11 +538,11 @@ int main() {
 
             //DrawRectangleV(player.pos, player.size, player.col);
             Rectangle dest_rect = {player.pos.x, player.pos.y, 
-                                   (f32)player.animator.frame_rec.width, (f32)player.animator.texture.height*2}; 
+                                   (f32)player.animator.frame_rec.width, (f32)player.animator.texture[player.facing].height*2}; 
             //DrawTextureRec(player_texture, player_texture_rec, player.pos, WHITE);
 
             Vector2 texture_offset = {0.0f, 20.0f};
-            DrawTexturePro(player.animator.texture, player.animator.frame_rec,
+            DrawTexturePro(player.animator.texture[player.facing], player.animator.frame_rec,
                            dest_rect, texture_offset, 0.0f, WHITE);
 
 
