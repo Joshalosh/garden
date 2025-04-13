@@ -76,6 +76,8 @@ struct Player {
     bool      is_moving;
     bool      powered_up;
     bool      col_bool;
+
+    Animation animator;
 };
 
 struct Enemy {

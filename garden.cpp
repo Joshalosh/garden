@@ -288,7 +288,13 @@ int main() {
 
     Player player = {};
     PlayerInit(&player);
-    Vector2 input_axis = {0, 0};
+    player.animator.texture       = LoadTexture("../assets/sprites/thing.png");
+    player.animator.frame_rec     = {0.0f, 0.0f, 
+                                     (f32)player.animator.texture.width/6, 
+                                     (f32)player.animator.texture.height}; 
+    player.animator.current_frame = 0;
+
+    Vector2 input_axis       = {0, 0};
 
     f32 enemy_spawn_duration = 500.0f;
     f32 spawn_timer          = enemy_spawn_duration;
@@ -301,9 +307,6 @@ int main() {
     b32 fire_cleared;
 
     Texture2D tile_atlas          = LoadTexture("../tile_row.png");
-    Texture2D player_texture      = LoadTexture("../assets/sprites/thing.png");
-    Rectangle player_texture_rec = {0.0f, 0.0f, (f32)player_texture.width/6, (f32)player_texture.height}; 
-    u32 current_frame             = 0;
     u32 frame_counter             = 0;
 
     RenderTexture2D target = LoadRenderTexture(base_screen_width, base_screen_height); 
@@ -322,13 +325,14 @@ int main() {
 
         if (frame_counter >= 60/FRAME_SPEED) {
             frame_counter = 0;
-            current_frame++;
+            player.animator.current_frame++;
             
-            if (current_frame > 5) {
-                current_frame = 0;
+            if (player.animator.current_frame > 5) {
+                player.animator.current_frame = 0;
             }
 
-            player_texture_rec.x = (f32)current_frame*(f32)player_texture.width/6;
+            player.animator.frame_rec.x = (f32)player.animator.current_frame *
+                                          (f32)player.animator.texture.width/6;
         }
         if (manager.state == GameState_play) {
 
@@ -531,12 +535,13 @@ int main() {
             }
 
             //DrawRectangleV(player.pos, player.size, player.col);
-            Rectangle dest_rect = {player.pos.x, player.pos.y, (f32)player_texture_rec.width, (f32)player_texture.height*2}; 
+            Rectangle dest_rect = {player.pos.x, player.pos.y, 
+                                   (f32)player.animator.frame_rec.width, (f32)player.animator.texture.height*2}; 
             //DrawTextureRec(player_texture, player_texture_rec, player.pos, WHITE);
 
-            Vector2 zero_vec = {0.0f, 20.0f};
-            DrawTexturePro(player_texture, player_texture_rec,
-                           dest_rect, zero_vec, 0.0f, WHITE);
+            Vector2 texture_offset = {0.0f, 20.0f};
+            DrawTexturePro(player.animator.texture, player.animator.frame_rec,
+                           dest_rect, texture_offset, 0.0f, WHITE);
 
 
 
