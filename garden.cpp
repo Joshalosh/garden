@@ -394,8 +394,8 @@ int main() {
 
             if      (IsKeyDown(KEY_RIGHT) || IsKeyDown(KEY_D)) input_axis = {1.0f, 0};
             else if (IsKeyDown(KEY_LEFT)  || IsKeyDown(KEY_A)) input_axis = {-1.0f, 0};
-            else if (IsKeyDown(KEY_UP)    || IsKeyDown(KEY_W)) input_axis = {0, -1.0f};
-            else if (IsKeyDown(KEY_DOWN)  || IsKeyDown(KEY_S)) input_axis = {0, 1.0f};
+            else if (IsKeyDown(KEY_UP)    || IsKeyDown(KEY_W)) {input_axis = {0, -1.0f}; player.facing = DirectionFacing_up;}
+            else if (IsKeyDown(KEY_DOWN)  || IsKeyDown(KEY_S)) {input_axis = {0, 1.0f}; player.facing = DirectionFacing_down;}
 
             // - New player movement
             if (!player.is_moving) {
