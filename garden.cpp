@@ -542,15 +542,19 @@ int main() {
                 enemy_move_timer = enemy_move_duration;
             }
 
-            //DrawRectangleV(player.pos, player.size, player.col);
+#if 0
             Rectangle dest_rect = {player.pos.x, player.pos.y, 
                                    (f32)player.animator.frame_rec.width, (f32)player.animator.texture[player.facing].height*2}; 
+            
             //DrawTextureRec(player_texture, player_texture_rec, player.pos, WHITE);
 
             Vector2 texture_offset = {0.0f, 20.0f};
             DrawTexturePro(player.animator.texture[player.facing], player.animator.frame_rec,
                            dest_rect, texture_offset, 0.0f, WHITE);
 
+#else
+            DrawRectangleV(player.pos, player.size, player.col);
+#endif
 
 
         } else if (manager.state == GameState_win) {
