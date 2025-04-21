@@ -68,6 +68,7 @@ struct Animation {
     Texture2D texture[10];
     Rectangle frame_rec;
     u32 current_frame;
+    u32 max_frames;
 };
 
 struct Player {

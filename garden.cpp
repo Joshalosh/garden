@@ -42,7 +42,7 @@ void PlayerInit(Player *player) {
     player->pos           = {base_screen_width*0.5, base_screen_height*0.5};
     player->target_pos    = player->pos;
     player->size          = {20, 20};
-    player->col           = RED;
+    player->col           = WHITE;
     player->speed         = 100.0f;
     player->is_moving     = false;
     player->powered_up    = false;
@@ -289,8 +289,10 @@ int main() {
 
     Player player = {};
     PlayerInit(&player);
-    player.animator.texture[DirectionFacing_down] = LoadTexture("../assets/sprites/thing.png");
-    player.animator.texture[DirectionFacing_up]   = LoadTexture("../assets/sprites/thing_back.png");
+    player.animator.texture[DirectionFacing_down]  = LoadTexture("../assets/sprites/thing.png");
+    player.animator.texture[DirectionFacing_up]    = LoadTexture("../assets/sprites/thing_back.png");
+    player.animator.texture[DirectionFacing_left]  = LoadTexture("../assets/sprites/thing_side.png");
+    player.animator.texture[DirectionFacing_right] = LoadTexture("../assets/sprites/thing_side.png");
     player.animator.frame_rec                     = {0.0f, 0.0f, 
                                                      (f32)player.animator.texture[DirectionFacing_down].width/6, 
                                                      (f32)player.animator.texture[DirectionFacing_down].height}; 
@@ -325,16 +327,19 @@ int main() {
 
         frame_counter++;
 
+        player.animator.max_frames = (f32)player.animator.texture[player.facing].width/20;
+
         if (frame_counter >= 60/FRAME_SPEED) {
             frame_counter = 0;
             player.animator.current_frame++;
             
-            if (player.animator.current_frame > 5) {
+            if (player.animator.current_frame > player.animator.max_frames) {
                 player.animator.current_frame = 0;
             }
 
             player.animator.frame_rec.x = (f32)player.animator.current_frame *
-                                          (f32)player.animator.texture[player.facing].width/6;
+                                          ((f32)player.animator.texture[player.facing].width /
+                                          player.animator.max_frames);
         }
         if (manager.state == GameState_play) {
 
@@ -392,8 +397,14 @@ int main() {
                 }
             }
 
-            if      (IsKeyDown(KEY_RIGHT) || IsKeyDown(KEY_D)) input_axis = {1.0f, 0};
-            else if (IsKeyDown(KEY_LEFT)  || IsKeyDown(KEY_A)) input_axis = {-1.0f, 0};
+            if      (IsKeyDown(KEY_RIGHT) || IsKeyDown(KEY_D)) {
+                input_axis = {1.0f, 0};
+                player.facing = DirectionFacing_right;
+            }
+            else if (IsKeyDown(KEY_LEFT)  || IsKeyDown(KEY_A)) {
+                input_axis = {-1.0f, 0};
+                player.facing = DirectionFacing_left;
+            }
             else if (IsKeyDown(KEY_UP)    || IsKeyDown(KEY_W)) {
                 input_axis = {0, -1.0f}; 
                 player.facing = DirectionFacing_up;
@@ -506,9 +517,9 @@ int main() {
                 }
 
                 if (player.col_bool) {
-                    player.col = WHITE;
-                } else {
                     player.col = RED;
+                } else {
+                    player.col = WHITE;
                 }
             }
 
@@ -542,7 +553,7 @@ int main() {
                 enemy_move_timer = enemy_move_duration;
             }
 
-#if 0
+#if 1
             Rectangle dest_rect = {player.pos.x, player.pos.y, 
                                    (f32)player.animator.frame_rec.width, (f32)player.animator.texture[player.facing].height*2}; 
             
@@ -550,7 +561,7 @@ int main() {
 
             Vector2 texture_offset = {0.0f, 20.0f};
             DrawTexturePro(player.animator.texture[player.facing], player.animator.frame_rec,
-                           dest_rect, texture_offset, 0.0f, WHITE);
+                           dest_rect, texture_offset, 0.0f, player.col);
 
 #else
             DrawRectangleV(player.pos, player.size, player.col);
