@@ -554,14 +554,24 @@ int main() {
             }
 
 #if 1
-            Rectangle dest_rect = {player.pos.x, player.pos.y, 
-                                   (f32)player.animator.frame_rec.width, (f32)player.animator.texture[player.facing].height*2}; 
-            
-            //DrawTextureRec(player_texture, player_texture_rec, player.pos, WHITE);
+            f32 frame_width  = (f32)player.animator.frame_rec.width;
+            f32 frame_height = (f32)player.animator.texture[player.facing].height;
 
+            Rectangle dest_rect = {player.pos.x, player.pos.y, 
+                                   frame_width, frame_height}; 
+
+            if (player.facing == DirectionFacing_left) {
+                dest_rect.x     += frame_width;
+                dest_rect.width  = -frame_width;
+            }
+            
+            DrawTextureRec(player.animator.texture[player.facing], dest_rect, player.pos, WHITE);
+
+#if 0
             Vector2 texture_offset = {0.0f, 20.0f};
             DrawTexturePro(player.animator.texture[player.facing], player.animator.frame_rec,
                            dest_rect, texture_offset, 0.0f, player.col);
+#endif
 
 #else
             DrawRectangleV(player.pos, player.size, player.col);
