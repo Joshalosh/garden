@@ -50,7 +50,7 @@ void PlayerInit(Player *player) {
     player->blink_speed   = 0;
     player->blink_time    = 0;
     player->col_bool      = false;
-    player->facing        = DirectionFacing_down;
+    //player->facing        = DirectionFacing_down;
 }
 
 void EnemyInit(Enemy *enemy) {
@@ -554,24 +554,22 @@ int main() {
             }
 
 #if 1
+            Rectangle src = player.animator.frame_rec;
+
+            if (player.facing == DirectionFacing_left) {
+                src.x     += src.width;
+                src.width  = -src.width;
+            }
+            
             f32 frame_width  = (f32)player.animator.frame_rec.width;
-            f32 frame_height = (f32)player.animator.texture[player.facing].height;
+            f32 frame_height = (f32)player.animator.texture[player.facing].height*2;
 
             Rectangle dest_rect = {player.pos.x, player.pos.y, 
                                    frame_width, frame_height}; 
 
-            if (player.facing == DirectionFacing_left) {
-                dest_rect.x     += frame_width;
-                dest_rect.width  = -frame_width;
-            }
-            
-            DrawTextureRec(player.animator.texture[player.facing], dest_rect, player.pos, WHITE);
-
-#if 0
             Vector2 texture_offset = {0.0f, 20.0f};
-            DrawTexturePro(player.animator.texture[player.facing], player.animator.frame_rec,
+            DrawTexturePro(player.animator.texture[player.facing], src,
                            dest_rect, texture_offset, 0.0f, player.col);
-#endif
 
 #else
             DrawRectangleV(player.pos, player.size, player.col);
