@@ -43,6 +43,13 @@ enum Direction_Facing {
     DirectionFacing_right,
 };
 
+struct Animation {
+    Texture2D texture[10];
+    Rectangle frame_rec;
+    u32 current_frame;
+    u32 max_frames;
+};
+
 struct GameManager {
     u32 score;
     u32 high_score;
@@ -53,6 +60,7 @@ struct Tile {
     Tile_Type  type;
     u32        flags;
     u32        seed;
+    Animation  animator;
 };
 
 struct Tilemap {
@@ -62,13 +70,6 @@ struct Tilemap {
 
     u32  *original_map;
     Tile *tiles;
-};
-
-struct Animation {
-    Texture2D texture[10];
-    Rectangle frame_rec;
-    u32 current_frame;
-    u32 max_frames;
 };
 
 struct Player {
