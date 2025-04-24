@@ -294,7 +294,7 @@ int main() {
     player.animator.texture[DirectionFacing_left]  = LoadTexture("../assets/sprites/thing_side.png");
     player.animator.texture[DirectionFacing_right] = LoadTexture("../assets/sprites/thing_side.png");
     player.animator.frame_rec                     = {0.0f, 0.0f, 
-                                                     (f32)player.animator.texture[DirectionFacing_down].width/6, 
+                                                     (f32)player.animator.texture[DirectionFacing_down].width/6,
                                                      (f32)player.animator.texture[DirectionFacing_down].height}; 
     player.animator.current_frame                 = 0;
 
@@ -311,6 +311,7 @@ int main() {
     b32 fire_cleared;
 
     Texture2D tile_atlas          = LoadTexture("../tile_row.png");
+    Texture2D fire_texture        = LoadTexture("../assets/sprites/fire.png");
     u32 frame_counter             = 0;
 
     RenderTexture2D target = LoadRenderTexture(base_screen_width, base_screen_height); 
@@ -328,6 +329,14 @@ int main() {
         frame_counter++;
 
         player.animator.max_frames = (f32)player.animator.texture[player.facing].width/20;
+
+        Animation fire_animator;
+        fire_animator.texture[0]     = fire_texture;
+        fire_animator.max_frames     = (f32)fire_animator.texture[0].width/20;
+        fire_animator.frame_rec      = {0.0f, 0.0f,
+                                        (f32)fire_animator.texture[0].width/fire_animator.max_frames,
+                                        (f32)fire_animator.texture[0].height};
+        fire_animator.current_frame   = 0;
 
         if (frame_counter >= 60/FRAME_SPEED) {
             frame_counter = 0;
