@@ -293,10 +293,20 @@ int main() {
     player.animator.texture[DirectionFacing_up]    = LoadTexture("../assets/sprites/thing_back.png");
     player.animator.texture[DirectionFacing_left]  = LoadTexture("../assets/sprites/thing_side.png");
     player.animator.texture[DirectionFacing_right] = LoadTexture("../assets/sprites/thing_side.png");
-    player.animator.frame_rec                     = {0.0f, 0.0f, 
-                                                     (f32)player.animator.texture[DirectionFacing_down].width/6,
-                                                     (f32)player.animator.texture[DirectionFacing_down].height}; 
-    player.animator.current_frame                 = 0;
+    player.animator.frame_rec                      = {0.0f, 0.0f, 
+                                                      (f32)player.animator.texture[DirectionFacing_down].width/6,
+                                                      (f32)player.animator.texture[DirectionFacing_down].height}; 
+    player.animator.current_frame                  = 0;
+
+    Texture2D fire_texture        = LoadTexture("../assets/sprites/fire.png");
+    Animation fire_animator;
+    fire_animator.texture[0]     = fire_texture;
+    fire_animator.max_frames     = (f32)fire_animator.texture[0].width/20;
+    fire_animator.frame_rec      = {0.0f, 0.0f,
+                                    (f32)fire_animator.texture[0].width/fire_animator.max_frames,
+                                    (f32)fire_animator.texture[0].height};
+    fire_animator.current_frame  = 0;
+
 
     Vector2 input_axis       = {0, 0};
 
@@ -311,7 +321,6 @@ int main() {
     b32 fire_cleared;
 
     Texture2D tile_atlas          = LoadTexture("../tile_row.png");
-    Texture2D fire_texture        = LoadTexture("../assets/sprites/fire.png");
     u32 frame_counter             = 0;
 
     RenderTexture2D target = LoadRenderTexture(base_screen_width, base_screen_height); 
@@ -329,14 +338,6 @@ int main() {
         frame_counter++;
 
         player.animator.max_frames = (f32)player.animator.texture[player.facing].width/20;
-
-        Animation fire_animator;
-        fire_animator.texture[0]     = fire_texture;
-        fire_animator.max_frames     = (f32)fire_animator.texture[0].width/20;
-        fire_animator.frame_rec      = {0.0f, 0.0f,
-                                        (f32)fire_animator.texture[0].width/fire_animator.max_frames,
-                                        (f32)fire_animator.texture[0].height};
-        fire_animator.current_frame   = 0;
 
         if (frame_counter >= 60/FRAME_SPEED) {
             frame_counter = 0;
@@ -379,17 +380,23 @@ int main() {
 
                         Vector2 tile_size = {(f32)map.tile_size, (f32)map.tile_size};
 
+                        // TODO: I need to make getting the source rec and the random seed for 
+                        // the atlas seperate functions
+                        
                         Rectangle source_rec = GetTileSourceRec(tile->type, tile->seed);
 
                         if (tile->type == TileType_grass || tile->type == TileType_dirt) {
                             DrawTextureRec(tile_atlas, source_rec, tile_pos, WHITE);
+                            tile->animator = fire_animator;
                         } else {
                             DrawRectangleV(tile_pos, tile_size, tile_col);
                         }
                         if (IsFlagSet(tile, TileFlag_fire)) {
                             tile_col = {168, 0, 0, 255};
                             fire_cleared = false;
-                            DrawRectangleV(tile_pos, tile_size, tile_col);
+                            //DrawRectangleV(tile_pos, tile_size, tile_col);
+                            Rectangle rec = GetTileSourceRec(tile->type, 1);
+                            DrawTextureRec(tile->animator.texture[0], rec, tile_pos, WHITE);
                         }
                         if (IsFlagSet(tile, TileFlag_powerup)) {
                             tile_col = BLUE;
