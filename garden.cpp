@@ -241,6 +241,20 @@ Rectangle GetTileSourceRec(Tile_Type type, u32 seed) {
     return source_rec;
 }
 
+void Animate(Animation *animator, u32 frame_counter, u32 facing = 0) {
+    if (frame_counter >= 60/FRAME_SPEED) {
+        animator->current_frame++;
+    }
+        
+    if (animator->current_frame > animator->max_frames) {
+        animator->current_frame = 0;
+    }
+
+    animator->frame_rec.x = (f32)animator->current_frame *
+                           ((f32)animator->texture[facing].width /
+                           animator->max_frames);
+}
+
 int main() {
     // -------------------------------------
     // Initialisation
@@ -335,22 +349,17 @@ int main() {
         // TODO: Need to figure out a better way to stop everything when a win has occured
         float delta_t = GetFrameTime();
 
+        // NOTE: reset the counter back to zero after everything to not mess up 
+        // the individual animations
+        if (frame_counter >= 60/FRAME_SPEED) {
+            frame_counter = 0;
+        }
+
         frame_counter++;
 
         player.animator.max_frames = (f32)player.animator.texture[player.facing].width/20;
+        Animate(&player.animator, frame_counter, player.facing);
 
-        if (frame_counter >= 60/FRAME_SPEED) {
-            frame_counter = 0;
-            player.animator.current_frame++;
-            
-            if (player.animator.current_frame > player.animator.max_frames) {
-                player.animator.current_frame = 0;
-            }
-
-            player.animator.frame_rec.x = (f32)player.animator.current_frame *
-                                          ((f32)player.animator.texture[player.facing].width /
-                                          player.animator.max_frames);
-        }
         if (manager.state == GameState_play) {
 
             // Draw to render texture
@@ -396,7 +405,9 @@ int main() {
                             fire_cleared = false;
                             //DrawRectangleV(tile_pos, tile_size, tile_col);
                             Rectangle rec = GetTileSourceRec(tile->type, 1);
-                            DrawTextureRec(tile->animator.texture[0], rec, tile_pos, WHITE);
+                            Animate(&tile->animator, frame_counter);
+                            DrawTextureRec(tile->animator.texture[0], 
+                                           tile->animator.frame_rec, tile_pos, WHITE);
                         }
                         if (IsFlagSet(tile, TileFlag_powerup)) {
                             tile_col = BLUE;
