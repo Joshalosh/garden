@@ -62,9 +62,15 @@ void EnemyInit(Enemy *enemy) {
 }
 
 void GameManagerInit(GameManager *manager) {
-    manager->score      = 0;
-    manager->high_score = 0;
-    manager->state      = GameState_play;
+    manager->score                = 0;
+    manager->high_score           = 0;
+    manager->state                = GameState_play;
+
+    manager->enemy_spawn_duration = 500.0f;
+    manager->spawn_timer          = manager->enemy_spawn_duration;
+    manager->enemy_move_duration  = 250.0f;
+    manager->enemy_move_timer     = manager->enemy_move_duration;
+
 }
 
 void GameOver(Player *player, Tilemap *tilemap, GameManager *manager) {
@@ -324,11 +330,6 @@ int main() {
 
     Vector2 input_axis       = {0, 0};
 
-    f32 enemy_spawn_duration = 500.0f;
-    f32 spawn_timer          = enemy_spawn_duration;
-    f32 enemy_move_duration  = 250.0f;
-    f32 enemy_move_timer     = enemy_move_duration;
-
     GameManager manager;
     GameManagerInit(&manager);
 
@@ -549,16 +550,16 @@ int main() {
                 }
             }
 
-            if (spawn_timer > 0) {
-                spawn_timer -= 1.0f;
+            if (manager.spawn_timer > 0) {
+                manager.spawn_timer -= 1.0f;
             } else {
                 ModifyRandomTile(&map, TileFlag_enemy);
-                spawn_timer = enemy_spawn_duration;
+                manager.spawn_timer = manager.enemy_spawn_duration;
             }
 
             // NOTE: Enemy spawning
-            if (enemy_move_timer > 0) {
-                enemy_move_timer -= 1.0f;
+            if (manager.enemy_move_timer > 0) {
+                manager.enemy_move_timer -= 1.0f;
             } else {
                 for (u32 y = 0; y < map.height; y++) {
                     for (u32 x = 0; x < map.width; x++) {
@@ -576,7 +577,7 @@ int main() {
                         }
                     }
                 }
-                enemy_move_timer = enemy_move_duration;
+                manager.enemy_move_timer = manager.enemy_move_duration;
             }
 
 #if 1
