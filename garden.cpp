@@ -288,6 +288,15 @@ int main() {
     u32 original_map[TILEMAP_HEIGHT][TILEMAP_WIDTH];
     Tile tiles[TILEMAP_HEIGHT][TILEMAP_WIDTH];
 
+    Texture2D fire_texture        = LoadTexture("../assets/sprites/fire.png");
+    Animation fire_animator;
+    fire_animator.texture[0]     = fire_texture;
+    fire_animator.max_frames     = (f32)fire_animator.texture[0].width/20;
+    fire_animator.frame_rec      = {0.0f, 0.0f,
+                                    (f32)fire_animator.texture[0].width/fire_animator.max_frames,
+                                    (f32)fire_animator.texture[0].height};
+    fire_animator.current_frame  = 0;
+
     // NOTE: TILE INIT
     for (u32 y = 0; y < TILEMAP_HEIGHT; y++) {
         for (u32 x = 0; x < TILEMAP_WIDTH; x++) {
@@ -295,6 +304,7 @@ int main() {
             tiles[y][x].type   = (Tile_Type)tilemap[y][x];
             tiles[y][x].flags  = 0;
             tiles[y][x].seed   = GetRandomValue(0, ATLAS_COUNT - 1);
+            tiles[y][x].animator = fire_animator;
         }
     }
 
@@ -311,16 +321,6 @@ int main() {
                                                       (f32)player.animator.texture[DirectionFacing_down].width/6,
                                                       (f32)player.animator.texture[DirectionFacing_down].height}; 
     player.animator.current_frame                  = 0;
-
-    Texture2D fire_texture        = LoadTexture("../assets/sprites/fire.png");
-    Animation fire_animator;
-    fire_animator.texture[0]     = fire_texture;
-    fire_animator.max_frames     = (f32)fire_animator.texture[0].width/20;
-    fire_animator.frame_rec      = {0.0f, 0.0f,
-                                    (f32)fire_animator.texture[0].width/fire_animator.max_frames,
-                                    (f32)fire_animator.texture[0].height};
-    fire_animator.current_frame  = 0;
-
 
     Vector2 input_axis       = {0, 0};
 
@@ -396,7 +396,6 @@ int main() {
 
                         if (tile->type == TileType_grass || tile->type == TileType_dirt) {
                             DrawTextureRec(tile_atlas, source_rec, tile_pos, WHITE);
-                            tile->animator = fire_animator;
                         } else {
                             DrawRectangleV(tile_pos, tile_size, tile_col);
                         }
