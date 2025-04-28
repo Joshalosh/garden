@@ -336,6 +336,7 @@ int main() {
     b32 fire_cleared;
 
     Texture2D tile_atlas          = LoadTexture("../tile_row.png");
+    Texture2D powerup_texture     = LoadTexture("../assets/sprites/powerup.png");
     u32 frame_counter             = 0;
 
     RenderTexture2D target = LoadRenderTexture(base_screen_width, base_screen_height); 
@@ -411,7 +412,8 @@ int main() {
                         }
                         if (IsFlagSet(tile, TileFlag_powerup)) {
                             tile_col = BLUE;
-                            DrawRectangleV(tile_pos, tile_size, tile_col);
+                            DrawTextureV(powerup_texture, tile_pos, WHITE);
+                            //DrawRectangleV(tile_pos, tile_size, tile_col);
                         }
                         if (IsFlagSet(tile, TileFlag_enemy)) {
                             tile_col = YELLOW;
