@@ -426,19 +426,19 @@ int main() {
                 }
             }
 
-            if      (IsKeyDown(KEY_RIGHT) || IsKeyDown(KEY_D)) {
+            if ((IsKeyDown(KEY_RIGHT) || IsKeyDown(KEY_D)) && player.facing != DirectionFacing_left) {
                 input_axis = {1.0f, 0};
                 player.facing = DirectionFacing_right;
             }
-            else if (IsKeyDown(KEY_LEFT)  || IsKeyDown(KEY_A)) {
+            else if ((IsKeyDown(KEY_LEFT) || IsKeyDown(KEY_A)) && player.facing != DirectionFacing_right) {
                 input_axis = {-1.0f, 0};
                 player.facing = DirectionFacing_left;
             }
-            else if (IsKeyDown(KEY_UP)    || IsKeyDown(KEY_W)) {
+            else if ((IsKeyDown(KEY_UP) || IsKeyDown(KEY_W)) && player.facing != DirectionFacing_down) {
                 input_axis = {0, -1.0f}; 
                 player.facing = DirectionFacing_up;
             }
-            else if (IsKeyDown(KEY_DOWN)  || IsKeyDown(KEY_S)) {
+            else if ((IsKeyDown(KEY_DOWN) || IsKeyDown(KEY_S)) && player.facing != DirectionFacing_up) {
                 input_axis = {0, 1.0f}; 
                 player.facing = DirectionFacing_down;
             }
@@ -678,7 +678,7 @@ int main() {
         DrawTexturePro(target.texture, rect,
                        dest_rect, zero_vec, 0.0f, WHITE);
         DrawText(TextFormat("Score: %d", manager.score), 25, 25, 38, WHITE);
-        DrawText(TextFormat("High Score: %d", manager.high_score), window_width - 300, 25, 38, WHITE);
+        DrawText(TextFormat("High Score: %d", manager.high_score), window_width - 350, 25, 38, WHITE);
 
         if (fire_cleared && player.powered_up) {
             DrawText("WIN", window_width*0.5, window_height*0.5, 69, WHITE);

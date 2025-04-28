@@ -1,0 +1,30 @@
+
+- Player
+  - Stop movement in opposite direction with quick button presses from happening.
+  - Implement water coming from player to douse fire.
+  - Make speed ramp up slowly
+
+- UI
+  - Fix win screen.
+
+- Art Assets
+  - Implement enemy sprites and animation.
+  - Create wall sprites.
+  
+- Audio
+ - Make music.
+ - Make sound effects
+   - Powerup drop
+   - Powerup collect
+   - Powerup state
+   - Game over
+   - Player walk?
+   - Enemy appear?
+   - Enemy movement?
+   - Fire douse?
+   - Start?
+   - Win?
+  
+- Juice
+  - Add camera shake
+  - Figure our better scoring system
