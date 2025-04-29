@@ -2,7 +2,6 @@
 - Player
   - Stop movement in opposite direction with quick button presses from happening.
   - Implement water coming from player to douse fire.
-  - Make speed ramp up slowly
 
 - UI
   - Fix win screen.
@@ -28,3 +27,6 @@
 - Juice
   - Add camera shake
   - Figure our better scoring system
+
+- Refactor
+ - Fix get tile rect function to not do multiple things

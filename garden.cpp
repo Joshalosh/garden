@@ -43,7 +43,7 @@ void PlayerInit(Player *player) {
     player->target_pos    = player->pos;
     player->size          = {20, 20};
     player->col           = WHITE;
-    player->speed         = 100.0f;
+    player->speed         = 75.0f;
     player->is_moving     = false;
     player->powered_up    = false;
     player->powerup_timer = 0;
@@ -187,7 +187,7 @@ Tile *FindEligibleTile(Tilemap *tilemap, u32 index) {
     return tile;
 }
 
-void CheckEnclosedAreas(Tilemap *tilemap, u32 current_x, u32 current_y) {
+void CheckEnclosedAreas(Tilemap *tilemap, Player *player, u32 current_x, u32 current_y) {
     // Flood fill from borders to mark reachable areas
     FloodFillFromPlayerPosition(tilemap, current_x, current_y);
 
@@ -211,6 +211,7 @@ void CheckEnclosedAreas(Tilemap *tilemap, u32 current_x, u32 current_y) {
                     if (IsFlagSet(tile, TileFlag_enemy)) {
                         ClearFlag(tile, TileFlag_enemy);
                         enemy_slain++;
+                        player->speed += 10.0f;
                     }
                 } 
             } 
@@ -489,7 +490,7 @@ int main() {
                         player.powerup_timer = GetTime() + powerup_duration;
                         player.powered_up  = true;
                         player.blink_speed = 5.0f;
-                        player.blink_time = player.blink_speed;
+                        player.blink_time  = player.blink_speed;
                         ClearFlag(target_tile, TileFlag_powerup);
                     }
 
@@ -517,7 +518,7 @@ int main() {
 
                     // Check for enclosed areas
                     //if (player.powerup_timer < GetTime()) {
-                        CheckEnclosedAreas(&map, current_tile_x, current_tile_y);
+                        CheckEnclosedAreas(&map, &player, current_tile_x, current_tile_y);
                     //}
                 } else {
                     direction = VectorNorm(direction);
