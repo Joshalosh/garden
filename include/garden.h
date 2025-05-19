@@ -111,8 +111,10 @@ struct Enemy {
     Vector2 target_pos;
     Vector2 size;
     Color col;
-
     f32 speed;
+
+    u32 tile_index;
+    Animation animator;
 };
 
 #define STACK_MAX_SIZE 4096

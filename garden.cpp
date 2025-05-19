@@ -264,6 +264,7 @@ void Animate(Animation *animator, u32 frame_counter, u32 facing = 0) {
                            animator->max_frames);
 }
 
+// TODO: Finish implementing input buffer for player handling
 void AddToBuffer(Player *player) {
     if ((player->input_buffer.end + 1) % INPUT_MAX != player->input_buffer.start) {
         player->input_buffer.inputs[player->input_buffer.end] = player->facing;
@@ -355,6 +356,8 @@ int main() {
 
     Texture2D tile_atlas          = LoadTexture("../tile_row.png");
     Texture2D powerup_texture     = LoadTexture("../assets/sprites/powerup.png");
+    // TODO: Finish implementing enemy to properly animate the texture
+    Texture2D enemy_texture       = LoadTexture("../assets/sprites/enemy.jpg");
     u32 frame_counter             = 0;
 
     RenderTexture2D target = LoadRenderTexture(base_screen_width, base_screen_height); 
