@@ -8,6 +8,7 @@
 #define ARENA_SIZE MB(500)
 #define ARRAY_COUNT(array) (sizeof(array) / sizeof((array)[0]))
 #define FRAME_SPEED 16
+#define INPUT_MAX 5
 const int base_screen_width  = 320;
 const int base_screen_height = 320; //180;
 
@@ -78,6 +79,13 @@ struct Tilemap {
     Tile *tiles;
 };
 
+struct Input_Buffer {
+    Direction_Facing inputs[INPUT_MAX];
+    u32 start;
+    u32 end;
+
+};
+
 struct Player {
     Vector2   pos;
     Vector2   target_pos;
@@ -94,6 +102,8 @@ struct Player {
 
     Animation animator;
     Direction_Facing facing;
+    Input_Buffer input_buffer;
+
 };
 
 struct Enemy {

@@ -39,18 +39,20 @@ u32 TilemapIndex(u32 x, u32 y, u32 width) {
 }
 
 void PlayerInit(Player *player) {
-    player->pos           = {base_screen_width*0.5, base_screen_height*0.5};
-    player->target_pos    = player->pos;
-    player->size          = {20, 20};
-    player->col           = WHITE;
-    player->speed         = 75.0f;
-    player->is_moving     = false;
-    player->powered_up    = false;
-    player->powerup_timer = 0;
-    player->blink_speed   = 0;
-    player->blink_time    = 0;
-    player->col_bool      = false;
-    //player->facing        = DirectionFacing_down;
+    player->pos                = {base_screen_width*0.5, base_screen_height*0.5};
+    player->target_pos         = player->pos;
+    player->size               = {20, 20};
+    player->col                = WHITE;
+    player->speed              = 75.0f;
+    player->is_moving          = false;
+    player->powered_up         = false;
+    player->powerup_timer      = 0;
+    player->blink_speed        = 0;
+    player->blink_time         = 0;
+    player->col_bool           = false;
+    player->input_buffer.start = 0;
+    player->input_buffer.end   = 0;
+    //player->facing           = DirectionFacing_down;
 }
 
 void EnemyInit(Enemy *enemy) {
@@ -260,6 +262,21 @@ void Animate(Animation *animator, u32 frame_counter, u32 facing = 0) {
     animator->frame_rec.x = (f32)animator->current_frame *
                            ((f32)animator->texture[facing].width /
                            animator->max_frames);
+}
+
+void AddToBuffer(Player *player) {
+    if ((player->input_buffer.end + 1) % INPUT_MAX != player->input_buffer.start) {
+        player->input_buffer.inputs[player->input_buffer.end] = player->facing;
+        player->input_buffer.end = (player->input_buffer.end + 1) % INPUT_MAX;
+    }
+}
+
+void ProcessInputBuffer(Player *player) {
+    if (player->input_buffer.start != player->input_buffer.end) {
+        Direction_Facing next_direction = player->input_buffer.inputs[player->input_buffer.start];
+        player->facing = next_direction;
+        player->input_buffer.start = (player->input_buffer.start + 1) % INPUT_MAX;
+    }
 }
 
 int main() {
