@@ -1,7 +1,7 @@
 
 #define TILEMAP_WIDTH  16
 #define TILEMAP_HEIGHT 16
-#define TILEMAP_SIZE 20
+#define TILE_SIZE 20
 #define ATLAS_COUNT 17
 #define ADJACENT_COUNT 4
 #define MB(x) x*1024ULL*1024ULL
@@ -108,10 +108,6 @@ struct Player {
 
 struct Enemy {
     Vector2 pos;
-    Vector2 target_pos;
-    Vector2 size;
-    Color col;
-    f32 speed;
 
     u32 tile_index;
     Animation animator;

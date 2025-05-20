@@ -10,7 +10,7 @@
 void TilemapInit(Tilemap *tilemap) {
     tilemap->width       = TILEMAP_WIDTH;
     tilemap->height      = TILEMAP_HEIGHT;
-    tilemap->tile_size   = TILEMAP_SIZE;
+    tilemap->tile_size   = TILE_SIZE;
 }
 
 void StackInit(StackU32 *stack) {
@@ -53,14 +53,6 @@ void PlayerInit(Player *player) {
     player->input_buffer.start = 0;
     player->input_buffer.end   = 0;
     //player->facing           = DirectionFacing_down;
-}
-
-void EnemyInit(Enemy *enemy) {
-    enemy->pos        = {5, 5};
-    enemy->target_pos = enemy->pos;
-    enemy->size       = {20, 20};
-    enemy->col        = YELLOW;
-    enemy->speed      = 25.0f;
 }
 
 void GameManagerInit(GameManager *manager) {
@@ -233,14 +225,12 @@ void CheckEnclosedAreas(Tilemap *tilemap, Player *player, u32 current_x, u32 cur
 }
 
 Rectangle GetTileSourceRec(Tile_Type type, u32 seed) {
-    const u32 atlas_tile_width  = TILEMAP_SIZE;
-    const u32 atlas_tile_height = TILEMAP_SIZE;
-    Rectangle source_rec = {0, 0, atlas_tile_width, atlas_tile_height};
+    Rectangle source_rec = {0, 0, TILE_SIZE, TILE_SIZE};
 
     switch (type) {
         case TileType_grass:
         case TileType_dirt: {
-            source_rec.x = seed * atlas_tile_width;
+            source_rec.x = seed * TILE_SIZE;
             source_rec.y = 0;
         } break;
         default: {
@@ -438,6 +428,10 @@ int main() {
                         }
                         if (IsFlagSet(tile, TileFlag_enemy)) {
                             tile_col = YELLOW;
+                            //Rectangle rec = GetTileSourceRec(tile->type, 1);
+                            //DrawTextureRec(enemy_texture, rec, tile_pos, WHITE);
+
+                            //DrawTextureV(enemy_texture, tile_pos, WHITE);
                             DrawRectangleV(tile_pos, tile_size, tile_col);
                         }
                         if (IsFlagSet(tile, TileFlag_moved)) {
