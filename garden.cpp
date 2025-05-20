@@ -347,7 +347,7 @@ int main() {
     Texture2D tile_atlas          = LoadTexture("../tile_row.png");
     Texture2D powerup_texture     = LoadTexture("../assets/sprites/powerup.png");
     // TODO: Finish implementing enemy to properly animate the texture
-    Texture2D enemy_texture       = LoadTexture("../assets/sprites/enemy.jpg");
+    Texture2D enemy_texture       = LoadTexture("../assets/sprites/enemy.png");
     u32 frame_counter             = 0;
 
     RenderTexture2D target = LoadRenderTexture(base_screen_width, base_screen_height); 
@@ -428,11 +428,11 @@ int main() {
                         }
                         if (IsFlagSet(tile, TileFlag_enemy)) {
                             tile_col = YELLOW;
-                            //Rectangle rec = GetTileSourceRec(tile->type, 1);
-                            //DrawTextureRec(enemy_texture, rec, tile_pos, WHITE);
+                            Rectangle rec = GetTileSourceRec(tile->type, 1);
+                            DrawTextureRec(enemy_texture, rec, tile_pos, WHITE);
 
                             //DrawTextureV(enemy_texture, tile_pos, WHITE);
-                            DrawRectangleV(tile_pos, tile_size, tile_col);
+                            //DrawRectangleV(tile_pos, tile_size, tile_col);
                         }
                         if (IsFlagSet(tile, TileFlag_moved)) {
                             ClearFlag(tile, TileFlag_moved);
