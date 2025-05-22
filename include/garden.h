@@ -46,9 +46,9 @@ enum Direction_Facing {
 
 struct Animation {
     Texture2D texture[10];
-    Rectangle frame_rec;
-    u32 current_frame;
     u32 max_frames;
+    u32 current_frame;
+    Rectangle frame_rec;
 };
 
 struct GameManager {
@@ -67,6 +67,7 @@ struct Tile {
     Tile_Type  type;
     u32        flags;
     u32        seed;
+    Vector2    tile_pos;
     Animation  animator;
 };
 
@@ -111,6 +112,8 @@ struct Enemy {
 
     u32 tile_index;
     Animation animator;
+    Enemy *next;
+    Enemy *prev;
 };
 
 #define STACK_MAX_SIZE 4096

@@ -67,6 +67,22 @@ void GameManagerInit(GameManager *manager) {
 
 }
 
+Enemy EnemyInit(Vector2 pos, u32 tile_index) {
+    Enemy result;
+    result.pos = pos;
+    result.tile_index = tile_index;
+    result.animator.texture[0]    = LoadTexture("../assets/sprites/enemy.png");
+    result.animator.max_frames    = (f32)result.animator.texture[0].width/20;
+    result.animator.current_frame = 0;
+    result.animator.frame_rec     = {0, 0, 
+                                     (f32)result.animator.texture[0].width/result.animator.max_frames,
+                                     (f32)result.animator.texture[0].height};
+    result.next = 0;
+    result.prev = 0;
+
+    return result;
+}
+
 void GameOver(Player *player, Tilemap *tilemap, GameManager *manager) {
     PlayerInit(player);
     if (manager->score > manager->high_score) {
@@ -146,8 +162,6 @@ void ModifyRandomTile(Tilemap *tilemap, Tile_Flags flag) {
     }
 }
 
-// TODO: Enemies aren't moving as intended, I should check this function and see 
-// if eligible tiles are being calculated correctly
 Tile *FindEligibleTile(Tilemap *tilemap, u32 index) {
     u32 right_tile   = index + 1;
     u32 left_tile    = index - 1;
@@ -342,13 +356,19 @@ int main() {
     GameManager manager;
     GameManagerInit(&manager);
 
-    b32 fire_cleared;
+    
+    b32 fire_cleared; // NOTE: Perhaps this should live in the GameManager struct???
 
     Texture2D tile_atlas          = LoadTexture("../tile_row.png");
     Texture2D powerup_texture     = LoadTexture("../assets/sprites/powerup.png");
     // TODO: Finish implementing enemy to properly animate the texture
     Texture2D enemy_texture       = LoadTexture("../assets/sprites/enemy.png");
     u32 frame_counter             = 0;
+
+    // NOTE: This is for the enemy linked list
+    Enemy enemy_sentinel = {};
+    enemy_sentinel.next = &enemy_sentinel;
+    enemy_sentinel.prev = &enemy_sentinel;
 
     RenderTexture2D target = LoadRenderTexture(base_screen_width, base_screen_height); 
     SetTargetFPS(60);
@@ -386,7 +406,7 @@ int main() {
                     for (u32 x = 0; x < map.width; x++) {
                         u32 index = TilemapIndex(x, y, map.width);
                         Tile *tile = &map.tiles[index];
-                        Vector2 tile_pos = {(float)x * map.tile_size, (float)y * map.tile_size};
+                        tile->tile_pos = {(float)x * map.tile_size, (float)y * map.tile_size};
 
                         Color tile_col;
                         switch (tile->type) {
@@ -408,31 +428,31 @@ int main() {
                         Rectangle source_rec = GetTileSourceRec(tile->type, tile->seed);
 
                         if (tile->type == TileType_grass || tile->type == TileType_dirt) {
-                            DrawTextureRec(tile_atlas, source_rec, tile_pos, WHITE);
+                            DrawTextureRec(tile_atlas, source_rec, tile->tile_pos, WHITE);
                         } else {
-                            DrawRectangleV(tile_pos, tile_size, tile_col);
+                            DrawRectangleV(tile->tile_pos, tile_size, tile_col);
                         }
                         if (IsFlagSet(tile, TileFlag_fire)) {
                             tile_col = {168, 0, 0, 255};
                             fire_cleared = false;
-                            //DrawRectangleV(tile_pos, tile_size, tile_col);
+                            //DrawRectangleV(tile->tile_pos, tile_size, tile_col);
                             Rectangle rec = GetTileSourceRec(tile->type, 1);
                             Animate(&tile->animator, frame_counter);
                             DrawTextureRec(tile->animator.texture[0], 
-                                           tile->animator.frame_rec, tile_pos, WHITE);
+                                           tile->animator.frame_rec, tile->tile_pos, WHITE);
                         }
                         if (IsFlagSet(tile, TileFlag_powerup)) {
                             tile_col = BLUE;
-                            DrawTextureV(powerup_texture, tile_pos, WHITE);
-                            //DrawRectangleV(tile_pos, tile_size, tile_col);
+                            DrawTextureV(powerup_texture, tile->tile_pos, WHITE);
+                            //DrawRectangleV(tile->tile_pos, tile_size, tile_col);
                         }
                         if (IsFlagSet(tile, TileFlag_enemy)) {
                             tile_col = YELLOW;
                             Rectangle rec = GetTileSourceRec(tile->type, 1);
-                            DrawTextureRec(enemy_texture, rec, tile_pos, WHITE);
+                            DrawTextureRec(enemy_texture, rec, tile->tile_pos, WHITE);
 
-                            //DrawTextureV(enemy_texture, tile_pos, WHITE);
-                            //DrawRectangleV(tile_pos, tile_size, tile_col);
+                            //DrawTextureV(enemy_texture, tile->tile_pos, WHITE);
+                            //DrawRectangleV(tile->tile_pos, tile_size, tile_col);
                         }
                         if (IsFlagSet(tile, TileFlag_moved)) {
                             ClearFlag(tile, TileFlag_moved);
@@ -572,6 +592,14 @@ int main() {
             } else {
                 ModifyRandomTile(&map, TileFlag_enemy);
                 manager.spawn_timer = manager.enemy_spawn_duration;
+
+                // TODO: Need to get the tile from the ModifyRandomTile function
+                Enemy new_enemy = EnemyInit(tile->tile_pos, tile_index);
+                // NOTE: Add enemy to enemy_list;
+                new_enemy.next = enemy_sentinel.next;
+                new_enemy.prev = &enemy_sentinel;
+                new_enemy.next->prev = &new_enemy;
+                new_enemy.prev->next = &new_enemy;
             }
 
             // NOTE: Enemy spawning
@@ -590,6 +618,8 @@ int main() {
                                 ClearFlag(tile, TileFlag_enemy);
                                 AddFlag(eligible_tile, TileFlag_enemy);
                                 AddFlag(eligible_tile, TileFlag_moved);
+                                // TODO: Need to find the corresponding enemy to the tile 
+                                // in the enemy list and move it's tile position accordingly
                             }
                         }
                     }
