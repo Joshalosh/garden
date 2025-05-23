@@ -145,21 +145,23 @@ void FloodFillFromPlayerPosition(Tilemap *tilemap, u32 start_x, u32 start_y) {
     }
 } 
 
-void ModifyRandomTile(Tilemap *tilemap, Tile_Flags flag) {
+u32 GetRandomEmptyTileIndex(Tilemap *tilemap) {
     bool found_empty_tile = false;
+    u32 index;
     while (!found_empty_tile) {
         u32 random_x = GetRandomValue(1, tilemap->width - 2);
         u32 random_y = GetRandomValue(1, tilemap->height - 2);
 
-        u32 index = TilemapIndex(random_x, random_y, tilemap->width);
+        index = TilemapIndex(random_x, random_y, tilemap->width);
         Tile *tile = &tilemap->tiles[index];
 
         if (!IsFlagSet(tile, TileFlag_fire) && !IsFlagSet(tile, TileFlag_powerup) && 
             !IsFlagSet(tile, TileFlag_enemy)) {
-            AddFlag(tile, flag);
             found_empty_tile = true;
         }
     }
+
+    return index;
 }
 
 Tile *FindEligibleTile(Tilemap *tilemap, u32 index) {
@@ -231,7 +233,9 @@ void CheckEnclosedAreas(Tilemap *tilemap, Player *player, u32 current_x, u32 cur
 
     if (has_flood_fill_happened) {
         while (enemy_slain) {
-            ModifyRandomTile(tilemap, TileFlag_powerup);
+            u32 tile_index = GetRandomEmptyTileIndex(tilemap);
+            Tile *tile = &tilemap->tiles[tile_index];
+            AddFlag(tile, TileFlag_powerup);
             enemy_slain--;
         }
         has_flood_fill_happened = false;
@@ -590,10 +594,12 @@ int main() {
             if (manager.spawn_timer > 0) {
                 manager.spawn_timer -= 1.0f;
             } else {
-                ModifyRandomTile(&map, TileFlag_enemy);
                 manager.spawn_timer = manager.enemy_spawn_duration;
+                u32 tile_index = GetRandomEmptyTileIndex(&map);
+                Tile *tile = &map.tiles[tile_index];
+                AddFlag(tile, TileFlag_enemy);
 
-                // TODO: Need to get the tile from the ModifyRandomTile function
+                // NOTE: Do I actually need tile_pos at all for enemies?
                 Enemy new_enemy = EnemyInit(tile->tile_pos, tile_index);
                 // NOTE: Add enemy to enemy_list;
                 new_enemy.next = enemy_sentinel.next;
