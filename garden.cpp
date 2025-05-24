@@ -102,13 +102,35 @@ Enemy *FindEnemyInList(Enemy *sentinel, u32 index)
     return enemy_to_find;
 }
 
-void GameOver(Player *player, Tilemap *tilemap, GameManager *manager) {
+void DeleteEnemyInList(Enemy *sentinel, u32 index)
+{
+    Enemy *enemy_to_delete = sentinel->next;
+    bool enemy_found = false;
+    while (enemy_to_delete != sentinel) {
+        if (enemy_to_delete->tile_index == index) {
+            enemy_to_delete->prev->next = enemy_to_delete->next;
+            enemy_to_delete->next->prev = enemy_to_delete->prev;
+            enemy_found = true;
+            break;
+        } else {
+            enemy_to_delete = enemy_to_delete->next;
+        }
+    }
+    ASSERT(enemy_found);
+}
+
+// TODO: Instead of passing the sentinel which is a global, I could maybe pack it into
+// the GameManager and then figure out the memory storage for it?
+void GameOver(Player *player, Tilemap *tilemap,  Enemy *sentinel, GameManager *manager) {
     PlayerInit(player);
     if (manager->score > manager->high_score) {
         manager->high_score = manager->score;
     }
     manager->score = 0;
     manager->state = GameState_play;
+
+    sentinel->next = sentinel;
+    sentinel->prev = sentinel;
 
     // Reset the tilemap back to it's original orientation
     for (u32 y = 0; y < tilemap->height; y++) {
@@ -216,7 +238,8 @@ u32 FindEligibleTileIndex(Tilemap *tilemap, u32 index) {
     return result;
 }
 
-void CheckEnclosedAreas(Tilemap *tilemap, Player *player, u32 current_x, u32 current_y) {
+void CheckEnclosedAreas(Tilemap *tilemap, Player *player, Enemy *sentinel, 
+                        u32 current_x, u32 current_y) {
     // Flood fill from borders to mark reachable areas
     FloodFillFromPlayerPosition(tilemap, current_x, current_y);
 
@@ -238,7 +261,7 @@ void CheckEnclosedAreas(Tilemap *tilemap, Player *player, u32 current_x, u32 cur
                         ClearFlag(tile, TileFlag_powerup);
                     }
                     if (IsFlagSet(tile, TileFlag_enemy)) {
-                        // TODO: Delete the enemy from the enemy list
+                        DeleteEnemyInList(sentinel, index);
                         ClearFlag(tile, TileFlag_enemy);
                         enemy_slain++;
                         player->speed += 10.0f;
@@ -545,11 +568,11 @@ int main() {
                             //current_tile->type = TileType_fire;
                         } 
                         else {
-                            GameOver(&player, &map, &manager);
+                            GameOver(&player, &map, &enemy_sentinel, &manager);
                         }
                     } else {
                         // Out of bounds
-                        GameOver(&player, &map, &manager);
+                        GameOver(&player, &map, &enemy_sentinel, &manager);
                     }
 
                     if (IsFlagSet(target_tile, TileFlag_powerup)) {
@@ -569,7 +592,7 @@ int main() {
                     }
 
                     if (IsFlagSet(target_tile, TileFlag_fire) || IsFlagSet(target_tile, TileFlag_enemy)) {
-                        GameOver(&player, &map, &manager);
+                        GameOver(&player, &map, &enemy_sentinel, &manager);
                     }
                 }
             } else {
@@ -585,7 +608,7 @@ int main() {
 
                     // Check for enclosed areas
                     //if (player.powerup_timer < GetTime()) {
-                        CheckEnclosedAreas(&map, &player, current_tile_x, current_tile_y);
+                        CheckEnclosedAreas(&map, &player, &enemy_sentinel, current_tile_x, current_tile_y);
                     //}
                 } else {
                     direction = VectorNorm(direction);
@@ -628,7 +651,9 @@ int main() {
                 Tile *tile = &map.tiles[tile_index];
                 AddFlag(tile, TileFlag_enemy);
 
-                // NOTE: Do I actually need tile_pos at all for enemies?
+                //TODO: I'm going to need to create persistant memory for these allocations
+                // because right now at the end of the block they potentially are freed and overwritten
+                // and become garbage values
                 Enemy new_enemy = EnemyInit(tile_index);
                 // NOTE: Add enemy to enemy_list;
                 new_enemy.next = enemy_sentinel.next;
@@ -734,7 +759,7 @@ int main() {
             input_axis = {0, 0};
         
             if (IsKeyPressed(KEY_SPACE)) {
-                GameOver(&player, &map, &manager);
+                GameOver(&player, &map, &enemy_sentinel, &manager);
             }
         }
 

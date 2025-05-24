@@ -51,18 +51,6 @@ struct Animation {
     Rectangle frame_rec;
 };
 
-struct GameManager {
-    u32 score;
-    u32 high_score;
-    Game_State state;
-
-    // Enemy controller
-    f32 enemy_spawn_duration;
-    f32 spawn_timer;
-    f32 enemy_move_duration;
-    f32 enemy_move_timer;
-};
-
 struct Tile {
     Tile_Type  type;
     u32        flags;
@@ -112,6 +100,18 @@ struct Enemy {
     Animation animator;
     Enemy *next;
     Enemy *prev;
+};
+
+struct GameManager {
+    u32 score;
+    u32 high_score;
+    Game_State state;
+
+    // Enemy controller
+    f32 enemy_spawn_duration;
+    f32 spawn_timer;
+    f32 enemy_move_duration;
+    f32 enemy_move_timer;
 };
 
 #define STACK_MAX_SIZE 4096
