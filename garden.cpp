@@ -67,19 +67,16 @@ void GameManagerInit(GameManager *manager) {
 
 }
 
-Enemy EnemyInit(u32 tile_index) {
-    Enemy result;
-    result.tile_index = tile_index;
-    result.animator.texture[0]    = LoadTexture("../assets/sprites/enemy.png");
-    result.animator.max_frames    = (f32)result.animator.texture[0].width/20;
-    result.animator.current_frame = 0;
-    result.animator.frame_rec     = {0, 0, 
-                                     (f32)result.animator.texture[0].width/result.animator.max_frames,
-                                     (f32)result.animator.texture[0].height};
-    result.next = 0;
-    result.prev = 0;
-
-    return result;
+void EnemyInit(Enemy *enemy, u32 tile_index) {
+    enemy->tile_index = tile_index;
+    enemy->animator.texture[0]    = LoadTexture("../assets/sprites/enemy.png");
+    enemy->animator.max_frames    = (f32)enemy->animator.texture[0].width/20;
+    enemy->animator.current_frame = 0;
+    enemy->animator.frame_rec     = {0, 0, 
+                                     (f32)enemy->animator.texture[0].width/enemy->animator.max_frames,
+                                     (f32)enemy->animator.texture[0].height};
+    enemy->next = 0;
+    enemy->prev = 0;
 }
 
 Enemy *FindEnemyInList(Enemy *sentinel, u32 index)
@@ -412,6 +409,10 @@ int main() {
     Texture2D enemy_texture       = LoadTexture("../assets/sprites/enemy.png");
     u32 frame_counter             = 0;
 
+    Memory_Arena arena;
+    size_t arena_size = 1024*1024;
+    ArenaInit(&arena, arena_size); 
+
     // NOTE: This is for the enemy linked list
     Enemy enemy_sentinel = {};
     enemy_sentinel.next = &enemy_sentinel;
@@ -654,12 +655,13 @@ int main() {
                 //TODO: I'm going to need to create persistant memory for these allocations
                 // because right now at the end of the block they potentially are freed and overwritten
                 // and become garbage values
-                Enemy new_enemy = EnemyInit(tile_index);
+                Enemy *new_enemy = (Enemy *)ArenaAlloc(&arena, sizeof(Enemy));
+                EnemyInit(new_enemy, tile_index);
                 // NOTE: Add enemy to enemy_list;
-                new_enemy.next = enemy_sentinel.next;
-                new_enemy.prev = &enemy_sentinel;
-                new_enemy.next->prev = &new_enemy;
-                new_enemy.prev->next = &new_enemy;
+                new_enemy->next       = enemy_sentinel.next;
+                new_enemy->prev       = &enemy_sentinel;
+                new_enemy->next->prev = new_enemy;
+                new_enemy->prev->next = new_enemy;
             }
 
             // NOTE: Enemy spawning
