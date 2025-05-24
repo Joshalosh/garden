@@ -108,8 +108,6 @@ struct Player {
 };
 
 struct Enemy {
-    Vector2 pos;
-
     u32 tile_index;
     Animation animator;
     Enemy *next;

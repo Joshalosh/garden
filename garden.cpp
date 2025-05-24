@@ -67,9 +67,8 @@ void GameManagerInit(GameManager *manager) {
 
 }
 
-Enemy EnemyInit(Vector2 pos, u32 tile_index) {
+Enemy EnemyInit(u32 tile_index) {
     Enemy result;
-    result.pos = pos;
     result.tile_index = tile_index;
     result.animator.texture[0]    = LoadTexture("../assets/sprites/enemy.png");
     result.animator.max_frames    = (f32)result.animator.texture[0].width/20;
@@ -81,6 +80,26 @@ Enemy EnemyInit(Vector2 pos, u32 tile_index) {
     result.prev = 0;
 
     return result;
+}
+
+Enemy *FindEnemyInList(Enemy *sentinel, u32 index)
+{
+    Enemy *enemy_to_find = sentinel->next;
+    bool enemy_found = false;
+    while (enemy_to_find != sentinel) {
+        if (enemy_to_find->tile_index == index) {
+            enemy_found = true;
+            break;
+        } else {
+            enemy_to_find = enemy_to_find->next;
+        }
+    }
+
+    if (!enemy_found) {
+        enemy_to_find = NULL;
+    }
+
+    return enemy_to_find;
 }
 
 void GameOver(Player *player, Tilemap *tilemap, GameManager *manager) {
@@ -164,7 +183,8 @@ u32 GetRandomEmptyTileIndex(Tilemap *tilemap) {
     return index;
 }
 
-Tile *FindEligibleTile(Tilemap *tilemap, u32 index) {
+// TODO: Perhaps I need to turn this into finding an eligible tile index for enemy movement
+u32 FindEligibleTileIndex(Tilemap *tilemap, u32 index) {
     u32 right_tile   = index + 1;
     u32 left_tile    = index - 1;
     u32 bottom_tile  = index + tilemap->width;
@@ -173,10 +193,10 @@ Tile *FindEligibleTile(Tilemap *tilemap, u32 index) {
     u32 adjacent_tile_indexes[ADJACENT_COUNT] = {right_tile, left_tile, bottom_tile, top_tile};
     u32 eligible_tiles[ADJACENT_COUNT] = {};
     u32 eligible_count = 0;
-    Tile *tile;
+    u32 result = 0;
 
     for (int adjacent_index = 0; adjacent_index < ARRAY_COUNT(adjacent_tile_indexes); adjacent_index++) {
-        tile = &tilemap->tiles[adjacent_tile_indexes[adjacent_index]];
+        Tile *tile = &tilemap->tiles[adjacent_tile_indexes[adjacent_index]];
 
         if(tile->type == TileType_grass || tile->type == TileType_dirt) {
             if (!IsFlagSet(tile, TileFlag_fire) && !IsFlagSet(tile, TileFlag_powerup) && 
@@ -187,14 +207,13 @@ Tile *FindEligibleTile(Tilemap *tilemap, u32 index) {
         }
     }
 
-    tile = NULL;
     if (eligible_count) {
         u32 eligible_index = eligible_count - 1;
         u32 random_index = GetRandomValue(0, eligible_index);
-        tile = &tilemap->tiles[eligible_tiles[random_index]];
+        result = eligible_tiles[random_index];
     }
 
-    return tile;
+    return result;
 }
 
 void CheckEnclosedAreas(Tilemap *tilemap, Player *player, u32 current_x, u32 current_y) {
@@ -219,6 +238,7 @@ void CheckEnclosedAreas(Tilemap *tilemap, Player *player, u32 current_x, u32 cur
                         ClearFlag(tile, TileFlag_powerup);
                     }
                     if (IsFlagSet(tile, TileFlag_enemy)) {
+                        // TODO: Delete the enemy from the enemy list
                         ClearFlag(tile, TileFlag_enemy);
                         enemy_slain++;
                         player->speed += 10.0f;
@@ -451,9 +471,18 @@ int main() {
                             //DrawRectangleV(tile->tile_pos, tile_size, tile_col);
                         }
                         if (IsFlagSet(tile, TileFlag_enemy)) {
+                            Enemy *found_enemy = FindEnemyInList(&enemy_sentinel, index);
+                            if (found_enemy) {
+                                Animate(&found_enemy->animator, frame_counter);
+                                DrawTextureRec(found_enemy->animator.texture[0],
+                                               found_enemy->animator.frame_rec, tile->tile_pos, WHITE);
+                            }
+
+#if 0
                             tile_col = YELLOW;
                             Rectangle rec = GetTileSourceRec(tile->type, 1);
                             DrawTextureRec(enemy_texture, rec, tile->tile_pos, WHITE);
+#endif
 
                             //DrawTextureV(enemy_texture, tile->tile_pos, WHITE);
                             //DrawRectangleV(tile->tile_pos, tile_size, tile_col);
@@ -600,7 +629,7 @@ int main() {
                 AddFlag(tile, TileFlag_enemy);
 
                 // NOTE: Do I actually need tile_pos at all for enemies?
-                Enemy new_enemy = EnemyInit(tile->tile_pos, tile_index);
+                Enemy new_enemy = EnemyInit(tile_index);
                 // NOTE: Add enemy to enemy_list;
                 new_enemy.next = enemy_sentinel.next;
                 new_enemy.prev = &enemy_sentinel;
@@ -618,9 +647,14 @@ int main() {
                         Tile *tile = &map.tiles[tile_index];
 
                         if (IsFlagSet(tile, TileFlag_enemy) && !IsFlagSet(tile, TileFlag_moved)) {
-                            Tile *eligible_tile = FindEligibleTile(&map, tile_index); 
+                            u32 eligible_tile_index = FindEligibleTileIndex(&map, tile_index); 
+                            Tile *eligible_tile = &map.tiles[eligible_tile_index];
 
-                            if (eligible_tile) {
+                            if (eligible_tile_index) {
+                                Enemy *found_enemy = FindEnemyInList(&enemy_sentinel, tile_index);
+                                if (found_enemy) {
+                                    found_enemy->tile_index = eligible_tile_index;
+                                }
                                 ClearFlag(tile, TileFlag_enemy);
                                 AddFlag(eligible_tile, TileFlag_enemy);
                                 AddFlag(eligible_tile, TileFlag_moved);
