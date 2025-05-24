@@ -405,8 +405,6 @@ int main() {
 
     Texture2D tile_atlas          = LoadTexture("../tile_row.png");
     Texture2D powerup_texture     = LoadTexture("../assets/sprites/powerup.png");
-    // TODO: Finish implementing enemy to properly animate the texture
-    Texture2D enemy_texture       = LoadTexture("../assets/sprites/enemy.png");
     u32 frame_counter             = 0;
 
     Memory_Arena arena;
@@ -414,6 +412,8 @@ int main() {
     ArenaInit(&arena, arena_size); 
 
     // NOTE: This is for the enemy linked list
+    // TODO: Perhaps the sentinel should also be in the arena to be closer 
+    // in memory to the other enemies?
     Enemy enemy_sentinel = {};
     enemy_sentinel.next = &enemy_sentinel;
     enemy_sentinel.prev = &enemy_sentinel;
