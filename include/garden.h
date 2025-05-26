@@ -42,6 +42,7 @@ enum Direction_Facing {
     DirectionFacing_up,
     DirectionFacing_left,
     DirectionFacing_right,
+    DirectionFacing_none,
 };
 
 struct Animation {
@@ -91,8 +92,7 @@ struct Player {
 
     Animation animator;
     Direction_Facing facing;
-    Input_Buffer input_buffer;
-
+    Direction_Facing queued_facing;
 };
 
 struct Enemy {

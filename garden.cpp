@@ -39,20 +39,19 @@ u32 TilemapIndex(u32 x, u32 y, u32 width) {
 }
 
 void PlayerInit(Player *player) {
-    player->pos                = {base_screen_width*0.5, base_screen_height*0.5};
-    player->target_pos         = player->pos;
-    player->size               = {20, 20};
-    player->col                = WHITE;
-    player->speed              = 75.0f;
-    player->is_moving          = false;
-    player->powered_up         = false;
-    player->powerup_timer      = 0;
-    player->blink_speed        = 0;
-    player->blink_time         = 0;
-    player->col_bool           = false;
-    player->input_buffer.start = 0;
-    player->input_buffer.end   = 0;
-    //player->facing           = DirectionFacing_down;
+    player->pos           = {base_screen_width*0.5, base_screen_height*0.5};
+    player->target_pos    = player->pos;
+    player->size          = {20, 20};
+    player->col           = WHITE;
+    player->speed         = 75.0f;
+    player->is_moving     = false;
+    player->powered_up    = false;
+    player->powerup_timer = 0;
+    player->blink_speed   = 0;
+    player->blink_time    = 0;
+    player->col_bool      = false;
+    player->facing        = DirectionFacing_down;
+    player->queued_facing = DirectionFacing_none;
 }
 
 void GameManagerInit(GameManager *manager) {
@@ -312,6 +311,7 @@ void Animate(Animation *animator, u32 frame_counter, u32 facing = 0) {
                            animator->max_frames);
 }
 
+#if 0
 // TODO: Finish implementing input buffer for player handling
 void AddToBuffer(Player *player) {
     if ((player->input_buffer.end + 1) % INPUT_MAX != player->input_buffer.start) {
@@ -327,6 +327,7 @@ void ProcessInputBuffer(Player *player) {
         player->input_buffer.start = (player->input_buffer.start + 1) % INPUT_MAX;
     }
 }
+#endif
 
 int main() {
     // -------------------------------------
@@ -518,6 +519,7 @@ int main() {
                 }
             }
 
+#if 0
             if ((IsKeyDown(KEY_RIGHT) || IsKeyDown(KEY_D)) && player.facing != DirectionFacing_left) {
                 input_axis = {1.0f, 0};
                 player.facing = DirectionFacing_right;
@@ -534,11 +536,35 @@ int main() {
                 input_axis = {0, 1.0f}; 
                 player.facing = DirectionFacing_down;
             }
+#endif
+            if (IsKeyPressed(KEY_UP)    || IsKeyPressed(KEY_W)) player.queued_facing = DirectionFacing_up;
+            if (IsKeyPressed(KEY_DOWN)  || IsKeyPressed(KEY_S)) player.queued_facing = DirectionFacing_down;
+            if (IsKeyPressed(KEY_LEFT)  || IsKeyPressed(KEY_A)) player.queued_facing = DirectionFacing_left;
+            if (IsKeyPressed(KEY_RIGHT) || IsKeyPressed(KEY_D)) player.queued_facing = DirectionFacing_right;
+
+            if ((player.facing == DirectionFacing_up    && player.queued_facing == DirectionFacing_down) ||
+                (player.facing == DirectionFacing_down  && player.queued_facing == DirectionFacing_up)   ||
+                (player.facing == DirectionFacing_left  && player.queued_facing == DirectionFacing_right)||
+                (player.facing == DirectionFacing_right && player.queued_facing == DirectionFacing_left)) {
+                    player.queued_facing = DirectionFacing_none;
+            }
 
             // - New player movement
             if (!player.is_moving) {
+                Direction_Facing dir = (player.queued_facing != DirectionFacing_none) ? 
+                                      player.queued_facing : player.facing;
 
-                if (input_axis.x != 0 || input_axis.y != 0) {
+                Vector2 input_axis = {0, 0};
+                switch (dir) {
+                    case DirectionFacing_up:    input_axis = { 0,-1}; break;
+                    case DirectionFacing_down:  input_axis = { 0, 1}; break;
+                    case DirectionFacing_left:  input_axis = {-1, 0}; break;
+                    case DirectionFacing_right: input_axis = { 1, 0}; break;
+                    default: break;
+                }
+                
+
+                if (input_axis.x || input_axis.y) {
                     // NOTE: Calculate the next tile position
                     s32 current_tile_x = (u32)player.pos.x / map.tile_size;
                     s32 current_tile_y = (u32)player.pos.y / map.tile_size;
@@ -560,6 +586,7 @@ int main() {
                             // Start moving
                             player.target_pos = {(float)target_tile_x * map.tile_size, (float)target_tile_y * map.tile_size};
                             player.is_moving  = true;
+                            player.queued_facing = DirectionFacing_none;
 
                             u32 current_tile_index = TilemapIndex(current_tile_x, current_tile_y, map.width);
                             Tile *current_tile = &map.tiles[current_tile_index];
@@ -578,10 +605,10 @@ int main() {
 
                     if (IsFlagSet(target_tile, TileFlag_powerup)) {
                         float powerup_duration = 10.0f;
-                        player.powerup_timer = GetTime() + powerup_duration;
-                        player.powered_up  = true;
-                        player.blink_speed = 5.0f;
-                        player.blink_time  = player.blink_speed;
+                        player.powerup_timer   = GetTime() + powerup_duration;
+                        player.powered_up      = true;
+                        player.blink_speed     = 5.0f;
+                        player.blink_time      = player.blink_speed;
                         ClearFlag(target_tile, TileFlag_powerup);
                     }
 
