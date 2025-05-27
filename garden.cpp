@@ -362,7 +362,7 @@ int main() {
     u32 original_map[TILEMAP_HEIGHT][TILEMAP_WIDTH];
     Tile tiles[TILEMAP_HEIGHT][TILEMAP_WIDTH];
 
-    Texture2D fire_texture        = LoadTexture("../assets/sprites/fire.png");
+    Texture2D fire_texture       = LoadTexture("../assets/sprites/fire.png");
     Animation fire_animator;
     fire_animator.texture[0]     = fire_texture;
     fire_animator.max_frames     = (f32)fire_animator.texture[0].width/20;
@@ -537,10 +537,10 @@ int main() {
                 player.facing = DirectionFacing_down;
             }
 #endif
-            if (IsKeyPressed(KEY_UP)    || IsKeyPressed(KEY_W)) player.queued_facing = DirectionFacing_up;
-            if (IsKeyPressed(KEY_DOWN)  || IsKeyPressed(KEY_S)) player.queued_facing = DirectionFacing_down;
-            if (IsKeyPressed(KEY_LEFT)  || IsKeyPressed(KEY_A)) player.queued_facing = DirectionFacing_left;
-            if (IsKeyPressed(KEY_RIGHT) || IsKeyPressed(KEY_D)) player.queued_facing = DirectionFacing_right;
+            if (IsKeyDown(KEY_UP)    || IsKeyDown(KEY_W)) player.queued_facing = DirectionFacing_up;
+            if (IsKeyDown(KEY_DOWN)  || IsKeyDown(KEY_S)) player.queued_facing = DirectionFacing_down;
+            if (IsKeyDown(KEY_LEFT)  || IsKeyDown(KEY_A)) player.queued_facing = DirectionFacing_left;
+            if (IsKeyDown(KEY_RIGHT) || IsKeyDown(KEY_D)) player.queued_facing = DirectionFacing_right;
 
             if ((player.facing == DirectionFacing_up    && player.queued_facing == DirectionFacing_down) ||
                 (player.facing == DirectionFacing_down  && player.queued_facing == DirectionFacing_up)   ||
@@ -584,9 +584,10 @@ int main() {
                             target_tile->type != TileType_fire) {
                             
                             // Start moving
+                            player.facing = dir;
+                            player.queued_facing = DirectionFacing_none;
                             player.target_pos = {(float)target_tile_x * map.tile_size, (float)target_tile_y * map.tile_size};
                             player.is_moving  = true;
-                            player.queued_facing = DirectionFacing_none;
 
                             u32 current_tile_index = TilemapIndex(current_tile_x, current_tile_y, map.width);
                             Tile *current_tile = &map.tiles[current_tile_index];
@@ -628,8 +629,8 @@ int main() {
                 Vector2 direction = VectorSub(player.target_pos, player.pos);
                 float distance    = Length(direction);
                 if (distance <= player.speed * delta_t) {
-                    player.pos = player.target_pos;
-                    player.is_moving  = false;
+                    player.pos       = player.target_pos;
+                    player.is_moving = false;
 
                     u32 current_tile_x = (u32)player.pos.x / map.tile_size;
                     u32 current_tile_y = (u32)player.pos.y / map.tile_size;
@@ -679,9 +680,6 @@ int main() {
                 Tile *tile = &map.tiles[tile_index];
                 AddFlag(tile, TileFlag_enemy);
 
-                //TODO: I'm going to need to create persistant memory for these allocations
-                // because right now at the end of the block they potentially are freed and overwritten
-                // and become garbage values
                 Enemy *new_enemy = (Enemy *)ArenaAlloc(&arena, sizeof(Enemy));
                 EnemyInit(new_enemy, tile_index);
                 // NOTE: Add enemy to enemy_list;
@@ -712,8 +710,6 @@ int main() {
                                 ClearFlag(tile, TileFlag_enemy);
                                 AddFlag(eligible_tile, TileFlag_enemy);
                                 AddFlag(eligible_tile, TileFlag_moved);
-                                // TODO: Need to find the corresponding enemy to the tile 
-                                // in the enemy list and move it's tile position accordingly
                             }
                         }
                     }
