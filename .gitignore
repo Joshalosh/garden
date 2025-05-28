@@ -14,5 +14,5 @@
 *.sln
 
 # Ignore all png files
-*.png
+# *.png
 

@@ -2,6 +2,7 @@
 - Player
   - Stop movement in opposite direction with quick button presses from happening.
   - Implement water coming from player to douse fire.
+  - Make enemy not appear in the tile right next to player.
 
 - UI
   - Fix win screen.

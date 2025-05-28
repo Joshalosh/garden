@@ -311,23 +311,12 @@ void Animate(Animation *animator, u32 frame_counter, u32 facing = 0) {
                            animator->max_frames);
 }
 
-#if 0
-// TODO: Finish implementing input buffer for player handling
-void AddToBuffer(Player *player) {
-    if ((player->input_buffer.end + 1) % INPUT_MAX != player->input_buffer.start) {
-        player->input_buffer.inputs[player->input_buffer.end] = player->facing;
-        player->input_buffer.end = (player->input_buffer.end + 1) % INPUT_MAX;
-    }
+void GatherInput(Player *player) {
+            if (IsKeyDown(KEY_UP)    || IsKeyDown(KEY_W)) {player->queued_facing = DirectionFacing_up;    return;}
+            if (IsKeyDown(KEY_DOWN)  || IsKeyDown(KEY_S)) {player->queued_facing = DirectionFacing_down;  return;}
+            if (IsKeyDown(KEY_LEFT)  || IsKeyDown(KEY_A)) {player->queued_facing = DirectionFacing_left;  return;}
+            if (IsKeyDown(KEY_RIGHT) || IsKeyDown(KEY_D)) {player->queued_facing = DirectionFacing_right; return;}
 }
-
-void ProcessInputBuffer(Player *player) {
-    if (player->input_buffer.start != player->input_buffer.end) {
-        Direction_Facing next_direction = player->input_buffer.inputs[player->input_buffer.start];
-        player->facing = next_direction;
-        player->input_buffer.start = (player->input_buffer.start + 1) % INPUT_MAX;
-    }
-}
-#endif
 
 int main() {
     // -------------------------------------
@@ -404,7 +393,7 @@ int main() {
     
     b32 fire_cleared; // NOTE: Perhaps this should live in the GameManager struct???
 
-    Texture2D tile_atlas          = LoadTexture("../tile_row.png");
+    Texture2D tile_atlas          = LoadTexture("../assets/tiles/tile_row.png");
     Texture2D powerup_texture     = LoadTexture("../assets/sprites/powerup.png");
     u32 frame_counter             = 0;
 
@@ -537,17 +526,16 @@ int main() {
                 player.facing = DirectionFacing_down;
             }
 #endif
-            if (IsKeyDown(KEY_UP)    || IsKeyDown(KEY_W)) player.queued_facing = DirectionFacing_up;
-            if (IsKeyDown(KEY_DOWN)  || IsKeyDown(KEY_S)) player.queued_facing = DirectionFacing_down;
-            if (IsKeyDown(KEY_LEFT)  || IsKeyDown(KEY_A)) player.queued_facing = DirectionFacing_left;
-            if (IsKeyDown(KEY_RIGHT) || IsKeyDown(KEY_D)) player.queued_facing = DirectionFacing_right;
+            GatherInput(&player);
 
+#if 0
             if ((player.facing == DirectionFacing_up    && player.queued_facing == DirectionFacing_down) ||
                 (player.facing == DirectionFacing_down  && player.queued_facing == DirectionFacing_up)   ||
                 (player.facing == DirectionFacing_left  && player.queued_facing == DirectionFacing_right)||
                 (player.facing == DirectionFacing_right && player.queued_facing == DirectionFacing_left)) {
                     player.queued_facing = DirectionFacing_none;
             }
+#endif
 
             // - New player movement
             if (!player.is_moving) {
