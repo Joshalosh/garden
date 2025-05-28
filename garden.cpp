@@ -528,14 +528,12 @@ int main() {
 #endif
             GatherInput(&player);
 
-#if 0
             if ((player.facing == DirectionFacing_up    && player.queued_facing == DirectionFacing_down) ||
                 (player.facing == DirectionFacing_down  && player.queued_facing == DirectionFacing_up)   ||
                 (player.facing == DirectionFacing_left  && player.queued_facing == DirectionFacing_right)||
                 (player.facing == DirectionFacing_right && player.queued_facing == DirectionFacing_left)) {
                     player.queued_facing = DirectionFacing_none;
             }
-#endif
 
             // - New player movement
             if (!player.is_moving) {
