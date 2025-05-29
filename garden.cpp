@@ -51,7 +51,11 @@ void PlayerInit(Player *player) {
     player->blink_time    = 0;
     player->col_bool      = false;
     player->facing        = DirectionFacing_down;
-    player->queued_facing = DirectionFacing_none;
+    //player->queued_facing = DirectionFacing_none;
+    player->input_buffer->inputs  = {};
+    player->input_buffer->start = 0;
+    player->input_buffer->end   = 0;
+
 }
 
 void GameManagerInit(GameManager *manager) {
@@ -317,6 +321,36 @@ void GatherInput(Player *player) {
             if (IsKeyDown(KEY_LEFT)  || IsKeyDown(KEY_A)) {player->queued_facing = DirectionFacing_left;  return;}
             if (IsKeyDown(KEY_RIGHT) || IsKeyDown(KEY_D)) {player->queued_facing = DirectionFacing_right; return;}
 }
+
+// TODO: Maybe make these functions take the input buffer as the argument 
+// instead of the player
+inline bool InputBufferEmpty(Player *player) {
+    bool result = player->input_buffer->start == player->input_buffer->end;
+    return result;
+}
+
+inline bool InputBufferFull(Player *player) {
+    bool result = ((player->input_buffer->end + 1) % INPUT_MAX) == q->start;
+    return result;
+}
+
+void InputBufferPush(Player *player, Direction_Facing dir) {
+    if (!InputBufferFull(player)) {
+
+        player->input_buffer->inputs[player->input_buffer->end] = dir;
+        player->input_buffer->end = (player->input_buffer->end + 1) % INPUT_MAX;
+    }
+}
+
+Direction_Facing InputBufferPop(Player *player) {
+    Direction_Facing result = DirectionFacing_none;
+    if(!InputBufferEmpty(player)) {
+        result = player->input_buffer->inputs[player->input_buffer->start];
+        player->input_buffer->head = (player->input_buffer->head + 1) % INPUT_MAX;
+    }
+    return result;
+}
+
 
 int main() {
     // -------------------------------------
