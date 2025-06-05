@@ -90,9 +90,10 @@ struct Player {
     bool      powered_up;
     bool      col_bool;
 
-    Animation animator;
+    Animation        animator;
     Direction_Facing facing;
-    Direction_Facing queued_facing;
+    Input_Buffer     input_buffer;
+    //Direction_Facing queued_facing;
 };
 
 struct Enemy {

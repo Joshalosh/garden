@@ -52,9 +52,9 @@ void PlayerInit(Player *player) {
     player->col_bool      = false;
     player->facing        = DirectionFacing_down;
     //player->queued_facing = DirectionFacing_none;
-    player->input_buffer->inputs  = {};
-    player->input_buffer->start = 0;
-    player->input_buffer->end   = 0;
+    //player->input_buffer.inputs  = {};
+    player->input_buffer.start = 0;
+    player->input_buffer.end   = 0;
 
 }
 
@@ -315,40 +315,62 @@ void Animate(Animation *animator, u32 frame_counter, u32 facing = 0) {
                            animator->max_frames);
 }
 
-void GatherInput(Player *player) {
-            if (IsKeyDown(KEY_UP)    || IsKeyDown(KEY_W)) {player->queued_facing = DirectionFacing_up;    return;}
-            if (IsKeyDown(KEY_DOWN)  || IsKeyDown(KEY_S)) {player->queued_facing = DirectionFacing_down;  return;}
-            if (IsKeyDown(KEY_LEFT)  || IsKeyDown(KEY_A)) {player->queued_facing = DirectionFacing_left;  return;}
-            if (IsKeyDown(KEY_RIGHT) || IsKeyDown(KEY_D)) {player->queued_facing = DirectionFacing_right; return;}
-}
-
 // TODO: Maybe make these functions take the input buffer as the argument 
 // instead of the player
 inline bool InputBufferEmpty(Player *player) {
-    bool result = player->input_buffer->start == player->input_buffer->end;
+    bool result = player->input_buffer.start == player->input_buffer.end;
     return result;
 }
 
 inline bool InputBufferFull(Player *player) {
-    bool result = ((player->input_buffer->end + 1) % INPUT_MAX) == q->start;
+    bool result = ((player->input_buffer.end + 1) % INPUT_MAX) == player->input_buffer.start;
     return result;
 }
 
 void InputBufferPush(Player *player, Direction_Facing dir) {
     if (!InputBufferFull(player)) {
 
-        player->input_buffer->inputs[player->input_buffer->end] = dir;
-        player->input_buffer->end = (player->input_buffer->end + 1) % INPUT_MAX;
+        player->input_buffer.inputs[player->input_buffer.end] = dir;
+        player->input_buffer.end = (player->input_buffer.end + 1) % INPUT_MAX;
     }
 }
 
 Direction_Facing InputBufferPop(Player *player) {
     Direction_Facing result = DirectionFacing_none;
     if(!InputBufferEmpty(player)) {
-        result = player->input_buffer->inputs[player->input_buffer->start];
-        player->input_buffer->head = (player->input_buffer->head + 1) % INPUT_MAX;
+        result = player->input_buffer.inputs[player->input_buffer.start];
+        player->input_buffer.start = (player->input_buffer.start + 1) % INPUT_MAX;
     }
     return result;
+}
+
+Direction_Facing KeyToDirection(s32 key) {
+    Direction_Facing result;
+    switch(key) {
+        case KEY_UP:    case KEY_W: result = DirectionFacing_up;    break;
+        case KEY_DOWN:  case KEY_S: result = DirectionFacing_down;  break;
+        case KEY_LEFT:  case KEY_A: result = DirectionFacing_left;  break;
+        case KEY_RIGHT: case KEY_D: result = DirectionFacing_right; break;
+        default:                    result = DirectionFacing_none;  break;
+    }
+    return result;
+}
+
+void GatherInput(Player *player) {
+    s32 key;
+    while ((key = GetKeyPressed()) != 0) {
+        Direction_Facing dir = KeyToDirection(key);
+        if (dir = DirectionFacing_none) continue;
+
+        if ((player->facing == DirectionFacing_up    && dir == DirectionFacing_down) ||
+            (player->facing == DirectionFacing_down  && dir == DirectionFacing_up)   ||
+            (player->facing == DirectionFacing_left  && dir == DirectionFacing_right)||
+            (player->facing == DirectionFacing_right && dir == DirectionFacing_left)) {
+            continue;
+        }
+
+        InputBufferPush(player, dir);
+    }
 }
 
 
@@ -561,13 +583,6 @@ int main() {
             }
 #endif
             GatherInput(&player);
-
-            if ((player.facing == DirectionFacing_up    && player.queued_facing == DirectionFacing_down) ||
-                (player.facing == DirectionFacing_down  && player.queued_facing == DirectionFacing_up)   ||
-                (player.facing == DirectionFacing_left  && player.queued_facing == DirectionFacing_right)||
-                (player.facing == DirectionFacing_right && player.queued_facing == DirectionFacing_left)) {
-                    player.queued_facing = DirectionFacing_none;
-            }
 
             // - New player movement
             if (!player.is_moving) {
