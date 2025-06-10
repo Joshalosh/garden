@@ -52,7 +52,9 @@ void PlayerInit(Player *player) {
     player->col_bool      = false;
     player->facing        = DirectionFacing_down;
     //player->queued_facing = DirectionFacing_none;
-    //player->input_buffer.inputs  = {};
+    for(u32 index = 0; index < INPUT_MAX; index++) {
+        player->input_buffer.inputs[index] = DirectionFacing_down;
+    }
     player->input_buffer.start = 0;
     player->input_buffer.end   = 0;
 
@@ -360,7 +362,7 @@ void GatherInput(Player *player) {
     s32 key;
     while ((key = GetKeyPressed()) != 0) {
         Direction_Facing dir = KeyToDirection(key);
-        if (dir = DirectionFacing_none) continue;
+        if (dir == DirectionFacing_none) continue;
 
         if ((player->facing == DirectionFacing_up    && dir == DirectionFacing_down) ||
             (player->facing == DirectionFacing_down  && dir == DirectionFacing_up)   ||
@@ -586,8 +588,8 @@ int main() {
 
             // - New player movement
             if (!player.is_moving) {
-                Direction_Facing dir = (player.queued_facing != DirectionFacing_none) ? 
-                                      player.queued_facing : player.facing;
+                Direction_Facing dir = InputBufferPop(&player);
+                if (dir == DirectionFacing_none) dir = player.facing;
 
                 Vector2 input_axis = {0, 0};
                 switch (dir) {
@@ -620,7 +622,7 @@ int main() {
                             
                             // Start moving
                             player.facing = dir;
-                            player.queued_facing = DirectionFacing_none;
+                            //player.queued_facing = DirectionFacing_none;
                             player.target_pos = {(float)target_tile_x * map.tile_size, (float)target_tile_y * map.tile_size};
                             player.is_moving  = true;
 
