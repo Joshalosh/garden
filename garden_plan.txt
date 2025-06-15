@@ -1,14 +1,11 @@
 
 - Player
-  - Stop movement in opposite direction with quick button presses from happening.
   - Implement water coming from player to douse fire.
-  - Make enemy not appear in the tile right next to player.
 
 - UI
   - Fix win screen.
 
 - Art Assets
-  - Implement enemy sprites and animation.
   - Create wall sprites.
   
 - Audio
@@ -26,8 +23,8 @@
    - Win?
   
 - Juice
-  - Add camera shake
-  - Figure our better scoring system
+ - Add camera shake
+ - Figure our better scoring system
 
 - Refactor
  - Fix get tile rect function to not do multiple things

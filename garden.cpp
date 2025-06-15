@@ -190,8 +190,10 @@ void FloodFillFromPlayerPosition(Tilemap *tilemap, u32 start_x, u32 start_y) {
 
 u32 GetRandomEmptyTileIndex(Tilemap *tilemap) {
     bool found_empty_tile = false;
-    u32 index;
-    while (!found_empty_tile) {
+    u32 index             = 0;
+    u32 attempts          = 10;
+
+    while (!found_empty_tile && attempts != 0) {
         u32 random_x = GetRandomValue(1, tilemap->width - 2);
         u32 random_y = GetRandomValue(1, tilemap->height - 2);
 
@@ -201,14 +203,48 @@ u32 GetRandomEmptyTileIndex(Tilemap *tilemap) {
         if (!IsFlagSet(tile, TileFlag_fire) && !IsFlagSet(tile, TileFlag_powerup) && 
             !IsFlagSet(tile, TileFlag_enemy)) {
             found_empty_tile = true;
+        } else {
+            attempts--;
+            index = 0;
         }
     }
 
     return index;
 }
 
-// TODO: Perhaps I need to turn this into finding an eligible tile index for enemy movement
-u32 FindEligibleTileIndex(Tilemap *tilemap, u32 index) {
+u32 GetRandomEmptyTileIndex(Tilemap *tilemap, u32 tile_index) {
+    bool found_empty_tile = false;
+    u32 index             = 0;
+    u32 attempts          = 10;
+
+    u32 right_tile  = tile_index + 1;
+    u32 left_tile   = tile_index - 1;
+    u32 bottom_tile = tile_index + tilemap->width;
+    u32 top_tile    = tile_index - tilemap->height;
+
+    while (!found_empty_tile && attempts != 0) {
+        u32 random_x = GetRandomValue(1, tilemap->width - 2);
+        u32 random_y = GetRandomValue(1, tilemap->height - 2);
+
+        index = TilemapIndex(random_x, random_y, tilemap->width);
+        Tile *tile = &tilemap->tiles[index];
+
+        if (!IsFlagSet(tile, TileFlag_fire) && !IsFlagSet(tile, TileFlag_powerup) && 
+            !IsFlagSet(tile, TileFlag_enemy)) {
+            if (index != right_tile  && index != left_tile &&
+                index != bottom_tile && index != top_tile) {
+                found_empty_tile = true;
+            } else {
+                attempts--;
+                index = 0;
+            }
+        }
+    }
+
+    return index;
+}
+
+u32 FindEligibleTileIndexForEnemyMove(Tilemap *tilemap, u32 index) {
     u32 right_tile   = index + 1;
     u32 left_tile    = index - 1;
     u32 bottom_tile  = index + tilemap->width;
@@ -279,9 +315,11 @@ void CheckEnclosedAreas(Tilemap *tilemap, Player *player, Enemy *sentinel,
     if (has_flood_fill_happened) {
         while (enemy_slain) {
             u32 tile_index = GetRandomEmptyTileIndex(tilemap);
-            Tile *tile = &tilemap->tiles[tile_index];
-            AddFlag(tile, TileFlag_powerup);
-            enemy_slain--;
+            if (tile_index) {
+                Tile *tile = &tilemap->tiles[tile_index];
+                AddFlag(tile, TileFlag_powerup);
+                enemy_slain--;
+            }
         }
         has_flood_fill_happened = false;
     }
@@ -631,7 +669,6 @@ int main() {
                             if (!player.powered_up) {
                                 AddFlag(current_tile, TileFlag_fire);
                             }
-                            //current_tile->type = TileType_fire;
                         } 
                         else {
                             GameOver(&player, &map, &enemy_sentinel, &manager);
@@ -662,7 +699,7 @@ int main() {
                     }
                 }
             } else {
-                // MOTE: Move towards target position
+                // Move towards target position
                 Vector2 direction = VectorSub(player.target_pos, player.pos);
                 float distance    = Length(direction);
                 if (distance <= player.speed * delta_t) {
@@ -672,10 +709,7 @@ int main() {
                     u32 current_tile_x = (u32)player.pos.x / map.tile_size;
                     u32 current_tile_y = (u32)player.pos.y / map.tile_size;
 
-                    // Check for enclosed areas
-                    //if (player.powerup_timer < GetTime()) {
-                        CheckEnclosedAreas(&map, &player, &enemy_sentinel, current_tile_x, current_tile_y);
-                    //}
+                    CheckEnclosedAreas(&map, &player, &enemy_sentinel, current_tile_x, current_tile_y);
                 } else {
                     direction = VectorNorm(direction);
                     Vector2 movement = VectorScale(direction, player.speed * delta_t);
@@ -683,7 +717,7 @@ int main() {
                 }
             }
 
-            // NOTE: Powerup blinking
+            // Powerup blinking
             if (player.powered_up) {
                 f32 end_duration_signal = 3.0f;
                 if (player.powerup_timer < GetTime()) {
@@ -709,24 +743,32 @@ int main() {
                 }
             }
 
+            // Enemy spawning
             if (manager.spawn_timer > 0) {
                 manager.spawn_timer -= 1.0f;
             } else {
                 manager.spawn_timer = manager.enemy_spawn_duration;
-                u32 tile_index = GetRandomEmptyTileIndex(&map);
-                Tile *tile = &map.tiles[tile_index];
-                AddFlag(tile, TileFlag_enemy);
 
-                Enemy *new_enemy = (Enemy *)ArenaAlloc(&arena, sizeof(Enemy));
-                EnemyInit(new_enemy, tile_index);
-                // NOTE: Add enemy to enemy_list;
-                new_enemy->next       = enemy_sentinel.next;
-                new_enemy->prev       = &enemy_sentinel;
-                new_enemy->next->prev = new_enemy;
-                new_enemy->prev->next = new_enemy;
+                s32 player_tile_x     = (u32)player.pos.x / map.tile_size; 
+                s32 player_tile_y     = (u32)player.pos.y / map.tile_size; 
+                u32 player_tile_index = TilemapIndex(player_tile_x, player_tile_y, map.width);
+
+                u32 tile_index = GetRandomEmptyTileIndex(&map, player_tile_index);
+                if (tile_index) {
+                    Tile *tile = &map.tiles[tile_index];
+                    AddFlag(tile, TileFlag_enemy);
+
+                    Enemy *new_enemy = (Enemy *)ArenaAlloc(&arena, sizeof(Enemy));
+                    EnemyInit(new_enemy, tile_index);
+                    // NOTE: Add enemy to enemy_list;
+                    new_enemy->next       = enemy_sentinel.next;
+                    new_enemy->prev       = &enemy_sentinel;
+                    new_enemy->next->prev = new_enemy;
+                    new_enemy->prev->next = new_enemy;
+                }
             }
 
-            // NOTE: Enemy spawning
+            // Enemy movement
             if (manager.enemy_move_timer > 0) {
                 manager.enemy_move_timer -= 1.0f;
             } else {
@@ -736,7 +778,7 @@ int main() {
                         Tile *tile = &map.tiles[tile_index];
 
                         if (IsFlagSet(tile, TileFlag_enemy) && !IsFlagSet(tile, TileFlag_moved)) {
-                            u32 eligible_tile_index = FindEligibleTileIndex(&map, tile_index); 
+                            u32 eligible_tile_index = FindEligibleTileIndexForEnemyMove(&map, tile_index); 
                             Tile *eligible_tile = &map.tiles[eligible_tile_index];
 
                             if (eligible_tile_index) {
