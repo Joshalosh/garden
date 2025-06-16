@@ -39,18 +39,18 @@ u32 TilemapIndex(u32 x, u32 y, u32 width) {
 }
 
 void PlayerInit(Player *player) {
-    player->pos           = {base_screen_width*0.5, base_screen_height*0.5};
-    player->target_pos    = player->pos;
-    player->size          = {20, 20};
-    player->col           = WHITE;
-    player->speed         = 75.0f;
-    player->is_moving     = false;
-    player->powered_up    = false;
-    player->powerup_timer = 0;
-    player->blink_speed   = 0;
-    player->blink_time    = 0;
-    player->col_bool      = false;
-    player->facing        = DirectionFacing_down;
+    player->pos                 = {base_screen_width*0.5, base_screen_height*0.5};
+    player->target_pos          = player->pos;
+    player->size                = {20, 20};
+    player->col                 = WHITE;
+    player->speed               = 75.0f;
+    player->is_moving           = false;
+    player->powered_up          = false;
+    player->powerup_timer       = 0;
+    player->blink_speed         = 0;
+    player->time_between_blinks = 0;
+    player->col_bool            = false;
+    player->facing              = DirectionFacing_down;
     //player->queued_facing = DirectionFacing_none;
     for(u32 index = 0; index < INPUT_MAX; index++) {
         player->input_buffer.inputs[index] = DirectionFacing_down;
@@ -325,20 +325,20 @@ void CheckEnclosedAreas(Tilemap *tilemap, Player *player, Enemy *sentinel,
     }
 }
 
-Rectangle GetTileSourceRec(Tile_Type type, u32 seed) {
-    Rectangle source_rec = {0, 0, TILE_SIZE, TILE_SIZE};
+Rectangle SetAtlasFrameRec(Tile_Type type, u32 seed) {
+    Rectangle frame_rec = {0, 0, TILE_SIZE, TILE_SIZE};
 
     switch (type) {
         case TileType_grass:
         case TileType_dirt: {
-            source_rec.x = seed * TILE_SIZE;
-            source_rec.y = 0;
+            frame_rec.x = seed * TILE_SIZE;
+            frame_rec.y = 0;
         } break;
         default: {
         } break;
     }
 
-    return source_rec;
+    return frame_rec;
 }
 
 void Animate(Animation *animator, u32 frame_counter, u32 facing = 0) {
@@ -447,10 +447,9 @@ int main() {
     u32 original_map[TILEMAP_HEIGHT][TILEMAP_WIDTH];
     Tile tiles[TILEMAP_HEIGHT][TILEMAP_WIDTH];
 
-    Texture2D fire_texture       = LoadTexture("../assets/sprites/fire.png");
     Animation fire_animator;
-    fire_animator.texture[0]     = fire_texture;
-    fire_animator.max_frames     = (f32)fire_animator.texture[0].width/20;
+    fire_animator.texture[0]     = LoadTexture("../assets/sprites/fire.png");
+    fire_animator.max_frames     = (f32)fire_animator.texture[0].width/SPRITE_SIZE;
     fire_animator.frame_rec      = {0.0f, 0.0f,
                                     (f32)fire_animator.texture[0].width/fire_animator.max_frames,
                                     (f32)fire_animator.texture[0].height};
@@ -472,14 +471,32 @@ int main() {
 
     Player player = {};
     PlayerInit(&player);
-    player.animator.texture[DirectionFacing_down]  = LoadTexture("../assets/sprites/thing.png");
-    player.animator.texture[DirectionFacing_up]    = LoadTexture("../assets/sprites/thing_back.png");
-    player.animator.texture[DirectionFacing_left]  = LoadTexture("../assets/sprites/thing_side.png");
-    player.animator.texture[DirectionFacing_right] = LoadTexture("../assets/sprites/thing_side.png");
-    player.animator.frame_rec                      = {0.0f, 0.0f, 
-                                                      (f32)player.animator.texture[DirectionFacing_down].width/6,
-                                                      (f32)player.animator.texture[DirectionFacing_down].height}; 
-    player.animator.current_frame                  = 0;
+
+    // Initialise the basic player body animator
+    player.animators[PlayerAnimator_body].texture[DirectionFacing_down]  = 
+        LoadTexture("../assets/sprites/thing.png");
+    player.animators[PlayerAnimator_body].texture[DirectionFacing_up]    = 
+        LoadTexture("../assets/sprites/thing_back.png");
+    player.animators[PlayerAnimator_body].texture[DirectionFacing_left]  = 
+        LoadTexture("../assets/sprites/thing_side.png");
+    player.animators[PlayerAnimator_body].texture[DirectionFacing_right] = 
+        LoadTexture("../assets/sprites/thing_side.png");
+    player.animators[PlayerAnimator_body].frame_rec = 
+        {0.0f, 0.0f, 
+        (f32)player.animators[PlayerAnimator_body].texture[DirectionFacing_down].width/6,
+        (f32)player.animators[PlayerAnimator_body].texture[DirectionFacing_down].height}; 
+    player.animators[PlayerAnimator_body].current_frame = 0;
+
+    // Initialise the powerup animator
+    player.animators[PlayerAnimator_water].texture[0] = LoadTexture("../assets/sprites/water_up.jpg");
+    player.animators[PlayerAnimator_water].max_frames = 
+        (f32)player.animators[PlayerAnimator_water].texture[0].width/SPRITE_SIZE;
+    player.animators[PlayerAnimator_water].frame_rec  = 
+        {0.0f, 0.0f, 
+        (f32)player.animators[PlayerAnimator_water].texture[0].width /
+             player.animators[PlayerAnimator_water].max_frames,
+        (f32)player.animators[PlayerAnimator_water].texture[0].height};
+    player.animators[PlayerAnimator_water].current_frame = 0;
 
     Vector2 input_axis       = {0, 0};
 
@@ -524,8 +541,11 @@ int main() {
 
         frame_counter++;
 
-        player.animator.max_frames = (f32)player.animator.texture[player.facing].width/20;
-        Animate(&player.animator, frame_counter, player.facing);
+        // The max frames for the body need to be set up here during the main loop 
+        // because they are dependant on whichever direction the player is facing
+        player.animators[PlayerAnimator_body].max_frames = 
+            (f32)player.animators[PlayerAnimator_body].texture[player.facing].width/20;
+        Animate(&player.animators[PlayerAnimator_body], frame_counter, player.facing);
 
         if (manager.state == GameState_play) {
 
@@ -559,10 +579,10 @@ int main() {
                         // TODO: I need to make getting the source rec and the random seed for 
                         // the atlas seperate functions
                         
-                        Rectangle source_rec = GetTileSourceRec(tile->type, tile->seed);
+                        Rectangle atlas_frame_rec = SetAtlasFrameRec(tile->type, tile->seed);
 
                         if (tile->type == TileType_grass || tile->type == TileType_dirt) {
-                            DrawTextureRec(tile_atlas, source_rec, tile->tile_pos, WHITE);
+                            DrawTextureRec(tile_atlas, atlas_frame_rec, tile->tile_pos, WHITE);
                         } else {
                             DrawRectangleV(tile->tile_pos, tile_size, tile_col);
                         }
@@ -570,7 +590,6 @@ int main() {
                             tile_col = {168, 0, 0, 255};
                             fire_cleared = false;
                             //DrawRectangleV(tile->tile_pos, tile_size, tile_col);
-                            Rectangle rec = GetTileSourceRec(tile->type, 1);
                             Animate(&tile->animator, frame_counter);
                             DrawTextureRec(tile->animator.texture[0], 
                                            tile->animator.frame_rec, tile->tile_pos, WHITE);
@@ -679,11 +698,11 @@ int main() {
                     }
 
                     if (IsFlagSet(target_tile, TileFlag_powerup)) {
-                        float powerup_duration = 10.0f;
-                        player.powerup_timer   = GetTime() + powerup_duration;
-                        player.powered_up      = true;
-                        player.blink_speed     = 5.0f;
-                        player.blink_time      = player.blink_speed;
+                        float powerup_duration     = 10.0f;
+                        player.powerup_timer       = GetTime() + powerup_duration;
+                        player.powered_up          = true;
+                        player.blink_speed         = 5.0f;
+                        player.time_between_blinks = player.blink_speed;
                         ClearFlag(target_tile, TileFlag_powerup);
                     }
 
@@ -718,6 +737,7 @@ int main() {
             }
 
             // Powerup blinking
+            // TODO: Implement the new water texture when in power up mode
             if (player.powered_up) {
                 f32 end_duration_signal = 3.0f;
                 if (player.powerup_timer < GetTime()) {
@@ -728,14 +748,18 @@ int main() {
                         player.blink_speed = 2.0f; 
                     }
 
-                    if (player.blink_time > 0) {
-                    player.blink_time -= 1.0f;
+                    if (player.time_between_blinks > 0) {
+                    player.time_between_blinks -= 1.0f;
                     } else {
-                        player.blink_time =  player.blink_speed;
-                        player.col_bool   = !player.col_bool;
+                        player.time_between_blinks = player.blink_speed;
+                        player.col_bool            = !player.col_bool;
                     }
+
                 }
 
+                    Animate(&player.animators[PlayerAnimator_water], frame_counter);
+                    DrawTextureRec(player.animators[PlayerAnimator_water].texture[0], 
+                                   player.animators[PlayerAnimator_water].frame_rec, player.target_pos, WHITE);
                 if (player.col_bool) {
                     player.col = RED;
                 } else {
@@ -797,21 +821,21 @@ int main() {
             }
 
 #if 1
-            Rectangle src = player.animator.frame_rec;
+            Rectangle src = player.animators[PlayerAnimator_body].frame_rec;
 
             if (player.facing == DirectionFacing_left) {
                 src.x     += src.width;
                 src.width  = -src.width;
             }
             
-            f32 frame_width  = (f32)player.animator.frame_rec.width;
-            f32 frame_height = (f32)player.animator.texture[player.facing].height*2;
+            f32 frame_width  = (f32)player.animators[PlayerAnimator_body].frame_rec.width;
+            f32 frame_height = (f32)player.animators[PlayerAnimator_body].texture[player.facing].height*2;
 
             Rectangle dest_rect = {player.pos.x, player.pos.y, 
                                    frame_width, frame_height}; 
 
             Vector2 texture_offset = {0.0f, 20.0f};
-            DrawTexturePro(player.animator.texture[player.facing], src,
+            DrawTexturePro(player.animators[PlayerAnimator_body].texture[player.facing], src,
                            dest_rect, texture_offset, 0.0f, player.col);
 
 #else

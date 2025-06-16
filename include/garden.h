@@ -2,6 +2,7 @@
 #define TILEMAP_WIDTH  16
 #define TILEMAP_HEIGHT 16
 #define TILE_SIZE 20
+#define SPRITE_SIZE 20
 #define ATLAS_COUNT 17
 #define ADJACENT_COUNT 4
 #define MB(x) x*1024ULL*1024ULL
@@ -9,6 +10,7 @@
 #define ARRAY_COUNT(array) (sizeof(array) / sizeof((array)[0]))
 #define FRAME_SPEED 16
 #define INPUT_MAX 5
+#define MAX_PLAYER_ANIMATORS 2
 const int base_screen_width  = 320;
 const int base_screen_height = 320; //180;
 
@@ -38,11 +40,16 @@ enum Game_State {
 };
 
 enum Direction_Facing {
-    DirectionFacing_down,
-    DirectionFacing_up,
-    DirectionFacing_left,
-    DirectionFacing_right,
-    DirectionFacing_none,
+    DirectionFacing_down  = 0,
+    DirectionFacing_up    = 1,
+    DirectionFacing_left  = 2,
+    DirectionFacing_right = 3,
+    DirectionFacing_none  = 4,
+};
+
+enum Player_Animator {
+    PlayerAnimator_body  = 0,
+    PlayerAnimator_water = 1,
 };
 
 struct Animation {
@@ -77,20 +84,20 @@ struct Input_Buffer {
 };
 
 struct Player {
-    Vector2   pos;
-    Vector2   target_pos;
-    Vector2   size;
-    Color     col;
+    Vector2          pos;
+    Vector2          target_pos;
+    Vector2          size;
+    Color            col;
 
-    f32       speed;
-    f64       powerup_timer;
-    f32       blink_time;
-    f32       blink_speed;
-    bool      is_moving;
-    bool      powered_up;
-    bool      col_bool;
+    f32              speed;
+    f64              powerup_timer;
+    f32              time_between_blinks;
+    f32              blink_speed;
+    bool             is_moving;
+    bool             powered_up;
+    bool             col_bool;
 
-    Animation        animator;
+    Animation        animators[MAX_PLAYER_ANIMATORS];
     Direction_Facing facing;
     Input_Buffer     input_buffer;
 };
