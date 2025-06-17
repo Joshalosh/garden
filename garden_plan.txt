@@ -1,6 +1,5 @@
 
 - Player
-  - Implement water coming from player to douse fire.
 
 - UI
   - Fix win screen.

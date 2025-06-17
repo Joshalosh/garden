@@ -423,6 +423,8 @@ int main() {
     const int window_height = 1280; //720;
     InitWindow(window_width, window_height, "Raylib basic window");
 
+    InitAudioDevice();
+
     Tilemap map;
     TilemapInit(&map);
     u32 tilemap[TILEMAP_HEIGHT][TILEMAP_WIDTH] = {
@@ -488,7 +490,7 @@ int main() {
     player.animators[PlayerAnimator_body].current_frame = 0;
 
     // Initialise the powerup animator
-    player.animators[PlayerAnimator_water].texture[0] = LoadTexture("../assets/sprites/water_up.jpg");
+    player.animators[PlayerAnimator_water].texture[0] = LoadTexture("../assets/sprites/water_down.png");
     player.animators[PlayerAnimator_water].max_frames = 
         (f32)player.animators[PlayerAnimator_water].texture[0].width/SPRITE_SIZE;
     player.animators[PlayerAnimator_water].frame_rec  = 
@@ -521,7 +523,12 @@ int main() {
     enemy_sentinel.next = &enemy_sentinel;
     enemy_sentinel.prev = &enemy_sentinel;
 
-    RenderTexture2D target = LoadRenderTexture(base_screen_width, base_screen_height); 
+    Music powerup_end_sound   = LoadMusicStream("../assets/sounds/powerup_end.wav");
+    Music powerup_sound       = LoadMusicStream("../assets/sounds/powerup.wav");
+    powerup_end_sound.looping = true;
+    powerup_sound.looping     = true;
+
+    RenderTexture2D target    = LoadRenderTexture(base_screen_width, base_screen_height); 
     SetTargetFPS(60);
     // -------------------------------------
     // Main Game Loop
@@ -532,6 +539,8 @@ int main() {
         
         // TODO: Need to figure out a better way to stop everything when a win has occured
         float delta_t = GetFrameTime();
+
+        UpdateMusicStream(powerup_sound);
 
         // NOTE: reset the counter back to zero after everything to not mess up 
         // the individual animations
@@ -552,6 +561,8 @@ int main() {
             // Draw to render texture
             BeginTextureMode(target);
             ClearBackground(BLACK);
+            
+            PlayMusicStream(powerup_sound);
 
             fire_cleared = true;
             // Draw tiles in background
@@ -737,15 +748,19 @@ int main() {
             }
 
             // Powerup blinking
-            // TODO: Implement the new water texture when in power up mode
             if (player.powered_up) {
                 f32 end_duration_signal = 3.0f;
+                u32 water_frame_counter = frame_counter;
+                //PlayMusicStream(powerup_sound);
                 if (player.powerup_timer < GetTime()) {
                     player.powered_up = false;
                     player.col_bool   = false;
+                    StopMusicStream(powerup_sound);
                 } else {
                     if (player.powerup_timer - end_duration_signal < GetTime()) {
                         player.blink_speed = 2.0f; 
+                        water_frame_counter *= 2;
+
                     }
 
                     if (player.time_between_blinks > 0) {
@@ -757,11 +772,11 @@ int main() {
 
                 }
 
-                    Animate(&player.animators[PlayerAnimator_water], frame_counter);
+                    Animate(&player.animators[PlayerAnimator_water], water_frame_counter);
                     DrawTextureRec(player.animators[PlayerAnimator_water].texture[0], 
                                    player.animators[PlayerAnimator_water].frame_rec, player.target_pos, WHITE);
                 if (player.col_bool) {
-                    player.col = RED;
+                    player.col = BLUE;
                 } else {
                     player.col = WHITE;
                 }
@@ -929,6 +944,9 @@ int main() {
     // -------------------------------------
     // De-Initialisation
     // -------------------------------------
+    UnloadMusicStream(powerup_sound);
+    UnloadMusicStream(powerup_end_sound);
+    CloseAudioDevice();
     CloseWindow();
     // -------------------------------------
     return 0;
