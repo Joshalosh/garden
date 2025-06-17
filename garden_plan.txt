@@ -27,3 +27,4 @@
 
 - Refactor
  - Fix get tile rect function to not do multiple things
+ - Go over all the TODOS

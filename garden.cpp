@@ -758,9 +758,10 @@ int main() {
             if (player.powered_up) {
                 f32 end_duration_signal = 3.0f;
                 u32 water_frame_counter = frame_counter;
-                //PlayMusicStream(powerup_sound);
                 SoundEffect *powerup_effect = &manager.sound_effects[SoundEffect_powerup];
 
+                // TODO: Need to either figure out a way to make this repeat while the player 
+                // is powered up or I need to make the sound effect last a really long time
                 if(!powerup_effect->is_playing)
                 {
                     PlaySound(powerup_effect->sound);
