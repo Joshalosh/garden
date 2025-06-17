@@ -71,13 +71,16 @@ void GameManagerInit(GameManager *manager) {
     manager->enemy_move_timer     = manager->enemy_move_duration;
 }
 
-void LoadSoundEffects(SoundEffect *sounds) {
-    sounds[SoundEffect_powerup].sound          = LoadSound("../assets/sounds/powerup.wav");
-    sounds[SoundEffect_powerup].is_playing     = false;
-    sounds[SoundEffect_powerup_end].sound      = LoadSound("../assets/sounds/powerup_end.wav");
-    sounds[SoundEffect_powerup_end].is_playing = false;
+void LoadSoundBuffer(Sound *sounds) {
+    sounds[SoundEffect_powerup]     = LoadSound("../assets/sounds/powerup.wav");
+    sounds[SoundEffect_powerup_end] = LoadSound("../assets/sounds/powerup_end.wav");
 }
 
+void StopSoundBuffer(Sound *sounds) {
+    for (u32 index = 0; index < SoundEffect_count; index++) {
+        StopSound(sounds[index]);
+    }
+}
 
 void EnemyInit(Enemy *enemy, u32 tile_index) {
     enemy->tile_index = tile_index;
@@ -140,6 +143,8 @@ void GameOver(Player *player, Tilemap *tilemap,  Enemy *sentinel, GameManager *m
     }
     manager->score         = 0;
     manager->state         = GameState_play;
+
+    StopSoundBuffer(manager->sounds);
 
     sentinel->next = sentinel;
     sentinel->prev = sentinel;
@@ -514,7 +519,7 @@ int main() {
 
     GameManager manager;
     GameManagerInit(&manager);
-    LoadSoundEffects(manager.sound_effects);
+    LoadSoundBuffer(manager.sounds);
 
     
     b32 fire_cleared; // NOTE: Perhaps this should live in the GameManager struct???
@@ -722,6 +727,9 @@ int main() {
                         player.blink_speed         = 5.0f;
                         player.time_between_blinks = player.blink_speed;
                         ClearFlag(target_tile, TileFlag_powerup);
+                        if (IsSoundPlaying(manager.sounds[SoundEffect_powerup_end])) {
+                            StopSound(manager.sounds[SoundEffect_powerup_end]);
+                        }
                     }
 
                     if (player.powered_up) {
@@ -756,28 +764,34 @@ int main() {
 
             // Powerup blinking
             if (player.powered_up) {
-                f32 end_duration_signal = 3.0f;
-                u32 water_frame_counter = frame_counter;
-                SoundEffect *powerup_effect = &manager.sound_effects[SoundEffect_powerup];
+                f32 end_duration_signal  = 3.0f;
+                u32 water_frame_counter  = frame_counter;
+                // These new sound structs contain the same information contained in 
+                // the GameManager sound buffer
+                Sound powerup_effect     = manager.sounds[SoundEffect_powerup];
+                Sound powerup_end_effect = manager.sounds[SoundEffect_powerup_end];
 
                 // TODO: Need to either figure out a way to make this repeat while the player 
                 // is powered up or I need to make the sound effect last a really long time
-                if(!powerup_effect->is_playing)
+                if(!IsSoundPlaying(powerup_effect) && !IsSoundPlaying(powerup_end_effect))
                 {
-                    PlaySound(powerup_effect->sound);
-                    powerup_effect->is_playing = true;
+                    PlaySound(powerup_effect);
                 }
 
                 if (player.powerup_timer < GetTime()) {
                     player.powered_up = false;
                     player.col_bool   = false;
-                    StopSound(powerup_effect->sound);
-                    powerup_effect->is_playing = false;
+                    StopSound(powerup_effect);
+                    StopSound(powerup_end_effect);
                 } else {
                     if (player.powerup_timer - end_duration_signal < GetTime()) {
                         player.blink_speed = 2.0f; 
                         water_frame_counter *= 2;
 
+                        if (!IsSoundPlaying(powerup_end_effect)) {
+                            StopSound(powerup_effect);
+                            PlaySound(powerup_end_effect);
+                        }
                     }
 
                     if (player.time_between_blinks > 0) {
@@ -917,6 +931,8 @@ int main() {
             }
 
             input_axis = {0, 0};
+
+            StopSoundBuffer(manager.sounds);
         
             if (IsKeyPressed(KEY_SPACE)) {
                 GameOver(&player, &map, &enemy_sentinel, &manager);
