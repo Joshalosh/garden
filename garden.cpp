@@ -69,8 +69,15 @@ void GameManagerInit(GameManager *manager) {
     manager->spawn_timer          = manager->enemy_spawn_duration;
     manager->enemy_move_duration  = 250.0f;
     manager->enemy_move_timer     = manager->enemy_move_duration;
-
 }
+
+void LoadSoundEffects(SoundEffect *sounds) {
+    sounds[SoundEffect_powerup].sound          = LoadSound("../assets/sounds/powerup.wav");
+    sounds[SoundEffect_powerup].is_playing     = false;
+    sounds[SoundEffect_powerup_end].sound      = LoadSound("../assets/sounds/powerup_end.wav");
+    sounds[SoundEffect_powerup_end].is_playing = false;
+}
+
 
 void EnemyInit(Enemy *enemy, u32 tile_index) {
     enemy->tile_index = tile_index;
@@ -123,13 +130,16 @@ void DeleteEnemyInList(Enemy *sentinel, u32 index)
 
 // TODO: Instead of passing the sentinel which is a global, I could maybe pack it into
 // the GameManager and then figure out the memory storage for it?
+// TODO: Need to set make sure the audio completely stops here perhaps put all the sounds into a sound 
+// buffer and loop through and stop all sounds... or close the audio device and re-init... but then I 
+// will have to load in all the sounds again.
 void GameOver(Player *player, Tilemap *tilemap,  Enemy *sentinel, GameManager *manager) {
     PlayerInit(player);
     if (manager->score > manager->high_score) {
         manager->high_score = manager->score;
     }
-    manager->score = 0;
-    manager->state = GameState_play;
+    manager->score         = 0;
+    manager->state         = GameState_play;
 
     sentinel->next = sentinel;
     sentinel->prev = sentinel;
@@ -504,6 +514,7 @@ int main() {
 
     GameManager manager;
     GameManagerInit(&manager);
+    LoadSoundEffects(manager.sound_effects);
 
     
     b32 fire_cleared; // NOTE: Perhaps this should live in the GameManager struct???
@@ -523,10 +534,8 @@ int main() {
     enemy_sentinel.next = &enemy_sentinel;
     enemy_sentinel.prev = &enemy_sentinel;
 
-    Music powerup_end_sound   = LoadMusicStream("../assets/sounds/powerup_end.wav");
-    Music powerup_sound       = LoadMusicStream("../assets/sounds/powerup.wav");
-    powerup_end_sound.looping = true;
-    powerup_sound.looping     = true;
+    //Sound powerup_end_sound   = LoadSound("../assets/sounds/powerup_end.wav");
+    //Sound powerup_sound       = LoadSound("../assets/sounds/powerup.wav");
 
     RenderTexture2D target    = LoadRenderTexture(base_screen_width, base_screen_height); 
     SetTargetFPS(60);
@@ -540,7 +549,7 @@ int main() {
         // TODO: Need to figure out a better way to stop everything when a win has occured
         float delta_t = GetFrameTime();
 
-        UpdateMusicStream(powerup_sound);
+        //UpdateMusicStream(powerup_sound);
 
         // NOTE: reset the counter back to zero after everything to not mess up 
         // the individual animations
@@ -562,8 +571,6 @@ int main() {
             BeginTextureMode(target);
             ClearBackground(BLACK);
             
-            PlayMusicStream(powerup_sound);
-
             fire_cleared = true;
             // Draw tiles in background
             {
@@ -752,10 +759,19 @@ int main() {
                 f32 end_duration_signal = 3.0f;
                 u32 water_frame_counter = frame_counter;
                 //PlayMusicStream(powerup_sound);
+                SoundEffect *powerup_effect = &manager.sound_effects[SoundEffect_powerup];
+
+                if(!powerup_effect->is_playing)
+                {
+                    PlaySound(powerup_effect->sound);
+                    powerup_effect->is_playing = true;
+                }
+
                 if (player.powerup_timer < GetTime()) {
                     player.powered_up = false;
                     player.col_bool   = false;
-                    StopMusicStream(powerup_sound);
+                    StopSound(powerup_effect->sound);
+                    powerup_effect->is_playing = false;
                 } else {
                     if (player.powerup_timer - end_duration_signal < GetTime()) {
                         player.blink_speed = 2.0f; 
@@ -944,8 +960,9 @@ int main() {
     // -------------------------------------
     // De-Initialisation
     // -------------------------------------
-    UnloadMusicStream(powerup_sound);
-    UnloadMusicStream(powerup_end_sound);
+    // TODO: Unload the sounds in the GameManager
+    //UnloadSound(powerup_sound);
+    //UnloadSound(powerup_end_sound);
     CloseAudioDevice();
     CloseWindow();
     // -------------------------------------

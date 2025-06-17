@@ -109,16 +109,30 @@ struct Enemy {
     Enemy *prev;
 };
 
+enum Sound_Index {
+    SoundEffect_powerup,
+    SoundEffect_powerup_end,
+
+    SoundEffect_count,
+};
+
+struct SoundEffect {
+    Sound sound;
+    bool  is_playing;
+};
+
 struct GameManager {
-    u32 score;
-    u32 high_score;
-    Game_State state;
+    u32         score;
+    u32         high_score;
+    Game_State  state;
 
     // Enemy controller
-    f32 enemy_spawn_duration;
-    f32 spawn_timer;
-    f32 enemy_move_duration;
-    f32 enemy_move_timer;
+    f32         enemy_spawn_duration;
+    f32         spawn_timer;
+    f32         enemy_move_duration;
+    f32         enemy_move_timer;
+
+    SoundEffect sound_effects[SoundEffect_count];
 };
 
 #define STACK_MAX_SIZE 4096
