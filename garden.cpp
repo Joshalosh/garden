@@ -38,6 +38,43 @@ u32 TilemapIndex(u32 x, u32 y, u32 width) {
     return result;
 }
 
+void TileSeedInit(Tile *tile) {
+    // TODO: Need to consolidate tiletype_grass/dirt and tiletype_wall/wall2 
+    // and any other tile types I doubled up for grid based drawing
+    switch (tile->type) {
+        case TileType_dirt:
+        case TileType_grass: tile->seed = GetRandomValue(0, TILE_ATLAS_COUNT - 1); break;
+        case TileType_wall:
+        case TileType_wall2: tile->seed = GetRandomValue(0, WALL_ATLAS_COUNT - 1); break;
+        default:             tile->seed = 0;                                       break;
+    }
+}
+
+void TileInit(Tilemap *tilemap, Animation fire_animator) {
+    for (u32 y = 0; y < tilemap->height; y++) {
+        for (u32 x = 0; x < tilemap->width; x++) {
+            u32 index      = TilemapIndex(x, y, tilemap->width);
+            Tile *tile     = &tilemap->tiles[index];
+            tile->type     = (Tile_Type)tilemap->original_map[index];
+            tile->flags    = 0;
+            tile->animator = fire_animator;
+            TileSeedInit(tile);
+        }
+    }
+}
+
+void TileInit(Tilemap *tilemap) {
+    for (u32 y = 0; y < tilemap->height; y++) {
+        for (u32 x = 0; x < tilemap->width; x++) {
+            u32 index      = TilemapIndex(x, y, tilemap->width);
+            Tile *tile     = &tilemap->tiles[index];
+            tile->type     = (Tile_Type)tilemap->original_map[index];
+            tile->flags    = 0;
+            TileSeedInit(tile);
+        }
+    }
+}
+
 void PlayerInit(Player *player) {
     player->pos                 = {base_screen_width*0.5, base_screen_height*0.5};
     player->target_pos          = player->pos;
@@ -72,8 +109,10 @@ void GameManagerInit(GameManager *manager) {
 }
 
 void LoadSoundBuffer(Sound *sounds) {
-    sounds[SoundEffect_powerup]     = LoadSound("../assets/sounds/powerup.wav");
-    sounds[SoundEffect_powerup_end] = LoadSound("../assets/sounds/powerup_end.wav");
+    sounds[SoundEffect_powerup]         = LoadSound("../assets/sounds/powerup.wav");
+    sounds[SoundEffect_powerup_end]     = LoadSound("../assets/sounds/powerup_end.wav");
+    sounds[SoundEffect_powerup_collect] = LoadSound("../assets/sounds/powerup_collect.wav");
+    sounds[SoundEffect_powerup_appear]  = LoadSound("../assets/sounds/powerup_appear.wav");
 }
 
 void StopSoundBuffer(Sound *sounds) {
@@ -131,18 +170,6 @@ void DeleteEnemyInList(Enemy *sentinel, u32 index)
     ASSERT(enemy_found);
 }
 
-void TileSeedInit(Tile *tile) {
-    // TODO: Need to consolidate tiletype_grass/dirt and tiletype_wall/wall2 
-    // and any other tile types I doubled up for grid based drawing
-    switch (tile->type) {
-        case TileType_dirt:
-        case TileType_grass: tile->seed = GetRandomValue(0, TILE_ATLAS_COUNT - 1); break;
-        case TileType_wall:
-        case TileType_wall2: tile->seed = GetRandomValue(0, WALL_ATLAS_COUNT - 1); break;
-        default:             tile->seed = 0;                                       break;
-    }
-}
-
 // TODO: Instead of passing the sentinel which is a global, I could maybe pack it into
 // the GameManager and then figure out the memory storage for it?
 // TODO: Need to set make sure the audio completely stops here perhaps put all the sounds into a sound 
@@ -162,15 +189,7 @@ void GameOver(Player *player, Tilemap *tilemap,  Enemy *sentinel, GameManager *m
     sentinel->prev = sentinel;
 
     // Reset the tilemap back to it's original orientation
-    for (u32 y = 0; y < tilemap->height; y++) {
-        for (u32 x = 0; x < tilemap->width; x++) {
-            u32 index = TilemapIndex(x, y, tilemap->width);
-            Tile *tile = &tilemap->tiles[index];
-            tile->type  = (Tile_Type)tilemap->original_map[index];
-            tile->flags = 0;
-            TileSeedInit(tile);
-        }
-    }
+    TileInit(tilemap);
 }
 
 inline void AddFlag(Tile *tile, u32 flag) {
@@ -304,7 +323,7 @@ u32 FindEligibleTileIndexForEnemyMove(Tilemap *tilemap, u32 index) {
     return result;
 }
 
-void CheckEnclosedAreas(Tilemap *tilemap, Player *player, Enemy *sentinel, 
+void CheckEnclosedAreas(Tilemap *tilemap, Player *player, Enemy *sentinel, Sound *sounds,
                         u32 current_x, u32 current_y) {
     // Flood fill from borders to mark reachable areas
     FloodFillFromPlayerPosition(tilemap, current_x, current_y);
@@ -341,6 +360,9 @@ void CheckEnclosedAreas(Tilemap *tilemap, Player *player, Enemy *sentinel,
 
 
     if (has_flood_fill_happened) {
+        if (enemy_slain) {
+            PlaySound(sounds[SoundEffect_powerup_appear]);
+        }
         while (enemy_slain) {
             u32 tile_index = GetRandomEmptyTileIndex(tilemap);
             if (tile_index) {
@@ -458,22 +480,22 @@ int main() {
     Tilemap map;
     TilemapInit(&map);
     u32 tilemap[TILEMAP_HEIGHT][TILEMAP_WIDTH] = {
-        {4, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 1, },
-        {1, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 4, },
-        {4, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 1, },
-        {1, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 4, },
-        {4, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 1, },
-        {1, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 4, },
-        {4, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 1, },
-        {1, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 4, },
-        {4, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 1, },
-        {1, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 4, },
-        {4, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 1, },
-        {1, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 4, },
-        {4, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 1, },
-        {1, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 4, },
-        {4, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 1, },
-        {1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, },
+        { 4, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 1, },
+        { 1, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 4, },
+        { 4, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 1, },
+        { 1, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 4, },
+        { 4, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 1, },
+        { 1, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 4, },
+        { 4, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 1, },
+        { 1, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 4, },
+        { 4, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 1, },
+        { 1, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 4, },
+        { 4, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 1, },
+        { 1, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 4, },
+        { 4, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 1, },
+        { 1, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 4, },
+        { 4, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 1, },
+        { 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, },
     };
     //map.tiles = (u32 *)tilemap;
     //u32 original_map[TILEMAP_HEIGHT][TILEMAP_WIDTH];
@@ -493,6 +515,7 @@ int main() {
     // I could move the two ptrs below this much higher and then have all of this init 
     // code happen on the actual map which will serve the same purpose but then make this entire thing 
     // a bit more composable... except for the animator.
+#if 0
     for (u32 y = 0; y < TILEMAP_HEIGHT; y++) {
         for (u32 x = 0; x < TILEMAP_WIDTH; x++) {
             //original_map[y][x] = tilemap[y][x];
@@ -503,9 +526,11 @@ int main() {
             TileSeedInit(tile);
         }
     }
-
-    map.original_map = (u32 *)&tilemap;//(u32 *)&original_map;
+#endif
+    map.original_map = (u32 *)&tilemap;
     map.tiles        = (Tile *)&tiles;
+
+    TileInit(&map, fire_animator);
 
     Player player = {};
     PlayerInit(&player);
@@ -561,9 +586,6 @@ int main() {
     enemy_sentinel.next = &enemy_sentinel;
     enemy_sentinel.prev = &enemy_sentinel;
 
-    //Sound powerup_end_sound   = LoadSound("../assets/sounds/powerup_end.wav");
-    //Sound powerup_sound       = LoadSound("../assets/sounds/powerup.wav");
-
     RenderTexture2D target    = LoadRenderTexture(base_screen_width, base_screen_height); 
     SetTargetFPS(60);
     // -------------------------------------
@@ -575,8 +597,6 @@ int main() {
         
         // TODO: Need to figure out a better way to stop everything when a win has occured
         float delta_t = GetFrameTime();
-
-        //UpdateMusicStream(powerup_sound);
 
         // NOTE: reset the counter back to zero after everything to not mess up 
         // the individual animations
@@ -642,9 +662,7 @@ int main() {
                                            tile->animator.frame_rec, tile->tile_pos, WHITE);
                         }
                         if (IsFlagSet(tile, TileFlag_powerup)) {
-                            tile_col = BLUE;
                             DrawTextureV(powerup_texture, tile->tile_pos, WHITE);
-                            //DrawRectangleV(tile->tile_pos, tile_size, tile_col);
                         }
                         if (IsFlagSet(tile, TileFlag_enemy)) {
                             Enemy *found_enemy = FindEnemyInList(&enemy_sentinel, index);
@@ -653,15 +671,6 @@ int main() {
                                 DrawTextureRec(found_enemy->animator.texture[0],
                                                found_enemy->animator.frame_rec, tile->tile_pos, WHITE);
                             }
-
-#if 0
-                            tile_col = YELLOW;
-                            Rectangle rec = GetTileSourceRec(tile->type, 1);
-                            DrawTextureRec(enemy_texture, rec, tile->tile_pos, WHITE);
-#endif
-
-                            //DrawTextureV(enemy_texture, tile->tile_pos, WHITE);
-                            //DrawRectangleV(tile->tile_pos, tile_size, tile_col);
                         }
                         if (IsFlagSet(tile, TileFlag_moved)) {
                             ClearFlag(tile, TileFlag_moved);
@@ -670,24 +679,6 @@ int main() {
                 }
             }
 
-#if 0
-            if ((IsKeyDown(KEY_RIGHT) || IsKeyDown(KEY_D)) && player.facing != DirectionFacing_left) {
-                input_axis = {1.0f, 0};
-                player.facing = DirectionFacing_right;
-            }
-            else if ((IsKeyDown(KEY_LEFT) || IsKeyDown(KEY_A)) && player.facing != DirectionFacing_right) {
-                input_axis = {-1.0f, 0};
-                player.facing = DirectionFacing_left;
-            }
-            else if ((IsKeyDown(KEY_UP) || IsKeyDown(KEY_W)) && player.facing != DirectionFacing_down) {
-                input_axis = {0, -1.0f}; 
-                player.facing = DirectionFacing_up;
-            }
-            else if ((IsKeyDown(KEY_DOWN) || IsKeyDown(KEY_S)) && player.facing != DirectionFacing_up) {
-                input_axis = {0, 1.0f}; 
-                player.facing = DirectionFacing_down;
-            }
-#endif
             GatherInput(&player);
 
             // - New player movement
@@ -754,6 +745,7 @@ int main() {
                         if (IsSoundPlaying(manager.sounds[SoundEffect_powerup_end])) {
                             StopSound(manager.sounds[SoundEffect_powerup_end]);
                         }
+                        PlaySound(manager.sounds[SoundEffect_powerup_collect]);
                     }
 
                     if (player.powered_up) {
@@ -778,7 +770,8 @@ int main() {
                     u32 current_tile_x = (u32)player.pos.x / map.tile_size;
                     u32 current_tile_y = (u32)player.pos.y / map.tile_size;
 
-                    CheckEnclosedAreas(&map, &player, &enemy_sentinel, current_tile_x, current_tile_y);
+                    CheckEnclosedAreas(&map, &player, &enemy_sentinel, manager.sounds, 
+                                       current_tile_x, current_tile_y);
                 } else {
                     direction = VectorNorm(direction);
                     Vector2 movement = VectorScale(direction, player.speed * delta_t);

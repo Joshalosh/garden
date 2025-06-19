@@ -113,6 +113,8 @@ struct Enemy {
 enum Sound_Index {
     SoundEffect_powerup,
     SoundEffect_powerup_end,
+    SoundEffect_powerup_collect,
+    SoundEffect_powerup_appear,
 
     SoundEffect_count,
 };
