@@ -5,14 +5,12 @@
   - Fix win screen.
 
 - Art Assets
-  - Create wall sprites.
   
 - Audio
  - Make music.
  - Make sound effects
    - Powerup drop
    - Powerup collect
-   - Powerup state
    - Game over
    - Player walk?
    - Enemy appear?

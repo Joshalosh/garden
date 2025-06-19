@@ -131,6 +131,18 @@ void DeleteEnemyInList(Enemy *sentinel, u32 index)
     ASSERT(enemy_found);
 }
 
+void TileSeedInit(Tile *tile) {
+    // TODO: Need to consolidate tiletype_grass/dirt and tiletype_wall/wall2 
+    // and any other tile types I doubled up for grid based drawing
+    switch (tile->type) {
+        case TileType_dirt:
+        case TileType_grass: tile->seed = GetRandomValue(0, TILE_ATLAS_COUNT - 1); break;
+        case TileType_wall:
+        case TileType_wall2: tile->seed = GetRandomValue(0, WALL_ATLAS_COUNT - 1); break;
+        default:             tile->seed = 0;                                       break;
+    }
+}
+
 // TODO: Instead of passing the sentinel which is a global, I could maybe pack it into
 // the GameManager and then figure out the memory storage for it?
 // TODO: Need to set make sure the audio completely stops here perhaps put all the sounds into a sound 
@@ -153,9 +165,10 @@ void GameOver(Player *player, Tilemap *tilemap,  Enemy *sentinel, GameManager *m
     for (u32 y = 0; y < tilemap->height; y++) {
         for (u32 x = 0; x < tilemap->width; x++) {
             u32 index = TilemapIndex(x, y, tilemap->width);
-            tilemap->tiles[index].type  = (Tile_Type)tilemap->original_map[index];
-            tilemap->tiles[index].flags = 0;
-            tilemap->tiles[index].seed  = GetRandomValue(0, ATLAS_COUNT - 1);
+            Tile *tile = &tilemap->tiles[index];
+            tile->type  = (Tile_Type)tilemap->original_map[index];
+            tile->flags = 0;
+            TileSeedInit(tile);
         }
     }
 }
@@ -344,6 +357,8 @@ Rectangle SetAtlasFrameRec(Tile_Type type, u32 seed) {
     Rectangle frame_rec = {0, 0, TILE_SIZE, TILE_SIZE};
 
     switch (type) {
+        case TileType_wall:
+        case TileType_wall2:
         case TileType_grass:
         case TileType_dirt: {
             frame_rec.x = seed * TILE_SIZE;
@@ -461,7 +476,7 @@ int main() {
         {1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, },
     };
     //map.tiles = (u32 *)tilemap;
-    u32 original_map[TILEMAP_HEIGHT][TILEMAP_WIDTH];
+    //u32 original_map[TILEMAP_HEIGHT][TILEMAP_WIDTH];
     Tile tiles[TILEMAP_HEIGHT][TILEMAP_WIDTH];
 
     Animation fire_animator;
@@ -473,17 +488,23 @@ int main() {
     fire_animator.current_frame  = 0;
 
     // NOTE: TILE INIT
+    // TODO: Maybe make this a tile init function because gameover also uses this 
+    // to reset the tiles and right now the code is mostly duplicated
+    // I could move the two ptrs below this much higher and then have all of this init 
+    // code happen on the actual map which will serve the same purpose but then make this entire thing 
+    // a bit more composable... except for the animator.
     for (u32 y = 0; y < TILEMAP_HEIGHT; y++) {
         for (u32 x = 0; x < TILEMAP_WIDTH; x++) {
-            original_map[y][x] = tilemap[y][x];
-            tiles[y][x].type   = (Tile_Type)tilemap[y][x];
-            tiles[y][x].flags  = 0;
-            tiles[y][x].seed   = GetRandomValue(0, ATLAS_COUNT - 1);
-            tiles[y][x].animator = fire_animator;
+            //original_map[y][x] = tilemap[y][x];
+            Tile *tile     = &tiles[y][x];
+            tile->type     = (Tile_Type)tilemap[y][x];
+            tile->flags    = 0;
+            tile->animator = fire_animator;
+            TileSeedInit(tile);
         }
     }
 
-    map.original_map = (u32 *)&original_map;
+    map.original_map = (u32 *)&tilemap;//(u32 *)&original_map;
     map.tiles        = (Tile *)&tiles;
 
     Player player = {};
@@ -525,6 +546,7 @@ int main() {
     b32 fire_cleared; // NOTE: Perhaps this should live in the GameManager struct???
 
     Texture2D tile_atlas          = LoadTexture("../assets/tiles/tile_row.png");
+    Texture2D wall_atlas          = LoadTexture("../assets/tiles/wall_tiles.png");
     Texture2D powerup_texture     = LoadTexture("../assets/sprites/powerup.png");
     u32 frame_counter             = 0;
 
@@ -606,6 +628,8 @@ int main() {
 
                         if (tile->type == TileType_grass || tile->type == TileType_dirt) {
                             DrawTextureRec(tile_atlas, atlas_frame_rec, tile->tile_pos, WHITE);
+                        } else if (tile->type == TileType_wall || tile->type == TileType_wall2) {  
+                            DrawTextureRec(wall_atlas, atlas_frame_rec, tile->tile_pos, WHITE);
                         } else {
                             DrawRectangleV(tile->tile_pos, tile_size, tile_col);
                         }

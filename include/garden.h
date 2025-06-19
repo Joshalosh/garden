@@ -3,7 +3,8 @@
 #define TILEMAP_HEIGHT 16
 #define TILE_SIZE 20
 #define SPRITE_SIZE 20
-#define ATLAS_COUNT 17
+#define TILE_ATLAS_COUNT 17
+#define WALL_ATLAS_COUNT 15
 #define ADJACENT_COUNT 4
 #define MB(x) x*1024ULL*1024ULL
 #define ARENA_SIZE MB(500)
