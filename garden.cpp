@@ -508,24 +508,6 @@ int main() {
                                     (f32)fire_animator.texture[0].height};
     fire_animator.current_frame  = 0;
 
-    // NOTE: TILE INIT
-    // TODO: Maybe make this a tile init function because gameover also uses this 
-    // to reset the tiles and right now the code is mostly duplicated
-    // I could move the two ptrs below this much higher and then have all of this init 
-    // code happen on the actual map which will serve the same purpose but then make this entire thing 
-    // a bit more composable... except for the animator.
-#if 0
-    for (u32 y = 0; y < TILEMAP_HEIGHT; y++) {
-        for (u32 x = 0; x < TILEMAP_WIDTH; x++) {
-            //original_map[y][x] = tilemap[y][x];
-            Tile *tile     = &tiles[y][x];
-            tile->type     = (Tile_Type)tilemap[y][x];
-            tile->flags    = 0;
-            tile->animator = fire_animator;
-            TileSeedInit(tile);
-        }
-    }
-#endif
     map.original_map = (u32 *)&tilemap;
     map.tiles        = (Tile *)&tiles;
 
@@ -565,6 +547,18 @@ int main() {
     GameManager manager;
     GameManagerInit(&manager);
     LoadSoundBuffer(manager.sounds);
+
+    // Music Init
+    Music song_main  = LoadMusicStream("../assets/sounds/music.wav");
+    Music song_muted = LoadMusicStream("../assets/sounds/music_muted.wav");
+
+    f32 song_volume  = 1.0f;
+    f32 muted_volume = 0.0f;
+
+    SetMusicVolume(song_main,  song_volume);
+    SetMusicVolume(song_muted, muted_volume);
+    song_main.looping  = true;
+    song_muted.looping = true;
 
     
     b32 fire_cleared; // NOTE: Perhaps this should live in the GameManager struct???
@@ -610,6 +604,12 @@ int main() {
         player.animators[PlayerAnimator_body].max_frames = 
             (f32)player.animators[PlayerAnimator_body].texture[player.facing].width/20;
         Animate(&player.animators[PlayerAnimator_body], frame_counter, player.facing);
+
+        UpdateMusicStream(song_main);
+        UpdateMusicStream(song_muted);
+
+        if (!IsMusicStreamPlaying(song_main))  PlayMusicStream(song_main);
+        if (!IsMusicStreamPlaying(song_muted)) PlayMusicStream(song_muted);
 
         if (manager.state == GameState_play) {
 
@@ -715,13 +715,12 @@ int main() {
                             target_tile->type != TileType_fire) {
                             
                             // Start moving
-                            player.facing = dir;
-                            //player.queued_facing = DirectionFacing_none;
+                            player.facing     = dir;
                             player.target_pos = {(float)target_tile_x * map.tile_size, (float)target_tile_y * map.tile_size};
                             player.is_moving  = true;
 
                             u32 current_tile_index = TilemapIndex(current_tile_x, current_tile_y, map.width);
-                            Tile *current_tile = &map.tiles[current_tile_index];
+                            Tile *current_tile     = &map.tiles[current_tile_index];
                             if (!player.powered_up) {
                                 AddFlag(current_tile, TileFlag_fire);
                             }
@@ -772,9 +771,9 @@ int main() {
                     CheckEnclosedAreas(&map, &player, &enemy_sentinel, manager.sounds, 
                                        current_tile_x, current_tile_y);
                 } else {
-                    direction = VectorNorm(direction);
+                    direction        = VectorNorm(direction);
                     Vector2 movement = VectorScale(direction, player.speed * delta_t);
-                    player.pos = VectorAdd(player.pos, movement);
+                    player.pos       = VectorAdd(player.pos, movement);
                 }
             }
 
@@ -782,8 +781,10 @@ int main() {
             if (player.powered_up) {
                 f32 end_duration_signal  = 3.0f;
                 u32 water_frame_counter  = frame_counter;
-                // These new sound structs contain the same information contained in 
-                // the GameManager sound buffer
+
+                song_volume  -= 0.02f;
+                muted_volume += 0.02f;
+
                 Sound powerup_effect     = manager.sounds[SoundEffect_powerup];
                 Sound powerup_end_effect = manager.sounds[SoundEffect_powerup_end];
 
@@ -819,15 +820,27 @@ int main() {
 
                 }
 
-                    Animate(&player.animators[PlayerAnimator_water], water_frame_counter);
-                    DrawTextureRec(player.animators[PlayerAnimator_water].texture[0], 
-                                   player.animators[PlayerAnimator_water].frame_rec, player.target_pos, WHITE);
+                Animate(&player.animators[PlayerAnimator_water], water_frame_counter);
+                DrawTextureRec(player.animators[PlayerAnimator_water].texture[0], 
+                               player.animators[PlayerAnimator_water].frame_rec, player.target_pos, WHITE);
+
                 if (player.col_bool) {
                     player.col = BLUE;
                 } else {
                     player.col = WHITE;
                 }
+            } else {
+                song_volume  += 0.02f;
+                muted_volume -= 0.02f;
             }
+
+            if (song_volume < 0.0f)  song_volume  = 0.0f;
+            if (song_volume > 1.0f)  song_volume  = 1.0f;
+            if (muted_volume < 0.0f) muted_volume = 0.0f;
+            if (muted_volume > 1.0f) muted_volume = 1.0f;
+
+            SetMusicVolume(song_main,  song_volume);
+            SetMusicVolume(song_muted, muted_volume);
 
             // Enemy spawning
             if (manager.spawn_timer > 0) {

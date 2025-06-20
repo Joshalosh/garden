@@ -9,8 +9,6 @@
 - Audio
  - Make music.
  - Make sound effects
-   - Powerup drop
-   - Powerup collect
    - Game over
    - Player walk?
    - Enemy appear?
