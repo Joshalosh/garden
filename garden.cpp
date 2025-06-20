@@ -358,7 +358,6 @@ void CheckEnclosedAreas(Tilemap *tilemap, Player *player, Enemy *sentinel, Sound
         }
     }
 
-
     if (has_flood_fill_happened) {
         if (enemy_slain) {
             PlaySound(sounds[SoundEffect_powerup_appear]);
