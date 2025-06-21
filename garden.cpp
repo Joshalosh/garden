@@ -834,10 +834,8 @@ int main() {
                 muted_volume -= 0.02f;
             }
 
-            if (song_volume < 0.0f)  song_volume  = 0.0f;
-            if (song_volume > 1.0f)  song_volume  = 1.0f;
-            if (muted_volume < 0.0f) muted_volume = 0.0f;
-            if (muted_volume > 1.0f) muted_volume = 1.0f;
+            song_volume  = CLAMP(song_volume,  0.0f, 1.0f);
+            muted_volume = CLAMP(muted_volume, 0.0f, 1.0f);
 
             SetMusicVolume(song_main,  song_volume);
             SetMusicVolume(song_muted, muted_volume);

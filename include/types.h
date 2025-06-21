@@ -19,4 +19,5 @@ typedef float64 f64;
 typedef u32 b32;
 
 #define ASSERT(expression) if(!(expression)) {*(int *)0 = 0;}
-
+#define ARRAY_COUNT(array) (sizeof(array) / sizeof((array)[0]))
+#define CLAMP(val, min, max) ((val) < (min) ? (min) : ((val) > (max) ? (max) : (val)))

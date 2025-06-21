@@ -8,10 +8,10 @@
 #define ADJACENT_COUNT 4
 #define MB(x) x*1024ULL*1024ULL
 #define ARENA_SIZE MB(500)
-#define ARRAY_COUNT(array) (sizeof(array) / sizeof((array)[0]))
 #define FRAME_SPEED 16
 #define INPUT_MAX 5
 #define MAX_PLAYER_ANIMATORS 2
+
 const int base_screen_width  = 320;
 const int base_screen_height = 320; //180;
 
@@ -117,11 +117,6 @@ enum Sound_Index {
     SoundEffect_powerup_appear,
 
     SoundEffect_count,
-};
-
-struct SoundEffect {
-    Sound sound;
-    bool  is_playing;
 };
 
 struct GameManager {
