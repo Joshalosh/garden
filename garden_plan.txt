@@ -5,9 +5,10 @@
   - Fix win screen.
 
 - Art Assets
+ - Add text to fire clear
   
 - Audio
- - Make music.
+ - Make music
  - Make sound effects
    - Game over
    - Player walk?

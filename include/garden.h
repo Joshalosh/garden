@@ -6,11 +6,13 @@
 #define TILE_ATLAS_COUNT 17
 #define WALL_ATLAS_COUNT 15
 #define ADJACENT_COUNT 4
+#define STACK_MAX_SIZE 4096
 #define MB(x) x*1024ULL*1024ULL
 #define ARENA_SIZE MB(500)
 #define FRAME_SPEED 16
 #define INPUT_MAX 5
 #define MAX_PLAYER_ANIMATORS 2
+#define HYPE_WORD_COUNT 13
 
 const int base_screen_width  = 320;
 const int base_screen_height = 320; //180;
@@ -69,9 +71,9 @@ struct Tile {
 };
 
 struct Tilemap {
-    u32  width;
-    u32  height;
-    u32  tile_size;
+    u32   width;
+    u32   height;
+    u32   tile_size;
 
     u32  *original_map;
     Tile *tiles;
@@ -79,8 +81,8 @@ struct Tilemap {
 
 struct Input_Buffer {
     Direction_Facing inputs[INPUT_MAX];
-    u32 start;
-    u32 end;
+    u32              start;
+    u32              end;
 
 };
 
@@ -104,10 +106,10 @@ struct Player {
 };
 
 struct Enemy {
-    u32 tile_index;
-    Animation animator;
-    Enemy *next;
-    Enemy *prev;
+    u32        tile_index;
+    Animation  animator;
+    Enemy     *next;
+    Enemy     *prev;
 };
 
 enum Sound_Index {
@@ -133,10 +135,20 @@ struct GameManager {
     Sound      sounds[SoundEffect_count];
 };
 
-#define STACK_MAX_SIZE 4096
 struct StackU32 {
     u32 x[STACK_MAX_SIZE];
     u32 y[STACK_MAX_SIZE];
     s32 top;
 };
 
+struct TextBurst {
+    const char *words[HYPE_WORD_COUNT];
+    Vector2     pos;
+    f32         alpha;
+    f32         scale;
+    f32         max_scale;
+    f32         lifetime;
+    f32         age;
+    Vector2     drift;
+    bool        active;
+};

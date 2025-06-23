@@ -476,6 +476,15 @@ int main() {
 
     InitAudioDevice();
 
+    Font font = LoadFont("../assets/fonts/Ammaine-Standard.ttf");
+
+    const char *message = "This font can hopefully be seen... BITCH!";
+    Vector2 font_pos    = {window_width / 2.0f, window_height / 2.0f};
+
+    const char *hype_text[HYPE_WORD_COUNT] = {"WOW",      "YEAH",   "AMAZING",      "SANCTIFY", 
+                                              "HOLY COW", "DIVINE", "UNBELIEVABLE", "WOAH",
+                                              "AWESOME",  "COSMIC", "RITUALISTIC",  "LEGENDARY"};
+
     Tilemap map;
     TilemapInit(&map);
     u32 tilemap[TILEMAP_HEIGHT][TILEMAP_WIDTH] = {
@@ -992,6 +1001,8 @@ int main() {
                        dest_rect, zero_vec, 0.0f, WHITE);
         DrawText(TextFormat("Score: %d", manager.score), 25, 25, 38, WHITE);
         DrawText(TextFormat("High Score: %d", manager.high_score), window_width - 350, 25, 38, WHITE);
+
+        DrawTextEx(font, message, font_pos, font.baseSize/2.0f, 2, WHITE);
 
         if (fire_cleared && player.powered_up) {
             DrawText("WIN", window_width*0.5, window_height*0.5, 69, WHITE);
