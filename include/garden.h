@@ -142,7 +142,7 @@ struct StackU32 {
 };
 
 struct TextBurst {
-    const char *words[HYPE_WORD_COUNT];
+    const char *text;
     Vector2     pos;
     f32         alpha;
     f32         scale;

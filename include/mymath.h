@@ -1,6 +1,11 @@
 
 #include <math.h>
 
+f32 Lerp (f32 a, f32 t, f32 b) {
+    f32 result = (1.0f - t)*a + t*b;
+    return result;
+}
+
 f32 Dot(Vector2 a, Vector2 b) {
     f32 result = a.x*b.x + a.y*b.y;
     return result;

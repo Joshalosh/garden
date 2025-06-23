@@ -464,6 +464,47 @@ void GatherInput(Player *player) {
     }
 }
 
+TextBurst CreateTextBurst(const char *text, Vector2 pos) {
+    TextBurst burst =  {};
+    burst.text      =  text;
+    burst.pos       =  pos;
+    burst.alpha     =  0.0f;
+    burst.scale     =  1.0f;
+    burst.max_scale =  1.5f  + (float)(rand() % 100) / 100.0f;
+    burst.drift.x   = -20.0f + (float)(rand() % 40);
+    burst.drift.y   = -20.0f + (float)(rand() % 40);
+    burst.lifetime  =  1.5f;
+    burst.age       =  0.0f;
+    burst.active    =  true;
+    return burst;
+}
+
+void UpdateTextBurst(TextBurst *burst, float dt) {
+    if (burst->active) {
+        burst->age += dt;
+        float t     = burst->age / burst->lifetime; 
+
+        if      (t < 0.2f) burst->alpha = t / 0.2f;                 // fade in (0-0.2s)
+        else if (t > 0.8f) burst->alpha = 1.0f - (t - 0.8f) / 0.2f; // fade out (last 0.2s)
+        else               burst->alpha = 1.0f;
+
+        burst->scale = Lerp(0.5f, burst->max_scale, t);
+
+        burst->pos.x += burst->drift.x *t;
+        burst->pos.y += burst->drift.y *t;
+
+        if (burst->age >= burst->lifetime) burst->active = false;
+    }
+}
+
+void DrawTextBurst(TextBurst *burst, Font font) {
+    if (burst->active) {
+        u32 font_size = font.baseSize * burst->scale;
+        Color col     = Fade(WHITE, burst->alpha);
+
+        DrawTextEx(font, burst->text, burst->pos, font_size, 2, col);
+    }
+}
 
 int main() {
     // -------------------------------------
@@ -1002,7 +1043,7 @@ int main() {
         DrawText(TextFormat("Score: %d", manager.score), 25, 25, 38, WHITE);
         DrawText(TextFormat("High Score: %d", manager.high_score), window_width - 350, 25, 38, WHITE);
 
-        DrawTextEx(font, message, font_pos, font.baseSize/2.0f, 2, WHITE);
+        //DrawTextEx(font, message, font_pos, font.baseSize, 8, WHITE);
 
         if (fire_cleared && player.powered_up) {
             DrawText("WIN", window_width*0.5, window_height*0.5, 69, WHITE);
