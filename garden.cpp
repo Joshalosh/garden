@@ -470,7 +470,7 @@ TextBurst CreateTextBurst(const char *text, Vector2 pos) {
     burst.pos       =  pos;
     burst.alpha     =  0.0f;
     burst.scale     =  1.0f;
-    burst.max_scale =  1.5f + (float)(rand() % 100) / 100.0f;
+    burst.max_scale =  1.1f + (float)(rand() % 100) / 100.0f;
     burst.drift.x   =  0;//-2.0f + (float)(rand() % 40);
     burst.drift.y   =  0;//-2.0f + (float)(rand() % 40);
     burst.lifetime  =  1.5f;
@@ -502,7 +502,8 @@ void DrawTextBurst(TextBurst *burst, Font font) {
         u32 font_size = font.baseSize * burst->scale;
         Color col     = Fade(WHITE, burst->alpha);
 
-        DrawTextEx(font, burst->text, burst->pos, font_size, 2, col);
+        DrawText(burst->text, (u32)burst->pos.x, (u32)burst->pos.y, font_size, col);
+        //DrawTextEx(font, burst->text, burst->pos, font_size, 2, col);
     }
 }
 
