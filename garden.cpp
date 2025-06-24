@@ -470,10 +470,10 @@ TextBurst CreateTextBurst(const char *text, Vector2 pos) {
     burst.pos       =  pos;
     burst.alpha     =  0.0f;
     burst.scale     =  1.0f;
-    burst.max_scale =  1.1f + (float)(rand() % 100) / 100.0f;
+    burst.max_scale =  1.5f + (float)(rand() % 100) / 100.0f;
     burst.drift.x   =  0;//-2.0f + (float)(rand() % 40);
     burst.drift.y   =  0;//-2.0f + (float)(rand() % 40);
-    burst.lifetime  =  1.5f;
+    burst.lifetime  =  1.0f;
     burst.age       =  0.0f;
     burst.active    =  true;
     return burst;
@@ -488,7 +488,7 @@ void UpdateTextBurst(TextBurst *burst, float dt) {
         else if (t > 0.8f) burst->alpha = 1.0f - (t - 0.8f) / 0.2f; // fade out (last 0.2s)
         else               burst->alpha = 1.0f;
 
-        burst->scale = Lerp(0.5f, burst->max_scale, t);
+        burst->scale = Lerp(1.0f, burst->max_scale, t);
 
         burst->pos.x += burst->drift.x *t;
         burst->pos.y += burst->drift.y *t;
@@ -498,13 +498,11 @@ void UpdateTextBurst(TextBurst *burst, float dt) {
 }
 
 void DrawTextBurst(TextBurst *burst, Font font) {
-    if (burst->active) {
-        u32 font_size = font.baseSize * burst->scale;
-        Color col     = Fade(WHITE, burst->alpha);
+    f32 font_size = (font.baseSize/2.0f) * burst->scale;
+    Color col     = Fade(WHITE, burst->alpha);
 
-        DrawText(burst->text, (u32)burst->pos.x, (u32)burst->pos.y, font_size, col);
-        //DrawTextEx(font, burst->text, burst->pos, font_size, 2, col);
-    }
+    DrawText(burst->text, (u32)burst->pos.x, (u32)burst->pos.y, font_size, col);
+    //DrawTextEx(font, burst->text, burst->pos, font_size, 2, col);
 }
 
 int main() {
@@ -514,15 +512,11 @@ int main() {
 
     const int window_width  = 1280;
     const int window_height = 1280; //720;
-    InitWindow(window_width, window_height, "Raylib basic window");
+    InitWindow(window_width, window_height, "Garden");
 
     InitAudioDevice();
 
     Font font = LoadFont("../assets/fonts/Ammaine-Standard.ttf");
-
-    const char *message = "This font can hopefully be seen... BITCH!";
-    Vector2 font_pos    = {window_width / 2.0f, window_height / 2.0f};
-
     const char *hype_text[HYPE_WORD_COUNT] = {"WOW",      "YEAH",   "AMAZING",      "SANCTIFY", 
                                               "HOLY COW", "DIVINE", "UNBELIEVABLE", "WOAH",
                                               "AWESOME",  "COSMIC", "RITUALISTIC",  "LEGENDARY"};
@@ -970,7 +964,9 @@ int main() {
                            dest_rect, texture_offset, 0.0f, player.col);
             for(int index = 0; index < MAX_BURSTS; index++) {
                 UpdateTextBurst(&manager.bursts[index], delta_t);
-                DrawTextBurst(&manager.bursts[index], font);
+                if (manager.bursts[index].active) {
+                    DrawTextBurst(&manager.bursts[index], font);
+                }
             }
 
         } else if (manager.state == GameState_win) {
@@ -1049,8 +1045,6 @@ int main() {
                        dest_rect, zero_vec, 0.0f, WHITE);
         DrawText(TextFormat("Score: %d", manager.score), 25, 25, 38, WHITE);
         DrawText(TextFormat("High Score: %d", manager.high_score), window_width - 350, 25, 38, WHITE);
-
-        //DrawTextEx(font, message, font_pos, font.baseSize, 8, WHITE);
 
         if (fire_cleared && player.powered_up) {
             DrawText("WIN", window_width*0.5, window_height*0.5, 69, WHITE);
