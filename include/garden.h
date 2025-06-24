@@ -13,6 +13,7 @@
 #define INPUT_MAX 5
 #define MAX_PLAYER_ANIMATORS 2
 #define HYPE_WORD_COUNT 13
+#define MAX_BURSTS 32
 
 const int base_screen_width  = 320;
 const int base_screen_height = 320; //180;
@@ -66,7 +67,7 @@ struct Tile {
     Tile_Type  type;
     u32        flags;
     u32        seed;
-    Vector2    tile_pos;
+    Vector2    pos;
     Animation  animator;
 };
 
@@ -121,6 +122,18 @@ enum Sound_Index {
     SoundEffect_count,
 };
 
+struct TextBurst {
+    const char *text;
+    Vector2     pos;
+    f32         alpha;
+    f32         scale;
+    f32         max_scale;
+    f32         lifetime;
+    f32         age;
+    Vector2     drift;
+    bool        active;
+};
+
 struct GameManager {
     u32        score;
     u32        high_score;
@@ -133,6 +146,7 @@ struct GameManager {
     f32        enemy_move_timer;
 
     Sound      sounds[SoundEffect_count];
+    TextBurst  bursts[MAX_BURSTS];
 };
 
 struct StackU32 {
@@ -141,14 +155,3 @@ struct StackU32 {
     s32 top;
 };
 
-struct TextBurst {
-    const char *text;
-    Vector2     pos;
-    f32         alpha;
-    f32         scale;
-    f32         max_scale;
-    f32         lifetime;
-    f32         age;
-    Vector2     drift;
-    bool        active;
-};

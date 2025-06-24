@@ -470,9 +470,9 @@ TextBurst CreateTextBurst(const char *text, Vector2 pos) {
     burst.pos       =  pos;
     burst.alpha     =  0.0f;
     burst.scale     =  1.0f;
-    burst.max_scale =  1.5f  + (float)(rand() % 100) / 100.0f;
-    burst.drift.x   = -20.0f + (float)(rand() % 40);
-    burst.drift.y   = -20.0f + (float)(rand() % 40);
+    burst.max_scale =  1.5f + (float)(rand() % 100) / 100.0f;
+    burst.drift.x   =  0;//-2.0f + (float)(rand() % 40);
+    burst.drift.y   =  0;//-2.0f + (float)(rand() % 40);
     burst.lifetime  =  1.5f;
     burst.age       =  0.0f;
     burst.active    =  true;
@@ -672,9 +672,9 @@ int main() {
             {
                 for (u32 y = 0; y < map.height; y++) {
                     for (u32 x = 0; x < map.width; x++) {
-                        u32 index = TilemapIndex(x, y, map.width);
+                        u32 index  = TilemapIndex(x, y, map.width);
                         Tile *tile = &map.tiles[index];
-                        tile->tile_pos = {(float)x * map.tile_size, (float)y * map.tile_size};
+                        tile->pos  = {(float)x * map.tile_size, (float)y * map.tile_size};
 
                         Color tile_col;
                         switch (tile->type) {
@@ -696,29 +696,29 @@ int main() {
                         Rectangle atlas_frame_rec = SetAtlasFrameRec(tile->type, tile->seed);
 
                         if (tile->type == TileType_grass || tile->type == TileType_dirt) {
-                            DrawTextureRec(tile_atlas, atlas_frame_rec, tile->tile_pos, WHITE);
+                            DrawTextureRec(tile_atlas, atlas_frame_rec, tile->pos, WHITE);
                         } else if (tile->type == TileType_wall || tile->type == TileType_wall2) {  
-                            DrawTextureRec(wall_atlas, atlas_frame_rec, tile->tile_pos, WHITE);
+                            DrawTextureRec(wall_atlas, atlas_frame_rec, tile->pos, WHITE);
                         } else {
-                            DrawRectangleV(tile->tile_pos, tile_size, tile_col);
+                            DrawRectangleV(tile->pos, tile_size, tile_col);
                         }
                         if (IsFlagSet(tile, TileFlag_fire)) {
                             tile_col = {168, 0, 0, 255};
                             fire_cleared = false;
-                            //DrawRectangleV(tile->tile_pos, tile_size, tile_col);
+                            //DrawRectangleV(tile->pos, tile_size, tile_col);
                             Animate(&tile->animator, frame_counter);
                             DrawTextureRec(tile->animator.texture[0], 
-                                           tile->animator.frame_rec, tile->tile_pos, WHITE);
+                                           tile->animator.frame_rec, tile->pos, WHITE);
                         }
                         if (IsFlagSet(tile, TileFlag_powerup)) {
-                            DrawTextureV(powerup_texture, tile->tile_pos, WHITE);
+                            DrawTextureV(powerup_texture, tile->pos, WHITE);
                         }
                         if (IsFlagSet(tile, TileFlag_enemy)) {
                             Enemy *found_enemy = FindEnemyInList(&enemy_sentinel, index);
                             if (found_enemy) {
                                 Animate(&found_enemy->animator, frame_counter);
                                 DrawTextureRec(found_enemy->animator.texture[0],
-                                               found_enemy->animator.frame_rec, tile->tile_pos, WHITE);
+                                               found_enemy->animator.frame_rec, tile->pos, WHITE);
                             }
                         }
                         if (IsFlagSet(tile, TileFlag_moved)) {
@@ -800,6 +800,14 @@ int main() {
                         if (IsFlagSet(target_tile, TileFlag_fire)) {
                             ClearFlag(target_tile, TileFlag_fire);
                             manager.score += 10;
+                            for (int index = 0; index < MAX_BURSTS; index++) {
+                                if (!manager.bursts[index].active) {
+                                    u32 random_index      = GetRandomValue(0, HYPE_WORD_COUNT - 1);
+                                    const char *word      = hype_text[random_index];
+                                    manager.bursts[index] = CreateTextBurst(word, target_tile->pos);
+                                    break;
+                                }
+                            }
                         }
                     }
 
@@ -943,7 +951,6 @@ int main() {
                 manager.enemy_move_timer = manager.enemy_move_duration;
             }
 
-#if 1
             Rectangle src = player.animators[PlayerAnimator_body].frame_rec;
 
             if (player.facing == DirectionFacing_left) {
@@ -960,11 +967,10 @@ int main() {
             Vector2 texture_offset = {0.0f, 20.0f};
             DrawTexturePro(player.animators[PlayerAnimator_body].texture[player.facing], src,
                            dest_rect, texture_offset, 0.0f, player.col);
-
-#else
-            DrawRectangleV(player.pos, player.size, player.col);
-#endif
-
+            for(int index = 0; index < MAX_BURSTS; index++) {
+                UpdateTextBurst(&manager.bursts[index], delta_t);
+                DrawTextBurst(&manager.bursts[index], font);
+            }
 
         } else if (manager.state == GameState_win) {
             // Draw tiles in background
