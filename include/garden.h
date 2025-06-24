@@ -12,7 +12,7 @@
 #define FRAME_SPEED 16
 #define INPUT_MAX 5
 #define MAX_PLAYER_ANIMATORS 2
-#define HYPE_WORD_COUNT 13
+#define HYPE_WORD_COUNT 12
 #define MAX_BURSTS 32
 
 const int base_screen_width  = 320;
@@ -146,6 +146,7 @@ struct GameManager {
     f32        enemy_move_timer;
 
     Sound      sounds[SoundEffect_count];
+    Sound      hype_sounds[HYPE_WORD_COUNT];
     TextBurst  bursts[MAX_BURSTS];
 };
 

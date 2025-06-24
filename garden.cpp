@@ -115,10 +115,36 @@ void LoadSoundBuffer(Sound *sounds) {
     sounds[SoundEffect_powerup_appear]  = LoadSound("../assets/sounds/powerup_appear.wav");
 }
 
+void LoadHypeSoundBuffer(Sound *sounds) {
+    sounds[0]  = LoadSound("../assets/sounds/hype_1.wav");
+    sounds[1]  = LoadSound("../assets/sounds/hype_2.wav");
+    sounds[2]  = LoadSound("../assets/sounds/hype_3.wav");
+    sounds[3]  = LoadSound("../assets/sounds/hype_4.wav");
+    sounds[4]  = LoadSound("../assets/sounds/hype_5.wav");
+    sounds[5]  = LoadSound("../assets/sounds/hype_6.wav");
+    sounds[6]  = LoadSound("../assets/sounds/hype_7.wav");
+    sounds[7]  = LoadSound("../assets/sounds/hype_8.wav");
+    sounds[8]  = LoadSound("../assets/sounds/hype_9.wav");
+    sounds[9]  = LoadSound("../assets/sounds/hype_10.wav");
+    sounds[10] = LoadSound("../assets/sounds/hype_11.wav");
+    sounds[11] = LoadSound("../assets/sounds/hype_12.wav");
+}
+
 void StopSoundBuffer(Sound *sounds) {
     for (u32 index = 0; index < SoundEffect_count; index++) {
         StopSound(sounds[index]);
     }
+}
+
+void StopHypeSoundBuffer(Sound *sounds) {
+    for (u32 index = 0; index < HYPE_WORD_COUNT; index++) {
+        StopSound(sounds[index]);
+    }
+}
+
+void StopAllSoundBuffers(GameManager *manager) {
+    StopSoundBuffer(manager->sounds);
+    StopHypeSoundBuffer(manager->hype_sounds);
 }
 
 void EnemyInit(Enemy *enemy, u32 tile_index) {
@@ -469,10 +495,10 @@ TextBurst CreateTextBurst(const char *text, Vector2 pos) {
     burst.text      =  text;
     burst.pos       =  pos;
     burst.alpha     =  0.0f;
-    burst.scale     =  1.0f;
-    burst.max_scale =  1.5f + (float)(rand() % 100) / 100.0f;
-    burst.drift.x   =  0;//-2.0f + (float)(rand() % 40);
-    burst.drift.y   =  0;//-2.0f + (float)(rand() % 40);
+    burst.scale     =  0.25f;
+    burst.max_scale =  0.75f + (float)(rand() % 100) / 100.0f;
+    burst.drift.x   = -1.25f + (float)(rand() % 2);
+    burst.drift.y   = -1.25f + (float)(rand() % 2);
     burst.lifetime  =  1.0f;
     burst.age       =  0.0f;
     burst.active    =  true;
@@ -488,7 +514,8 @@ void UpdateTextBurst(TextBurst *burst, float dt) {
         else if (t > 0.8f) burst->alpha = 1.0f - (t - 0.8f) / 0.2f; // fade out (last 0.2s)
         else               burst->alpha = 1.0f;
 
-        burst->scale = Lerp(1.0f, burst->max_scale, t);
+        f32 eased_t = t*t;
+        burst->scale = Lerp(0.25f, t, burst->max_scale);
 
         burst->pos.x += burst->drift.x *t;
         burst->pos.y += burst->drift.y *t;
@@ -498,7 +525,7 @@ void UpdateTextBurst(TextBurst *burst, float dt) {
 }
 
 void DrawTextBurst(TextBurst *burst, Font font) {
-    f32 font_size = (font.baseSize/2.0f) * burst->scale;
+    f32 font_size = (font.baseSize) * burst->scale;
     Color col     = Fade(WHITE, burst->alpha);
 
     DrawText(burst->text, (u32)burst->pos.x, (u32)burst->pos.y, font_size, col);
