@@ -774,11 +774,11 @@ int main() {
 
                 if (input_axis.x || input_axis.y) {
                     // NOTE: Calculate the next tile position
-                    s32 current_tile_x = (u32)player.pos.x / map.tile_size;
-                    s32 current_tile_y = (u32)player.pos.y / map.tile_size;
+                    u32 current_tile_x = (u32)player.pos.x / map.tile_size;
+                    u32 current_tile_y = (u32)player.pos.y / map.tile_size;
 
-                    s32 target_tile_x = current_tile_x + u32(input_axis.x);
-                    s32 target_tile_y = current_tile_y + u32(input_axis.y);
+                    u32 target_tile_x = current_tile_x + (u32)input_axis.x;
+                    u32 target_tile_y = current_tile_y + (u32)input_axis.y;
 
                     u32 target_tile_index = TilemapIndex(target_tile_x, target_tile_y, map.width);
                     Tile *target_tile = &map.tiles[target_tile_index];
@@ -844,8 +844,12 @@ int main() {
                                 while (index == manager.hype_prev_index) {
                                     index = GetRandomValue(0, HYPE_WORD_COUNT -1);
                                 }
-                                PlaySound(manager.hype_sounds[index]);
-                                manager.hype_prev_index = index;
+                                Sound hype_sound = manager.hype_sounds[index];
+                                f32 sound_boost  = 3.0f;
+                                SetSoundVolume(hype_sound, sound_boost);
+                                PlaySound(hype_sound);
+
+                                manager.hype_prev_index  = index;
                                 manager.hype_sound_timer = 0.0f;
                             }
                         }
