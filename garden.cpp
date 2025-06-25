@@ -106,6 +106,10 @@ void GameManagerInit(GameManager *manager) {
     manager->spawn_timer          = manager->enemy_spawn_duration;
     manager->enemy_move_duration  = 250.0f;
     manager->enemy_move_timer     = manager->enemy_move_duration;
+
+    manager->hype_sound_duration  = 0.1f;
+    manager->hype_sound_timer     = 0.0f;
+    manager->hype_prev_index      = 0;
 }
 
 void LoadSoundBuffer(Sound *sounds) {
@@ -619,6 +623,7 @@ int main() {
     GameManager manager;
     GameManagerInit(&manager);
     LoadSoundBuffer(manager.sounds);
+    LoadHypeSoundBuffer(manager.hype_sounds);
 
     // Music Init
     Music song_main  = LoadMusicStream("../assets/sounds/music.wav");
@@ -816,12 +821,15 @@ int main() {
                             StopSound(manager.sounds[SoundEffect_powerup_end]);
                         }
                         PlaySound(manager.sounds[SoundEffect_powerup_collect]);
+                        manager.hype_sound_timer   = manager.hype_sound_duration;
                     }
 
                     if (player.powered_up) {
+                        manager.hype_sound_timer += delta_t;
                         if (IsFlagSet(target_tile, TileFlag_fire)) {
                             ClearFlag(target_tile, TileFlag_fire);
                             manager.score += 10;
+                            // Create the text bursts
                             for (int index = 0; index < MAX_BURSTS; index++) {
                                 if (!manager.bursts[index].active) {
                                     u32 random_index      = GetRandomValue(0, HYPE_WORD_COUNT - 1);
@@ -829,6 +837,16 @@ int main() {
                                     manager.bursts[index] = CreateTextBurst(word, target_tile->pos);
                                     break;
                                 }
+                            }
+                            // Play the hype sounds
+                            if (manager.hype_sound_timer >= manager.hype_sound_duration) {
+                                u32 index = GetRandomValue(0, HYPE_WORD_COUNT - 1);
+                                while (index == manager.hype_prev_index) {
+                                    index = GetRandomValue(0, HYPE_WORD_COUNT -1);
+                                }
+                                PlaySound(manager.hype_sounds[index]);
+                                manager.hype_prev_index = index;
+                                manager.hype_sound_timer = 0.0f;
                             }
                         }
                     }

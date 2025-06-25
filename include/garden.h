@@ -145,8 +145,13 @@ struct GameManager {
     f32        enemy_move_duration;
     f32        enemy_move_timer;
 
-    Sound      sounds[SoundEffect_count];
+    // Hype Sound
+    f32        hype_sound_duration;
+    f32        hype_sound_timer;
+    u32        hype_prev_index;
     Sound      hype_sounds[HYPE_WORD_COUNT];
+
+    Sound      sounds[SoundEffect_count];
     TextBurst  bursts[MAX_BURSTS];
 };
 
