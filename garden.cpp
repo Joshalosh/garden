@@ -107,7 +107,6 @@ void GameManagerInit(GameManager *manager) {
     manager->enemy_move_duration  = 250.0f;
     manager->enemy_move_timer     = manager->enemy_move_duration;
 
-    manager->hype_sound_duration  = 0.1f;
     manager->hype_sound_timer     = 0.0f;
     manager->hype_prev_index      = 0;
 }
@@ -640,10 +639,10 @@ int main() {
     
     b32 fire_cleared; // NOTE: Perhaps this should live in the GameManager struct???
 
-    Texture2D tile_atlas          = LoadTexture("../assets/tiles/tile_row.png");
-    Texture2D wall_atlas          = LoadTexture("../assets/tiles/wall_tiles.png");
-    Texture2D powerup_texture     = LoadTexture("../assets/sprites/powerup.png");
-    u32 frame_counter             = 0;
+    Texture2D tile_atlas      = LoadTexture("../assets/tiles/tile_row.png");
+    Texture2D wall_atlas      = LoadTexture("../assets/tiles/wall_tiles.png");
+    Texture2D powerup_texture = LoadTexture("../assets/sprites/powerup.png");
+    u32 frame_counter         = 0;
 
     Memory_Arena arena;
     size_t arena_size = 1024*1024;
@@ -652,11 +651,16 @@ int main() {
     // NOTE: This is for the enemy linked list
     // TODO: Perhaps the sentinel should also be in the arena to be closer 
     // in memory to the other enemies?
-    Enemy enemy_sentinel = {};
-    enemy_sentinel.next = &enemy_sentinel;
-    enemy_sentinel.prev = &enemy_sentinel;
+    Enemy enemy_sentinel =  {};
+    enemy_sentinel.next  = &enemy_sentinel;
+    enemy_sentinel.prev  = &enemy_sentinel;
 
-    RenderTexture2D target    = LoadRenderTexture(base_screen_width, base_screen_height); 
+    // The head of the powerup linked list
+    Powerup powerup_sentinel =  {};
+    powerup_sentinel.next    = &powerup_sentinel;
+    powerup_sentinel.prev    = &powerup_sentinel;
+
+    RenderTexture2D target   = LoadRenderTexture(base_screen_width, base_screen_height); 
     SetTargetFPS(60);
     // -------------------------------------
     // Main Game Loop
@@ -821,11 +825,11 @@ int main() {
                             StopSound(manager.sounds[SoundEffect_powerup_end]);
                         }
                         PlaySound(manager.sounds[SoundEffect_powerup_collect]);
-                        manager.hype_sound_timer   = manager.hype_sound_duration;
+                        manager.hype_sound_timer   = 0;
                     }
 
                     if (player.powered_up) {
-                        manager.hype_sound_timer += delta_t;
+                        //manager.hype_sound_timer += delta_t;
                         if (IsFlagSet(target_tile, TileFlag_fire)) {
                             ClearFlag(target_tile, TileFlag_fire);
                             manager.score += 10;
@@ -839,7 +843,7 @@ int main() {
                                 }
                             }
                             // Play the hype sounds
-                            if (manager.hype_sound_timer >= manager.hype_sound_duration) {
+                            if (manager.hype_sound_timer <= GetTime()) {
                                 u32 index = GetRandomValue(0, HYPE_WORD_COUNT - 1);
                                 while (index == manager.hype_prev_index) {
                                     index = GetRandomValue(0, HYPE_WORD_COUNT -1);
@@ -850,7 +854,8 @@ int main() {
                                 PlaySound(hype_sound);
 
                                 manager.hype_prev_index  = index;
-                                manager.hype_sound_timer = 0.0f;
+                                f32 sound_duration = GetTime() + 0.90f;
+                                manager.hype_sound_timer = sound_duration;
                             }
                         }
                     }
@@ -974,7 +979,7 @@ int main() {
                 for (u32 y = 0; y < map.height; y++) {
                     for (u32 x = 0; x < map.width; x++) {
                         u32 tile_index = TilemapIndex(x, y, map.width); 
-                        Tile *tile = &map.tiles[tile_index];
+                        Tile *tile     = &map.tiles[tile_index];
 
                         if (IsFlagSet(tile, TileFlag_enemy) && !IsFlagSet(tile, TileFlag_moved)) {
                             u32 eligible_tile_index = FindEligibleTileIndexForEnemyMove(&map, tile_index); 

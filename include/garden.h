@@ -113,6 +113,13 @@ struct Enemy {
     Enemy     *prev;
 };
 
+struct Powerup {
+    Tile      *tile;
+    Animation  animator;
+    Powerup   *next;
+    Powerup   *prev;
+};
+
 enum Sound_Index {
     SoundEffect_powerup,
     SoundEffect_powerup_end,
@@ -146,7 +153,6 @@ struct GameManager {
     f32        enemy_move_timer;
 
     // Hype Sound
-    f32        hype_sound_duration;
     f32        hype_sound_timer;
     u32        hype_prev_index;
     Sound      hype_sounds[HYPE_WORD_COUNT];
