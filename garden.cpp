@@ -206,8 +206,26 @@ Enemy *FindEnemyInList(Enemy *sentinel, u32 index)
     if (!enemy_found) {
         enemy_to_find = NULL;
     }
-
     return enemy_to_find;
+}
+
+Powerup *FindPowerupInList(Powerup *sentinel, Tile *tile)
+{
+    Powerup *powerup_to_find = sentinel->next;
+    bool powerup_found = false;
+    while (powerup_to_find != sentinel) {
+        if (powerup_to_find->tile == tile) {
+            powerup_found = true;
+            break;
+        } else {
+            powerup_to_find = powerup_to_find->next;
+        }
+    }
+
+    if (!powerup_found) {
+        powerup_to_find = NULL;
+    }
+    return powerup_to_find;
 }
 
 void DeleteEnemyInList(Enemy *sentinel, u32 index)
@@ -227,8 +245,23 @@ void DeleteEnemyInList(Enemy *sentinel, u32 index)
     ASSERT(enemy_found);
 }
 
-// TODO: Instead of passing the sentinel which is a global, I could maybe pack it into
-// the GameManager and then figure out the memory storage for it?
+void DeletePowerupInList(Powerup *sentinel, Tile *tile)
+{
+    Powerup *powerup_to_delete = sentinel->next;
+    bool powerup_found         = false;
+    while (powerup_to_delete != sentinel) {
+        if (powerup_to_delete->tile == tile) {
+            powerup_to_delete->prev->next = powerup_to_delete->next;
+            powerup_to_delete->next->prev = powerup_to_delete->prev;
+            powerup_found = true;
+            break;
+        } else { 
+            powerup_to_delete = powerup_to_delete->next;
+        }
+    }
+    ASSERT(powerup_found);
+}
+
 // TODO: Need to set make sure the audio completely stops here perhaps put all the sounds into a sound 
 // buffer and loop through and stop all sounds... or close the audio device and re-init... but then I 
 // will have to load in all the sounds again.
@@ -401,6 +434,7 @@ void CheckEnclosedAreas(Memory_Arena *arena, Tilemap *tilemap, Player *player, G
                     
                     if (IsFlagSet(tile, TileFlag_powerup)) {
                         ClearFlag(tile, TileFlag_powerup);
+                        DeletePowerupInList(&manager->powerup_sentinel, tile);
                     }
                     if (IsFlagSet(tile, TileFlag_enemy)) {
                         DeleteEnemyInList(&manager->enemy_sentinel, index);
@@ -760,7 +794,13 @@ int main() {
                                            tile->animator.frame_rec, tile->pos, WHITE);
                         }
                         if (IsFlagSet(tile, TileFlag_powerup)) {
-                            DrawTextureV(powerup_texture, tile->pos, WHITE);
+                            Powerup *found_powerup = FindPowerupInList(&manager.powerup_sentinel, tile);
+                            if (found_powerup) {
+                                Animate(&found_powerup->animator, frame_counter);
+                                DrawTextureRec(found_powerup->animator.texture[0], 
+                                               found_powerup->animator.frame_rec, tile->pos, WHITE);
+                            }
+                            //DrawTextureV(powerup_texture, tile->pos, WHITE);
                         }
                         if (IsFlagSet(tile, TileFlag_enemy)) {
                             Enemy *found_enemy = FindEnemyInList(&manager.enemy_sentinel, index);
