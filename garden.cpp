@@ -97,7 +97,7 @@ void PlayerInit(Player *player) {
 
 }
 
-void GameManagerInit(GameManager *manager) {
+void GameManagerInit(Game_Manager *manager) {
     manager->score                = 0;
     manager->high_score           = 0;
     manager->state                = GameState_play;
@@ -109,6 +109,16 @@ void GameManagerInit(GameManager *manager) {
 
     manager->hype_sound_timer     = 0.0f;
     manager->hype_prev_index      = 0;
+
+    manager->enemy_sentinel        = {};
+    manager->enemy_sentinel.next  = &manager->enemy_sentinel;
+    manager->enemy_sentinel.prev  = &manager->enemy_sentinel;
+
+    // The head of the powerup linked list
+    manager->powerup_sentinel          = {};
+    manager->powerup_sentinel.next    = &manager->powerup_sentinel;
+    manager->powerup_sentinel.prev    = &manager->powerup_sentinel;
+
 }
 
 void LoadSoundBuffer(Sound *sounds) {
@@ -145,21 +155,39 @@ void StopHypeSoundBuffer(Sound *sounds) {
     }
 }
 
-void StopAllSoundBuffers(GameManager *manager) {
+void StopAllSoundBuffers(Game_Manager *manager) {
     StopSoundBuffer(manager->sounds);
     StopHypeSoundBuffer(manager->hype_sounds);
 }
 
-void EnemyInit(Enemy *enemy, u32 tile_index) {
-    enemy->tile_index = tile_index;
+void PowerupInit(Powerup *powerup, Powerup *sentinel, Tile *tile) {
+    powerup->tile                   = tile;
+    powerup->animator.texture[0]    = LoadTexture("../assets/sprites/bowl.png");
+    powerup->animator.max_frames    = (f32)powerup->animator.texture[0].width/20;
+    powerup->animator.current_frame = 0;
+    powerup->animator.frame_rec     = {0, 0,
+                                       (f32)powerup->animator.texture[0].width/powerup->animator.max_frames,
+                                       (f32)powerup->animator.texture[0].height};
+
+    powerup->next       = sentinel->next;
+    powerup->prev       = sentinel;
+    powerup->next->prev = powerup;
+    powerup->prev->next = powerup;
+}
+
+void EnemyInit(Enemy *enemy, Enemy *sentinel, u32 tile_index) {
+    enemy->tile_index             = tile_index;
     enemy->animator.texture[0]    = LoadTexture("../assets/sprites/enemy.png");
     enemy->animator.max_frames    = (f32)enemy->animator.texture[0].width/20;
     enemy->animator.current_frame = 0;
     enemy->animator.frame_rec     = {0, 0, 
                                      (f32)enemy->animator.texture[0].width/enemy->animator.max_frames,
                                      (f32)enemy->animator.texture[0].height};
-    enemy->next = 0;
-    enemy->prev = 0;
+
+    enemy->next       = sentinel->next;
+    enemy->prev       = sentinel;
+    enemy->next->prev = enemy;
+    enemy->prev->next = enemy;
 }
 
 Enemy *FindEnemyInList(Enemy *sentinel, u32 index)
@@ -204,7 +232,7 @@ void DeleteEnemyInList(Enemy *sentinel, u32 index)
 // TODO: Need to set make sure the audio completely stops here perhaps put all the sounds into a sound 
 // buffer and loop through and stop all sounds... or close the audio device and re-init... but then I 
 // will have to load in all the sounds again.
-void GameOver(Player *player, Tilemap *tilemap,  Enemy *sentinel, GameManager *manager) {
+void GameOver(Player *player, Tilemap *tilemap,  Game_Manager *manager) {
     PlayerInit(player);
     if (manager->score > manager->high_score) {
         manager->high_score = manager->score;
@@ -214,8 +242,8 @@ void GameOver(Player *player, Tilemap *tilemap,  Enemy *sentinel, GameManager *m
 
     StopSoundBuffer(manager->sounds);
 
-    sentinel->next = sentinel;
-    sentinel->prev = sentinel;
+    manager->enemy_sentinel.next = &manager->enemy_sentinel;
+    manager->enemy_sentinel.prev = &manager->enemy_sentinel;
 
     // Reset the tilemap back to it's original orientation
     TileInit(tilemap);
@@ -352,7 +380,7 @@ u32 FindEligibleTileIndexForEnemyMove(Tilemap *tilemap, u32 index) {
     return result;
 }
 
-void CheckEnclosedAreas(Tilemap *tilemap, Player *player, Enemy *sentinel, Sound *sounds,
+void CheckEnclosedAreas(Memory_Arena *arena, Tilemap *tilemap, Player *player, Game_Manager *manager, 
                         u32 current_x, u32 current_y) {
     // Flood fill from borders to mark reachable areas
     FloodFillFromPlayerPosition(tilemap, current_x, current_y);
@@ -375,7 +403,7 @@ void CheckEnclosedAreas(Tilemap *tilemap, Player *player, Enemy *sentinel, Sound
                         ClearFlag(tile, TileFlag_powerup);
                     }
                     if (IsFlagSet(tile, TileFlag_enemy)) {
-                        DeleteEnemyInList(sentinel, index);
+                        DeleteEnemyInList(&manager->enemy_sentinel, index);
                         ClearFlag(tile, TileFlag_enemy);
                         enemy_slain++;
                         player->speed += 10.0f;
@@ -389,13 +417,15 @@ void CheckEnclosedAreas(Tilemap *tilemap, Player *player, Enemy *sentinel, Sound
 
     if (has_flood_fill_happened) {
         if (enemy_slain) {
-            PlaySound(sounds[SoundEffect_powerup_appear]);
+            PlaySound(manager->sounds[SoundEffect_powerup_appear]);
         }
         while (enemy_slain) {
             u32 tile_index = GetRandomEmptyTileIndex(tilemap);
             if (tile_index) {
                 Tile *tile = &tilemap->tiles[tile_index];
                 AddFlag(tile, TileFlag_powerup);
+                Powerup *new_powerup = (Powerup *)ArenaAlloc(arena, sizeof(Powerup));
+                PowerupInit(new_powerup, &manager->powerup_sentinel, tile);
                 enemy_slain--;
             }
         }
@@ -493,8 +523,8 @@ void GatherInput(Player *player) {
     }
 }
 
-TextBurst CreateTextBurst(const char *text, Vector2 pos) {
-    TextBurst burst =  {};
+Text_Burst CreateTextBurst(const char *text, Vector2 pos) {
+    Text_Burst burst =  {};
     burst.text      =  text;
     burst.pos       =  pos;
     burst.alpha     =  0.0f;
@@ -508,7 +538,7 @@ TextBurst CreateTextBurst(const char *text, Vector2 pos) {
     return burst;
 }
 
-void UpdateTextBurst(TextBurst *burst, float dt) {
+void UpdateTextBurst(Text_Burst *burst, float dt) {
     if (burst->active) {
         burst->age += dt;
         float t     = burst->age / burst->lifetime; 
@@ -527,7 +557,7 @@ void UpdateTextBurst(TextBurst *burst, float dt) {
     }
 }
 
-void DrawTextBurst(TextBurst *burst, Font font) {
+void DrawTextBurst(Text_Burst *burst, Font font) {
     f32 font_size = (font.baseSize) * burst->scale;
     Color col     = Fade(WHITE, burst->alpha);
 
@@ -619,7 +649,7 @@ int main() {
 
     Vector2 input_axis       = {0, 0};
 
-    GameManager manager;
+    Game_Manager manager;
     GameManagerInit(&manager);
     LoadSoundBuffer(manager.sounds);
     LoadHypeSoundBuffer(manager.hype_sounds);
@@ -637,7 +667,7 @@ int main() {
     song_muted.looping = true;
 
     
-    b32 fire_cleared; // NOTE: Perhaps this should live in the GameManager struct???
+    b32 fire_cleared; // NOTE: Perhaps this should live in the Game_Manager struct???
 
     Texture2D tile_atlas      = LoadTexture("../assets/tiles/tile_row.png");
     Texture2D wall_atlas      = LoadTexture("../assets/tiles/wall_tiles.png");
@@ -647,18 +677,6 @@ int main() {
     Memory_Arena arena;
     size_t arena_size = 1024*1024;
     ArenaInit(&arena, arena_size); 
-
-    // NOTE: This is for the enemy linked list
-    // TODO: Perhaps the sentinel should also be in the arena to be closer 
-    // in memory to the other enemies?
-    Enemy enemy_sentinel =  {};
-    enemy_sentinel.next  = &enemy_sentinel;
-    enemy_sentinel.prev  = &enemy_sentinel;
-
-    // The head of the powerup linked list
-    Powerup powerup_sentinel =  {};
-    powerup_sentinel.next    = &powerup_sentinel;
-    powerup_sentinel.prev    = &powerup_sentinel;
 
     RenderTexture2D target   = LoadRenderTexture(base_screen_width, base_screen_height); 
     SetTargetFPS(60);
@@ -745,7 +763,7 @@ int main() {
                             DrawTextureV(powerup_texture, tile->pos, WHITE);
                         }
                         if (IsFlagSet(tile, TileFlag_enemy)) {
-                            Enemy *found_enemy = FindEnemyInList(&enemy_sentinel, index);
+                            Enemy *found_enemy = FindEnemyInList(&manager.enemy_sentinel, index);
                             if (found_enemy) {
                                 Animate(&found_enemy->animator, frame_counter);
                                 DrawTextureRec(found_enemy->animator.texture[0],
@@ -807,11 +825,11 @@ int main() {
                             }
                         } 
                         else {
-                            GameOver(&player, &map, &enemy_sentinel, &manager);
+                            GameOver(&player, &map, &manager);
                         }
                     } else {
                         // Out of bounds
-                        GameOver(&player, &map, &enemy_sentinel, &manager);
+                        GameOver(&player, &map, &manager);
                     }
 
                     if (IsFlagSet(target_tile, TileFlag_powerup)) {
@@ -861,7 +879,7 @@ int main() {
                     }
 
                     if (IsFlagSet(target_tile, TileFlag_fire) || IsFlagSet(target_tile, TileFlag_enemy)) {
-                        GameOver(&player, &map, &enemy_sentinel, &manager);
+                        GameOver(&player, &map, &manager);
                     }
                 }
             } else {
@@ -875,8 +893,7 @@ int main() {
                     u32 current_tile_x = (u32)player.pos.x / map.tile_size;
                     u32 current_tile_y = (u32)player.pos.y / map.tile_size;
 
-                    CheckEnclosedAreas(&map, &player, &enemy_sentinel, manager.sounds, 
-                                       current_tile_x, current_tile_y);
+                    CheckEnclosedAreas(&arena, &map, &player, &manager, current_tile_x, current_tile_y);
                 } else {
                     direction        = VectorNorm(direction);
                     Vector2 movement = VectorScale(direction, player.speed * delta_t);
@@ -963,12 +980,7 @@ int main() {
                     AddFlag(tile, TileFlag_enemy);
 
                     Enemy *new_enemy = (Enemy *)ArenaAlloc(&arena, sizeof(Enemy));
-                    EnemyInit(new_enemy, tile_index);
-                    // NOTE: Add enemy to enemy_list;
-                    new_enemy->next       = enemy_sentinel.next;
-                    new_enemy->prev       = &enemy_sentinel;
-                    new_enemy->next->prev = new_enemy;
-                    new_enemy->prev->next = new_enemy;
+                    EnemyInit(new_enemy, &manager.enemy_sentinel, tile_index);
                 }
             }
 
@@ -986,7 +998,7 @@ int main() {
                             Tile *eligible_tile = &map.tiles[eligible_tile_index];
 
                             if (eligible_tile_index) {
-                                Enemy *found_enemy = FindEnemyInList(&enemy_sentinel, tile_index);
+                                Enemy *found_enemy = FindEnemyInList(&manager.enemy_sentinel, tile_index);
                                 if (found_enemy) {
                                     found_enemy->tile_index = eligible_tile_index;
                                 }
@@ -1069,7 +1081,7 @@ int main() {
             StopSoundBuffer(manager.sounds);
         
             if (IsKeyPressed(KEY_SPACE)) {
-                GameOver(&player, &map, &enemy_sentinel, &manager);
+                GameOver(&player, &map, &manager);
             }
         }
 
@@ -1111,7 +1123,7 @@ int main() {
     // -------------------------------------
     // De-Initialisation
     // -------------------------------------
-    // TODO: Unload the sounds in the GameManager
+    // TODO: Unload the sounds in the Game_Manager
     //UnloadSound(powerup_sound);
     //UnloadSound(powerup_end_sound);
     CloseAudioDevice();
