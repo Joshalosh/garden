@@ -657,16 +657,16 @@ int main() {
 
     // Initialise the basic player body animator
     player.animators[PlayerAnimator_body].texture[DirectionFacing_down]  = 
-        LoadTexture("../assets/sprites/thing.png");
+        LoadTexture("../assets/sprites/baby_down.png");
     player.animators[PlayerAnimator_body].texture[DirectionFacing_up]    = 
-        LoadTexture("../assets/sprites/thing_back.png");
+        LoadTexture("../assets/sprites/baby_up.png");
     player.animators[PlayerAnimator_body].texture[DirectionFacing_left]  = 
-        LoadTexture("../assets/sprites/thing_side.png");
+        LoadTexture("../assets/sprites/baby_right.png");
     player.animators[PlayerAnimator_body].texture[DirectionFacing_right] = 
-        LoadTexture("../assets/sprites/thing_side.png");
+        LoadTexture("../assets/sprites/baby_right.png");
     player.animators[PlayerAnimator_body].frame_rec = 
         {0.0f, 0.0f, 
-        (f32)player.animators[PlayerAnimator_body].texture[DirectionFacing_down].width/6,
+        (f32)player.animators[PlayerAnimator_body].texture[DirectionFacing_down].width/4,
         (f32)player.animators[PlayerAnimator_body].texture[DirectionFacing_down].height}; 
     player.animators[PlayerAnimator_body].current_frame = 0;
 
@@ -1060,7 +1060,7 @@ int main() {
             }
             
             f32 frame_width  = (f32)player.animators[PlayerAnimator_body].frame_rec.width;
-            f32 frame_height = (f32)player.animators[PlayerAnimator_body].texture[player.facing].height*2;
+            f32 frame_height = (f32)player.animators[PlayerAnimator_body].texture[player.facing].height;
 
             Rectangle dest_rect = {player.pos.x, player.pos.y, 
                                    frame_width, frame_height}; 
