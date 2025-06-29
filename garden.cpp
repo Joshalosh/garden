@@ -657,13 +657,13 @@ int main() {
 
     // Initialise the basic player body animator
     player.animators[PlayerAnimator_body].texture[DirectionFacing_down]  = 
-        LoadTexture("../assets/sprites/baby_down.png");
+        LoadTexture("../assets/sprites/hat_down.png");
     player.animators[PlayerAnimator_body].texture[DirectionFacing_up]    = 
-        LoadTexture("../assets/sprites/baby_up.png");
+        LoadTexture("../assets/sprites/hat_up.png");
     player.animators[PlayerAnimator_body].texture[DirectionFacing_left]  = 
-        LoadTexture("../assets/sprites/baby_right.png");
+        LoadTexture("../assets/sprites/hat_right.png");
     player.animators[PlayerAnimator_body].texture[DirectionFacing_right] = 
-        LoadTexture("../assets/sprites/baby_right.png");
+        LoadTexture("../assets/sprites/hat_right.png");
     player.animators[PlayerAnimator_body].frame_rec = 
         {0.0f, 0.0f, 
         (f32)player.animators[PlayerAnimator_body].texture[DirectionFacing_down].width/4,
@@ -834,6 +834,7 @@ int main() {
                 }
                 
 
+#if 0
                 if (input_axis.x || input_axis.y) {
                     // NOTE: Calculate the next tile position
                     u32 current_tile_x = (u32)player.pos.x / map.tile_size;
@@ -863,15 +864,56 @@ int main() {
                             if (!player.powered_up) {
                                 AddFlag(current_tile, TileFlag_fire);
                             }
-                        } 
-                        else {
+                        } else {
                             GameOver(&player, &map, &manager);
                         }
                     } else {
                         // Out of bounds
                         GameOver(&player, &map, &manager);
                     }
+#endif
+                if (input_axis.x || input_axis.y) {
+                    // NOTE: Calculate the next tile position
+                    u32 current_tile_x = (u32)player.pos.x / map.tile_size;
+                    u32 current_tile_y = (u32)player.pos.y / map.tile_size;
 
+                    u32 target_tile_x = current_tile_x + (u32)input_axis.x;
+                    u32 target_tile_y = current_tile_y + (u32)input_axis.y;
+
+                    // TODO: need to continue the refactor from here
+                    if (target_tile_x < 0) target_tile_x = map.width - 1;
+                    else if (target_tile_x >= map.width) target_tile_x = 0;
+
+                    if (target_tile_y < 0) target_tile_y = map.height - 1;
+                    else if (target_tile_y >= map.height) target_tile_y = 0;
+
+                    if (!player.powered_up) {
+                        u32 current_tile_index = TilemapIndex(current_tile_x, current_tile_y, map.width);
+                        AddFlag(&map.tiles[current_tile_index], TileFlag_fire);
+                    }
+
+                    u32 target_tile_index = TilemapIndex(target_tile_x, target_tile_y, map.width);
+                    Tile *target_tile = &map.tiles[target_tile_index];
+#if 0
+                        if (target_tile->type != TileType_wall  && 
+                            target_tile->type != TileType_wall2 && 
+                            target_tile->type != TileType_fire) {
+#endif
+                            
+                            // Start moving
+                            player.facing     = dir;
+                            player.target_pos = {(float)target_tile_x * map.tile_size, (float)target_tile_y * map.tile_size};
+                            player.is_moving  = true;
+
+#if 0
+                        } else {
+                            GameOver(&player, &map, &manager);
+                        }
+                    } else {
+                        // Out of bounds
+                        GameOver(&player, &map, &manager);
+                    }
+#endif
                     if (IsFlagSet(target_tile, TileFlag_powerup)) {
                         float powerup_duration     = 10.0f;
                         player.powerup_timer       = GetTime() + powerup_duration;
