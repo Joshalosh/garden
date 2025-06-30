@@ -81,7 +81,6 @@ void PlayerInit(Player *player) {
     player->size                = {20, 20};
     player->col                 = WHITE;
     player->speed               = 75.0f;
-    player->is_moving           = false;
     player->powered_up          = false;
     player->powerup_timer       = 0;
     player->blink_speed         = 0;
@@ -177,7 +176,7 @@ void PowerupInit(Powerup *powerup, Powerup *sentinel, Tile *tile) {
 
 void EnemyInit(Enemy *enemy, Enemy *sentinel, u32 tile_index) {
     enemy->tile_index             = tile_index;
-    enemy->animator.texture[0]    = LoadTexture("../assets/sprites/enemy.png");
+    enemy->animator.texture[0]    = LoadTexture("../assets/sprites/demon.png");
     enemy->animator.max_frames    = (f32)enemy->animator.texture[0].width/20;
     enemy->animator.current_frame = 0;
     enemy->animator.frame_rec     = {0, 0, 
@@ -634,6 +633,7 @@ int main() {
         { 1, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 4, },
         { 4, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 1, },
         { 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, },
+
     };
     //map.tiles = (u32 *)tilemap;
     //u32 original_map[TILEMAP_HEIGHT][TILEMAP_WIDTH];
@@ -802,6 +802,7 @@ int main() {
                             }
                             //DrawTextureV(powerup_texture, tile->pos, WHITE);
                         }
+                        // TODO: I need to draw enemies in a smarter way
                         if (IsFlagSet(tile, TileFlag_enemy)) {
                             Enemy *found_enemy = FindEnemyInList(&manager.enemy_sentinel, index);
                             if (found_enemy) {
@@ -834,7 +835,6 @@ int main() {
                 }
                 
 
-#if 0
                 if (input_axis.x || input_axis.y) {
                     // NOTE: Calculate the next tile position
                     u32 current_tile_x = (u32)player.pos.x / map.tile_size;
@@ -871,49 +871,7 @@ int main() {
                         // Out of bounds
                         GameOver(&player, &map, &manager);
                     }
-#endif
-                if (input_axis.x || input_axis.y) {
-                    // NOTE: Calculate the next tile position
-                    u32 current_tile_x = (u32)player.pos.x / map.tile_size;
-                    u32 current_tile_y = (u32)player.pos.y / map.tile_size;
 
-                    u32 target_tile_x = current_tile_x + (u32)input_axis.x;
-                    u32 target_tile_y = current_tile_y + (u32)input_axis.y;
-
-                    // TODO: need to continue the refactor from here
-                    if (target_tile_x < 0) target_tile_x = map.width - 1;
-                    else if (target_tile_x >= map.width) target_tile_x = 0;
-
-                    if (target_tile_y < 0) target_tile_y = map.height - 1;
-                    else if (target_tile_y >= map.height) target_tile_y = 0;
-
-                    if (!player.powered_up) {
-                        u32 current_tile_index = TilemapIndex(current_tile_x, current_tile_y, map.width);
-                        AddFlag(&map.tiles[current_tile_index], TileFlag_fire);
-                    }
-
-                    u32 target_tile_index = TilemapIndex(target_tile_x, target_tile_y, map.width);
-                    Tile *target_tile = &map.tiles[target_tile_index];
-#if 0
-                        if (target_tile->type != TileType_wall  && 
-                            target_tile->type != TileType_wall2 && 
-                            target_tile->type != TileType_fire) {
-#endif
-                            
-                            // Start moving
-                            player.facing     = dir;
-                            player.target_pos = {(float)target_tile_x * map.tile_size, (float)target_tile_y * map.tile_size};
-                            player.is_moving  = true;
-
-#if 0
-                        } else {
-                            GameOver(&player, &map, &manager);
-                        }
-                    } else {
-                        // Out of bounds
-                        GameOver(&player, &map, &manager);
-                    }
-#endif
                     if (IsFlagSet(target_tile, TileFlag_powerup)) {
                         float powerup_duration     = 10.0f;
                         player.powerup_timer       = GetTime() + powerup_duration;
