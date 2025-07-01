@@ -807,8 +807,9 @@ int main() {
                             Enemy *found_enemy = FindEnemyInList(&manager.enemy_sentinel, index);
                             if (found_enemy) {
                                 Animate(&found_enemy->animator, frame_counter);
+                                Vector2 draw_pos = {tile->pos.x, tile->pos.y - 20.f};
                                 DrawTextureRec(found_enemy->animator.texture[0],
-                                               found_enemy->animator.frame_rec, tile->pos, WHITE);
+                                               found_enemy->animator.frame_rec, draw_pos, WHITE);
                             }
                         }
                         if (IsFlagSet(tile, TileFlag_moved)) {
@@ -1019,6 +1020,7 @@ int main() {
                     Tile *tile = &map.tiles[tile_index];
                     AddFlag(tile, TileFlag_enemy);
 
+                    // Add enemy
                     Enemy *new_enemy = (Enemy *)ArenaAlloc(&arena, sizeof(Enemy));
                     EnemyInit(new_enemy, &manager.enemy_sentinel, tile_index);
                 }
