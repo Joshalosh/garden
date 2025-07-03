@@ -99,7 +99,7 @@ void PlayerInit(Player *player) {
 void GameManagerInit(Game_Manager *manager) {
     manager->score                = 0;
     manager->high_score           = 0;
-    manager->state                = GameState_play;
+    manager->state                = GameState_title; //GameState_play;
 
     manager->enemy_spawn_duration = 500.0f;
     manager->spawn_timer          = manager->enemy_spawn_duration;
@@ -706,6 +706,10 @@ int main() {
     Texture2D tile_atlas      = LoadTexture("../assets/tiles/tile_row.png");
     Texture2D wall_atlas      = LoadTexture("../assets/tiles/wall_tiles.png");
     Texture2D powerup_texture = LoadTexture("../assets/sprites/powerup.png");
+
+    // Title screen texture initialisation
+    Texture2D title_screen = LoadTexture("../assets/tiles/title_screen.png");
+
     u32 frame_counter         = 0;
 
     Memory_Arena arena;
@@ -744,12 +748,12 @@ int main() {
         if (!IsMusicStreamPlaying(song_main))  PlayMusicStream(song_main);
         if (!IsMusicStreamPlaying(song_muted)) PlayMusicStream(song_muted);
 
+        // Draw to render texture
+        BeginTextureMode(target);
+        ClearBackground(BLACK);
+            
         if (manager.state == GameState_play) {
 
-            // Draw to render texture
-            BeginTextureMode(target);
-            ClearBackground(BLACK);
-            
             fire_cleared = true;
             // Draw tiles in background
             {
@@ -1122,6 +1126,14 @@ int main() {
 
             StopSoundBuffer(manager.sounds);
         
+            if (IsKeyPressed(KEY_SPACE)) {
+                GameOver(&player, &map, &manager);
+            }
+        } else if (manager.state == GameState_title) {
+
+            Vector2 pos = {0.0f, 0.0f};
+            DrawTextureV(title_screen, pos, WHITE);
+
             if (IsKeyPressed(KEY_SPACE)) {
                 GameOver(&player, &map, &manager);
             }
