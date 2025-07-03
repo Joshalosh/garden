@@ -1166,8 +1166,6 @@ int main() {
     // De-Initialisation
     // -------------------------------------
     // TODO: Unload the sounds in the Game_Manager
-    //UnloadSound(powerup_sound);
-    //UnloadSound(powerup_end_sound);
     CloseAudioDevice();
     CloseWindow();
     // -------------------------------------
