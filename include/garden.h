@@ -146,6 +146,8 @@ struct Game_Manager {
     u32         score;
     u32         high_score;
     Game_State  state;
+    f32         bg_scroll_time;
+
 
     // Enemy controller
     f32         enemy_spawn_duration;

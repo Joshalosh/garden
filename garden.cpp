@@ -100,6 +100,7 @@ void GameManagerInit(Game_Manager *manager) {
     manager->score                = 0;
     manager->high_score           = 0;
     manager->state                = GameState_title; //GameState_play;
+    manager->bg_scroll_time       = 0.0f;
 
     manager->enemy_spawn_duration = 500.0f;
     manager->spawn_timer          = manager->enemy_spawn_duration;
@@ -581,7 +582,7 @@ void UpdateTextBurst(Text_Burst *burst, float dt) {
         else               burst->alpha = 1.0f;
 
         f32 eased_t = t*t;
-        burst->scale = Lerp(0.25f, t, burst->max_scale);
+        burst->scale = Lerp(0.25f, eased_t, burst->max_scale);
 
         burst->pos.x += burst->drift.x *t;
         burst->pos.y += burst->drift.y *t;
@@ -709,6 +710,9 @@ int main() {
 
     // Title screen texture initialisation
     Texture2D title_screen = LoadTexture("../assets/tiles/title_screen.png");
+    f32 scroll_speed       = 50.0f;
+    Vector2 title_pos_1    = {0.0f, 0.0f};
+    Vector2 title_pos_2    = {base_screen_width, 0.0f};
 
     u32 frame_counter         = 0;
 
@@ -1131,8 +1135,19 @@ int main() {
             }
         } else if (manager.state == GameState_title) {
 
-            Vector2 pos = {0.0f, 0.0f};
-            DrawTextureV(title_screen, pos, WHITE);
+            title_pos_1.x -= scroll_speed * delta_t;
+            title_pos_2.x -= scroll_speed * delta_t;
+
+            if (title_pos_1.x <= -base_screen_width) {
+                title_pos_1.x = title_pos_2.x + base_screen_width;
+            }
+
+            if (title_pos_2.x <= -base_screen_width) {
+                title_pos_2.x = title_pos_1.x + base_screen_width;
+            }
+
+            DrawTextureV(title_screen, title_pos_1, WHITE);
+            DrawTextureV(title_screen, title_pos_2, WHITE);
 
             if (IsKeyPressed(KEY_SPACE)) {
                 GameOver(&player, &map, &manager);
@@ -1163,12 +1178,19 @@ int main() {
         Vector2 zero_vec = {0, 0};
         DrawTexturePro(target.texture, rect,
                        dest_rect, zero_vec, 0.0f, WHITE);
-        DrawText(TextFormat("Score: %d", manager.score), 25, 25, 38, WHITE);
-        DrawText(TextFormat("High Score: %d", manager.high_score), window_width - 350, 25, 38, WHITE);
+        if (manager.state == GameState_play || manager.state == GameState_win) {
+            DrawText(TextFormat("Score: %d", manager.score), 25, 25, 38, WHITE);
+            DrawText(TextFormat("High Score: %d", manager.high_score), window_width - 350, 25, 38, WHITE);
+        };
 
         if (fire_cleared && player.powered_up) {
             DrawText("WIN", window_width*0.5, window_height*0.5, 69, WHITE);
             manager.state = GameState_win;
+        }
+
+        if (manager.state == GameState_title) {
+            DrawText("ANUNNAKI", window_width*0.5, window_height*0.5, 69, WHITE);
+            DrawText("ANUNNAKI", window_width*0.5-4.0f, window_height*0.5+4.0f, 69, BLACK);
         }
 
         EndDrawing();
