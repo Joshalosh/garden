@@ -721,7 +721,17 @@ int main() {
     Vector2 title_bg_pos_1      = {0.0f, 0.0f};
     Vector2 title_bg_pos_2      = {base_screen_width, 0.0f};
 
-    u32 frame_counter        = 0;
+    Shader wobbleShader = LoadShader(0, "../shaders/wobble.fs");
+    int timeLoc  = GetShaderLocation(wobbleShader, "time");
+    int ampLoc   = GetShaderLocation(wobbleShader, "amplitude");
+    int freqLoc  = GetShaderLocation(wobbleShader, "frequency");
+    int speedLoc = GetShaderLocation(wobbleShader, "speed");
+
+
+    
+
+    // TODO: Maybe this should go into the game manager?
+    u32 frame_counter        = 0; 
 
     Memory_Arena arena;
     size_t arena_size = 1024*1024;
@@ -758,6 +768,17 @@ int main() {
 
         if (!IsMusicStreamPlaying(song_main))  PlayMusicStream(song_main);
         if (!IsMusicStreamPlaying(song_muted)) PlayMusicStream(song_muted);
+
+        // Shader variables
+        f32 time = GetTime();
+        f32 amplitude = 0.008f; // adjust to taste
+        f32 frequency = 10.0f; // number of vertical waves
+        f32 speed     = 2.0f;  // wave movement speed
+        
+        SetShaderValue(wobbleShader, timeLoc,  &time,      SHADER_UNIFORM_FLOAT);
+        SetShaderValue(wobbleShader, ampLoc,   &amplitude, SHADER_UNIFORM_FLOAT);
+        SetShaderValue(wobbleShader, freqLoc,  &frequency, SHADER_UNIFORM_FLOAT);
+        SetShaderValue(wobbleShader, speedLoc, &speed,     SHADER_UNIFORM_FLOAT);
 
         // Draw to render texture
         BeginTextureMode(target);
@@ -1156,15 +1177,21 @@ int main() {
             DrawTextureV(title_screen, title_bg_pos_1, WHITE);
             DrawTextureV(title_screen, title_bg_pos_2, WHITE);
 
+#if 0
             title_pos_y += 0.1f*sinf(8.0f*title_bob);
             title_bob += delta_t;
+#endif
             Vector2 title_pos = {title_pos_x, title_pos_y};
 #if 1
+            BeginShaderMode(wobbleShader);
             DrawTextureEx(anunnaki, {title_pos.x-4.0f, title_pos.y+4.0f}, 0.0f, title_scale, BLACK);
             DrawTextureEx(anunnaki, title_pos, 0.0f, title_scale, WHITE);
+            EndShaderMode();
 #else
+            BeginShaderMode(wobbleShader);
             DrawTextureEx(anunnaki_thick, {title_pos.x-4.0f, title_pos.y+4.0f}, 0.0f, title_scale, BLACK);
             DrawTextureEx(anunnaki_thick, title_pos, 0.0f, title_scale, WHITE);
+            EndShaderMode();
 #endif
 
             if (IsKeyPressed(KEY_SPACE)) {
