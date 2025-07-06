@@ -709,12 +709,19 @@ int main() {
     Texture2D powerup_texture = LoadTexture("../assets/sprites/powerup.png");
 
     // Title screen texture initialisation
-    Texture2D title_screen = LoadTexture("../assets/tiles/title_screen.png");
-    f32 scroll_speed       = 50.0f;
-    Vector2 title_pos_1    = {0.0f, 0.0f};
-    Vector2 title_pos_2    = {base_screen_width, 0.0f};
+    Texture2D anunnaki       = LoadTexture("../assets/titles/anunnaki.png");
+    Texture2D anunnaki_thick = LoadTexture("../assets/titles/anunnaki_thick.png");
+    u32 title_scale = 2;
+    f32 title_pos_x = (base_screen_width * 0.5) - ((anunnaki.width * title_scale) * 0.5);
+    f32 title_pos_y = base_screen_height * 0.25;
+    f32 title_bob   = 0.0f;
 
-    u32 frame_counter         = 0;
+    Texture2D title_screen   = LoadTexture("../assets/tiles/title_screen.png");
+    f32 scroll_speed         = 50.0f;
+    Vector2 title_bg_pos_1      = {0.0f, 0.0f};
+    Vector2 title_bg_pos_2      = {base_screen_width, 0.0f};
+
+    u32 frame_counter        = 0;
 
     Memory_Arena arena;
     size_t arena_size = 1024*1024;
@@ -1135,19 +1142,30 @@ int main() {
             }
         } else if (manager.state == GameState_title) {
 
-            title_pos_1.x -= scroll_speed * delta_t;
-            title_pos_2.x -= scroll_speed * delta_t;
+            title_bg_pos_1.x -= scroll_speed * delta_t;
+            title_bg_pos_2.x -= scroll_speed * delta_t;
 
-            if (title_pos_1.x <= -base_screen_width) {
-                title_pos_1.x = title_pos_2.x + base_screen_width;
+            if (title_bg_pos_1.x <= -base_screen_width) {
+                title_bg_pos_1.x = title_bg_pos_2.x + base_screen_width;
             }
 
-            if (title_pos_2.x <= -base_screen_width) {
-                title_pos_2.x = title_pos_1.x + base_screen_width;
+            if (title_bg_pos_2.x <= -base_screen_width) {
+                title_bg_pos_2.x = title_bg_pos_1.x + base_screen_width;
             }
 
-            DrawTextureV(title_screen, title_pos_1, WHITE);
-            DrawTextureV(title_screen, title_pos_2, WHITE);
+            DrawTextureV(title_screen, title_bg_pos_1, WHITE);
+            DrawTextureV(title_screen, title_bg_pos_2, WHITE);
+
+            title_pos_y += 0.1f*sinf(8.0f*title_bob);
+            title_bob += delta_t;
+            Vector2 title_pos = {title_pos_x, title_pos_y};
+#if 1
+            DrawTextureEx(anunnaki, {title_pos.x-4.0f, title_pos.y+4.0f}, 0.0f, title_scale, BLACK);
+            DrawTextureEx(anunnaki, title_pos, 0.0f, title_scale, WHITE);
+#else
+            DrawTextureEx(anunnaki_thick, {title_pos.x-4.0f, title_pos.y+4.0f}, 0.0f, title_scale, BLACK);
+            DrawTextureEx(anunnaki_thick, title_pos, 0.0f, title_scale, WHITE);
+#endif
 
             if (IsKeyPressed(KEY_SPACE)) {
                 GameOver(&player, &map, &manager);
@@ -1188,10 +1206,12 @@ int main() {
             manager.state = GameState_win;
         }
 
+#if 0
         if (manager.state == GameState_title) {
             DrawText("ANUNNAKI", window_width*0.5, window_height*0.5, 69, WHITE);
             DrawText("ANUNNAKI", window_width*0.5-4.0f, window_height*0.5+4.0f, 69, BLACK);
         }
+#endif
 
         EndDrawing();
         // -----------------------------------
