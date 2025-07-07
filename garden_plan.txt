@@ -16,6 +16,8 @@
    - Fire douse?
    - Start?
    - Win?
+   - Title screen music 
+   - "Press spacebar to play" text/texture
   
 - Juice
  - Add camera shake.
