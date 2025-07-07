@@ -18,9 +18,18 @@
    - Win?
   
 - Juice
- - Add camera shake
- - Figure our better scoring system
+ - Add camera shake.
+ - Figure our better scoring system.
+ - Add some wobble or something to the wall tiles? this is probably 
+   more for shader practice than anything else.
 
 - Refactor
- - Fix get tile rect function to not do multiple things
- - Go over all the TODOS
+ - Fix get tile rect function to not do multiple things.
+ - Go over all the TODOS.
+
+- Bugs
+ - if there is literally no more squares for a powerup to appear in when an enemy slay happens 
+   the game crashes. (I think I fixed this to work with a single space but perhaps I didn't make 
+   this work for the instance there are literally no spaces available).
+ - Make sure to unload all the assets and sounds and stuff. I need to pay attention to the 
+   de-initialisation phase.

@@ -8,6 +8,8 @@
 #include "garden.h"
 #include "shader.h"
 
+#include "shader.cpp"
+
 void TilemapInit(Tilemap *tilemap) {
     tilemap->width       = TILEMAP_WIDTH;
     tilemap->height      = TILEMAP_HEIGHT;
@@ -710,6 +712,7 @@ int main() {
     LoadHypeSoundBuffer(manager.hype_sounds);
 
     // Music Init
+    // TODO: Should the music be coupled inside of it's own struct to keep thier volume values together?
     Music song_main  = LoadMusicStream("../assets/sounds/music.wav");
     Music song_muted = LoadMusicStream("../assets/sounds/music_muted.wav");
 
@@ -732,11 +735,19 @@ int main() {
     Title_Screen_Manager title_screen_manager;
     TitleScreenManagerInit(&title_screen_manager);
 
-    Shader wobbleShader = LoadShader(0, "../shaders/wobble.fs");
-    int timeLoc  = GetShaderLocation(wobbleShader, "time");
-    int ampLoc   = GetShaderLocation(wobbleShader, "amplitude");
-    int freqLoc  = GetShaderLocation(wobbleShader, "frequency");
-    int speedLoc = GetShaderLocation(wobbleShader, "speed");
+    Wobble_Shader bg_wobble;
+    // Putting these variables inside of a scope to make them temporary 
+    // purely for the init shader function
+    {
+        f32 amplitude = 0.06f;
+        f32 frequency = 15.0f;
+        f32 speed     = 2.0f;
+        WobbleShaderInit(&bg_wobble, amplitude, frequency, speed); 
+    }
+    
+    SetShaderValue(bg_wobble.shader, bg_wobble.amplitude_location, &bg_wobble.amplitude, SHADER_UNIFORM_FLOAT);
+    SetShaderValue(bg_wobble.shader, bg_wobble.frequency_location, &bg_wobble.frequency, SHADER_UNIFORM_FLOAT);
+    SetShaderValue(bg_wobble.shader, bg_wobble.speed_location,     &bg_wobble.speed,     SHADER_UNIFORM_FLOAT);
 
     // TODO: Maybe this should go into the game manager?
     u32 frame_counter        = 0; 
@@ -755,7 +766,8 @@ int main() {
         // -----------------------------------
         
         // TODO: Need to figure out a better way to stop everything when a win has occured
-        float delta_t = GetFrameTime();
+        f32 delta_t      = GetFrameTime();
+        f32 current_time = GetTime();
 
         // NOTE: reset the counter back to zero after everything to not mess up 
         // the individual animations
@@ -777,16 +789,8 @@ int main() {
         if (!IsMusicStreamPlaying(song_main))  PlayMusicStream(song_main);
         if (!IsMusicStreamPlaying(song_muted)) PlayMusicStream(song_muted);
 
-        // Shader variables
-        f32 time = GetTime();
-        f32 amplitude = 0.06f; // adjust to taste
-        f32 frequency = 15.0f; // number of vertical waves
-        f32 speed     = 2.0f;  // wave movement speed
-        
-        SetShaderValue(wobbleShader, timeLoc,  &time,      SHADER_UNIFORM_FLOAT);
-        SetShaderValue(wobbleShader, ampLoc,   &amplitude, SHADER_UNIFORM_FLOAT);
-        SetShaderValue(wobbleShader, freqLoc,  &frequency, SHADER_UNIFORM_FLOAT);
-        SetShaderValue(wobbleShader, speedLoc, &speed,     SHADER_UNIFORM_FLOAT);
+        // Set Shader variables
+        SetShaderValue(bg_wobble.shader, bg_wobble.time_location,      &current_time,        SHADER_UNIFORM_FLOAT);
 
         // Draw to render texture
         BeginTextureMode(target);
@@ -1122,7 +1126,7 @@ int main() {
             }
 
         } else if (manager.state == GameState_win) {
-            // Draw tiles in background
+            // Draw tiles in background.
             {
                 for (u32 y = 0; y < map.height; y++) {
                     for (u32 x = 0; x < map.width; x++) {
@@ -1188,26 +1192,18 @@ int main() {
             bg->initial_pos   = title_bg_pos_1;
             bg->secondary_pos = title_bg_pos_2;
 
-            BeginShaderMode(wobbleShader);
+            BeginShaderMode(bg_wobble.shader);
             DrawTextureV(bg->texture, title_bg_pos_1, WHITE);
             DrawTextureV(bg->texture, title_bg_pos_2, WHITE);
             EndShaderMode();
 
             Game_Title *title = &title_screen_manager.title;
-#if 1
+#if 0
             title->pos.y += 0.1f*sinf(8.0f*title->bob);
             title->bob   += delta_t;
 #endif
-            Vector2 title_pos = {title->pos.x, title->pos.y};
-#if 1
-            DrawTextureEx(title->texture, {title_pos.x-4.0f, title_pos.y+4.0f}, 0.0f, title->scale, BLACK);
-            DrawTextureEx(title->texture, title_pos, 0.0f, title->scale, WHITE);
-#else
-            BeginShaderMode(wobbleShader);
-            DrawTextureEx(anunnaki_thick, {title_pos.x-4.0f, title_pos.y+4.0f}, 0.0f, title_scale, BLACK);
-            DrawTextureEx(anunnaki_thick, title_pos, 0.0f, title_scale, WHITE);
-            EndShaderMode();
-#endif
+            DrawTextureEx(title->texture, {title->pos.x-4.0f, title->pos.y+4.0f}, 0.0f, title->scale, BLACK);
+            DrawTextureEx(title->texture, title->pos, 0.0f, title->scale, WHITE);
 
             if (IsKeyPressed(KEY_SPACE)) {
                 GameOver(&player, &map, &manager);
@@ -1247,13 +1243,6 @@ int main() {
             DrawText("WIN", window_width*0.5, window_height*0.5, 69, WHITE);
             manager.state = GameState_win;
         }
-
-#if 0
-        if (manager.state == GameState_title) {
-            DrawText("ANUNNAKI", window_width*0.5, window_height*0.5, 69, WHITE);
-            DrawText("ANUNNAKI", window_width*0.5-4.0f, window_height*0.5+4.0f, 69, BLACK);
-        }
-#endif
 
         EndDrawing();
         // -----------------------------------

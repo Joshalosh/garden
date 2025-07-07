@@ -1,10 +1,10 @@
 
-struct WobbleShader {
+struct Wobble_Shader {
     Shader shader;
-    u32 timeLoc;
-    u32 amplitudeLoc;
-    u32 frequencyLoc;
-    u32 speedLoc;
+    u32 time_location;
+    u32 amplitude_location;
+    u32 frequency_location;
+    u32 speed_location;
 
     f32 amplitude;
     f32 frequency;
