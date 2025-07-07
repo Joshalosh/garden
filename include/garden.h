@@ -142,6 +142,25 @@ struct Text_Burst {
     bool        active;
 };
 
+struct Game_Title {
+    Texture2D texture;
+    u32       scale;
+    Vector2   pos;
+    f32       bob;
+};
+
+struct Title_Screen_Background {
+    Texture2D texture;
+    f32       scroll_speed;
+    Vector2   initial_pos;
+    Vector2   secondary_pos;
+};
+
+struct Title_Screen_Manager {
+    Game_Title title;
+    Title_Screen_Background bg;
+};
+
 struct Game_Manager {
     u32         score;
     u32         high_score;

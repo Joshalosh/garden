@@ -6,6 +6,7 @@
 #include "mymath.h"
 #include "memory.h"
 #include "garden.h"
+#include "shader.h"
 
 void TilemapInit(Tilemap *tilemap) {
     tilemap->width       = TILEMAP_WIDTH;
@@ -119,6 +120,25 @@ void GameManagerInit(Game_Manager *manager) {
     manager->powerup_sentinel.next    = &manager->powerup_sentinel;
     manager->powerup_sentinel.prev    = &manager->powerup_sentinel;
 
+}
+
+void TitleScreenManagerInit(Title_Screen_Manager *manager) {
+    Game_Title title;
+    title.texture  = LoadTexture("../assets/titles/anunnaki.png");
+    title.scale    = 2;
+    title.pos.x    = (base_screen_width * 0.5) - ((title.texture.width * title.scale) * 0.5);
+    title.pos.y    = base_screen_height * 0.25;
+    title.bob      = 0.0f;
+
+    manager->title = title;
+
+    Title_Screen_Background bg;
+    bg.texture       = LoadTexture("../assets/tiles/title_screen.png");
+    bg.scroll_speed  = 50.0f;
+    bg.initial_pos   = {0.0f, 0.0f};
+    bg.secondary_pos = {base_screen_width, 0.0f};
+
+    manager->bg = bg;
 }
 
 void LoadSoundBuffer(Sound *sounds) {
@@ -708,27 +728,15 @@ int main() {
     Texture2D wall_atlas      = LoadTexture("../assets/tiles/wall_tiles.png");
     Texture2D powerup_texture = LoadTexture("../assets/sprites/powerup.png");
 
-    // Title screen texture initialisation
-    Texture2D anunnaki       = LoadTexture("../assets/titles/anunnaki.png");
-    Texture2D anunnaki_thick = LoadTexture("../assets/titles/anunnaki_thick.png");
-    u32 title_scale = 2;
-    f32 title_pos_x = (base_screen_width * 0.5) - ((anunnaki.width * title_scale) * 0.5);
-    f32 title_pos_y = base_screen_height * 0.25;
-    f32 title_bob   = 0.0f;
-
-    Texture2D title_screen   = LoadTexture("../assets/tiles/title_screen.png");
-    f32 scroll_speed         = 50.0f;
-    Vector2 title_bg_pos_1      = {0.0f, 0.0f};
-    Vector2 title_bg_pos_2      = {base_screen_width, 0.0f};
+    // Title screen initialisation
+    Title_Screen_Manager title_screen_manager;
+    TitleScreenManagerInit(&title_screen_manager);
 
     Shader wobbleShader = LoadShader(0, "../shaders/wobble.fs");
     int timeLoc  = GetShaderLocation(wobbleShader, "time");
     int ampLoc   = GetShaderLocation(wobbleShader, "amplitude");
     int freqLoc  = GetShaderLocation(wobbleShader, "frequency");
     int speedLoc = GetShaderLocation(wobbleShader, "speed");
-
-
-    
 
     // TODO: Maybe this should go into the game manager?
     u32 frame_counter        = 0; 
@@ -771,8 +779,8 @@ int main() {
 
         // Shader variables
         f32 time = GetTime();
-        f32 amplitude = 0.008f; // adjust to taste
-        f32 frequency = 10.0f; // number of vertical waves
+        f32 amplitude = 0.06f; // adjust to taste
+        f32 frequency = 15.0f; // number of vertical waves
         f32 speed     = 2.0f;  // wave movement speed
         
         SetShaderValue(wobbleShader, timeLoc,  &time,      SHADER_UNIFORM_FLOAT);
@@ -1163,8 +1171,11 @@ int main() {
             }
         } else if (manager.state == GameState_title) {
 
-            title_bg_pos_1.x -= scroll_speed * delta_t;
-            title_bg_pos_2.x -= scroll_speed * delta_t;
+            Title_Screen_Background *bg = &title_screen_manager.bg;
+            Vector2 title_bg_pos_1 = bg->initial_pos;
+            Vector2 title_bg_pos_2 = bg->secondary_pos;
+            title_bg_pos_1.x -= bg->scroll_speed * delta_t;
+            title_bg_pos_2.x -= bg->scroll_speed * delta_t;
 
             if (title_bg_pos_1.x <= -base_screen_width) {
                 title_bg_pos_1.x = title_bg_pos_2.x + base_screen_width;
@@ -1174,19 +1185,23 @@ int main() {
                 title_bg_pos_2.x = title_bg_pos_1.x + base_screen_width;
             }
 
-            DrawTextureV(title_screen, title_bg_pos_1, WHITE);
-            DrawTextureV(title_screen, title_bg_pos_2, WHITE);
+            bg->initial_pos   = title_bg_pos_1;
+            bg->secondary_pos = title_bg_pos_2;
 
-#if 0
-            title_pos_y += 0.1f*sinf(8.0f*title_bob);
-            title_bob += delta_t;
-#endif
-            Vector2 title_pos = {title_pos_x, title_pos_y};
-#if 1
             BeginShaderMode(wobbleShader);
-            DrawTextureEx(anunnaki, {title_pos.x-4.0f, title_pos.y+4.0f}, 0.0f, title_scale, BLACK);
-            DrawTextureEx(anunnaki, title_pos, 0.0f, title_scale, WHITE);
+            DrawTextureV(bg->texture, title_bg_pos_1, WHITE);
+            DrawTextureV(bg->texture, title_bg_pos_2, WHITE);
             EndShaderMode();
+
+            Game_Title *title = &title_screen_manager.title;
+#if 1
+            title->pos.y += 0.1f*sinf(8.0f*title->bob);
+            title->bob   += delta_t;
+#endif
+            Vector2 title_pos = {title->pos.x, title->pos.y};
+#if 1
+            DrawTextureEx(title->texture, {title_pos.x-4.0f, title_pos.y+4.0f}, 0.0f, title->scale, BLACK);
+            DrawTextureEx(title->texture, title_pos, 0.0f, title->scale, WHITE);
 #else
             BeginShaderMode(wobbleShader);
             DrawTextureEx(anunnaki_thick, {title_pos.x-4.0f, title_pos.y+4.0f}, 0.0f, title_scale, BLACK);
