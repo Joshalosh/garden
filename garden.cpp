@@ -742,10 +742,22 @@ int main() {
         f32 speed     = 2.0f;
         WobbleShaderInit(&bg_wobble, amplitude, frequency, speed); 
     }
-    
+
     SetShaderValue(bg_wobble.shader, bg_wobble.amplitude_location, &bg_wobble.amplitude, SHADER_UNIFORM_FLOAT);
     SetShaderValue(bg_wobble.shader, bg_wobble.frequency_location, &bg_wobble.frequency, SHADER_UNIFORM_FLOAT);
     SetShaderValue(bg_wobble.shader, bg_wobble.speed_location,     &bg_wobble.speed,     SHADER_UNIFORM_FLOAT);
+
+    Wobble_Shader fire_wobble;
+    {
+        f32 amplitude = 0.015;
+        f32 frequency = 15.0f;
+        f32 speed     = 32.0f;
+        WobbleShaderInit(&fire_wobble, amplitude, frequency, speed); 
+    }
+    
+    SetShaderValue(fire_wobble.shader, fire_wobble.amplitude_location, &fire_wobble.amplitude, SHADER_UNIFORM_FLOAT);
+    SetShaderValue(fire_wobble.shader, fire_wobble.frequency_location, &fire_wobble.frequency, SHADER_UNIFORM_FLOAT);
+    SetShaderValue(fire_wobble.shader, fire_wobble.speed_location,     &fire_wobble.speed,     SHADER_UNIFORM_FLOAT);
 
     // TODO: Maybe this should go into the game manager?
     u32 frame_counter        = 0; 
@@ -789,6 +801,7 @@ int main() {
 
         // Set Shader variables
         SetShaderValue(bg_wobble.shader, bg_wobble.time_location,      &current_time,        SHADER_UNIFORM_FLOAT);
+        SetShaderValue(fire_wobble.shader, fire_wobble.time_location,      &current_time,        SHADER_UNIFORM_FLOAT);
 
         // Draw to render texture
         BeginTextureMode(target);
@@ -827,7 +840,13 @@ int main() {
                         if (tile->type == TileType_grass || tile->type == TileType_dirt) {
                             DrawTextureRec(tile_atlas, atlas_frame_rec, tile->pos, WHITE);
                         } else if (tile->type == TileType_wall || tile->type == TileType_wall2) {  
-                            DrawTextureRec(wall_atlas, atlas_frame_rec, tile->pos, WHITE);
+                            if(player.powered_up) {
+                                BeginShaderMode(fire_wobble.shader);
+                                DrawTextureRec(wall_atlas, atlas_frame_rec, tile->pos, WHITE);
+                                EndShaderMode();
+                            } else {
+                                DrawTextureRec(wall_atlas, atlas_frame_rec, tile->pos, WHITE);
+                            }
                         } else {
                             DrawRectangleV(tile->pos, tile_size, tile_col);
                         }
@@ -836,8 +855,10 @@ int main() {
                             fire_cleared = false;
                             //DrawRectangleV(tile->pos, tile_size, tile_col);
                             Animate(&tile->animator, frame_counter);
+                            BeginShaderMode(fire_wobble.shader);
                             DrawTextureRec(tile->animator.texture[0], 
                                            tile->animator.frame_rec, tile->pos, WHITE);
+                            EndShaderMode();
                         }
                         if (IsFlagSet(tile, TileFlag_powerup)) {
                             Powerup *found_powerup = FindPowerupInList(&manager.powerup_sentinel, tile);

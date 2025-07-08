@@ -24,6 +24,7 @@
  - Figure our better scoring system.
  - Add some wobble or something to the wall tiles? this is probably 
    more for shader practice than anything else.
+ - make wall tiles wobble with wobble shader when powerup is in effect
 
 - Refactor
  - Fix get tile rect function to not do multiple things.
