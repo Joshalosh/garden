@@ -658,8 +658,6 @@ int main() {
         { 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, },
 
     };
-    //map.tiles = (u32 *)tilemap;
-    //u32 original_map[TILEMAP_HEIGHT][TILEMAP_WIDTH];
     Tile tiles[TILEMAP_HEIGHT][TILEMAP_WIDTH];
 
     Animation fire_animator;
