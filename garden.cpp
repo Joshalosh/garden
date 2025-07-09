@@ -103,7 +103,6 @@ void GameManagerInit(Game_Manager *manager) {
     manager->score                = 0;
     manager->high_score           = 0;
     manager->state                = GameState_title; //GameState_play;
-    manager->bg_scroll_time       = 0.0f;
 
     manager->enemy_spawn_duration = 500.0f;
     manager->spawn_timer          = manager->enemy_spawn_duration;
@@ -121,6 +120,10 @@ void GameManagerInit(Game_Manager *manager) {
     manager->powerup_sentinel          = {};
     manager->powerup_sentinel.next    = &manager->powerup_sentinel;
     manager->powerup_sentinel.prev    = &manager->powerup_sentinel;
+
+    manager->screen_shake.intensity = 0;
+    manager->screen_shake.duration  = 0;
+    manager->screen_shake.decay     = 0;
 
 }
 
@@ -282,6 +285,35 @@ void DeletePowerupInList(Powerup *sentinel, Tile *tile)
         }
     }
     ASSERT(powerup_found);
+}
+
+void UpdateScreenShake(Screen_Shake *shake, f32 delta_time)
+{
+    if (shake->duration > 0.0f)
+    {
+        shake->duration -= delta_time;
+        if (shake->duration < 0.0f) shake->duration = 0.0f;
+        shake->intensity -= shake->decay * delta_time;
+        if (shake->intensity < 0.0f) shake->intensity = 0.0f;
+    }
+}
+
+Vector2 GetScreenShakeOffset(Screen_Shake *shake)
+{
+    Vector2 result = {0.0f, 0.0f};
+    if (shake->duration > 0.0f)
+    {
+        f32 offset_x = (GetRandomValue(-100, 100) / 100.0f) * shake->intensity;
+        f32 offset_y = (GetRandomValue(-100, 100) / 100.0f) * shake->intensity;
+        result = {offset_x, offset_y};
+    }
+    return result;
+}
+
+void BeginScreenShake(Screen_Shake *shake, f32 intensity, f32 duration, f32 decay) {
+    shake->intensity = intensity;
+    shake->duration  = duration;
+    shake->decay     = decay;
 }
 
 // TODO: Need to set make sure the audio completely stops here perhaps put all the sounds into a sound 
@@ -474,6 +506,7 @@ void CheckEnclosedAreas(Memory_Arena *arena, Tilemap *tilemap, Player *player, G
     if (has_flood_fill_happened) {
         if (enemy_slain) {
             PlaySound(manager->sounds[SoundEffect_powerup_appear]);
+            BeginScreenShake(&manager->screen_shake, 2.0f*enemy_slain, 0.6f, 10.0f);
         }
         while (enemy_slain) {
             u32 tile_index = GetRandomEmptyTileIndex(tilemap);
@@ -779,6 +812,8 @@ int main() {
         f32 delta_t      = GetFrameTime();
         f32 current_time = GetTime();
 
+        UpdateScreenShake(&manager.screen_shake, delta_t);
+
         // NOTE: reset the counter back to zero after everything to not mess up 
         // the individual animations
         if (frame_counter >= 60/FRAME_SPEED) {
@@ -840,7 +875,7 @@ int main() {
                         if (tile->type == TileType_grass || tile->type == TileType_dirt) {
                             DrawTextureRec(tile_atlas, atlas_frame_rec, tile->pos, WHITE);
                         } else if (tile->type == TileType_wall || tile->type == TileType_wall2) {  
-                            if(player.powered_up) {
+                            if (player.powered_up) {
                                 BeginShaderMode(fire_wobble.shader);
                                 DrawTextureRec(wall_atlas, atlas_frame_rec, tile->pos, WHITE);
                                 EndShaderMode();
@@ -952,6 +987,7 @@ int main() {
                         }
                         PlaySound(manager.sounds[SoundEffect_powerup_collect]);
                         manager.hype_sound_timer   = 0;
+
                     }
 
                     if (player.powered_up) {
@@ -959,6 +995,7 @@ int main() {
                         if (IsFlagSet(target_tile, TileFlag_fire)) {
                             ClearFlag(target_tile, TileFlag_fire);
                             manager.score += 10;
+                            BeginScreenShake(&manager.screen_shake, 1.5f, 0.6f, 10.0f); 
                             // Create the text bursts
                             for (int index = 0; index < MAX_BURSTS; index++) {
                                 if (!manager.bursts[index].active) {
@@ -1242,9 +1279,11 @@ int main() {
         float scale_x = (float)window_width  / base_screen_width;
         float scale_y = (float)window_height / base_screen_height;
 
+        Vector2 shake_offset = GetScreenShakeOffset(&manager.screen_shake);
+
         Rectangle dest_rect = {
-            (window_width - (base_screen_width * scale_x)) * 0.5f,
-            (window_height - (base_screen_height * scale_y)) * 0.5f,
+            ((window_width - (base_screen_width * scale_x)) * 0.5f) + shake_offset.x,
+            ((window_height - (base_screen_height * scale_y)) * 0.5f) + shake_offset.y,
             base_screen_width * scale_x,
             base_screen_height * scale_y,
         };

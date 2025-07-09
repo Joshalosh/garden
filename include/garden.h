@@ -161,30 +161,36 @@ struct Title_Screen_Manager {
     Title_Screen_Background bg;
 };
 
-struct Game_Manager {
-    u32         score;
-    u32         high_score;
-    Game_State  state;
-    f32         bg_scroll_time;
+struct Screen_Shake {
+    f32 intensity;
+    f32 duration;
+    f32 decay;
+};
 
+struct Game_Manager {
+    u32          score;
+    u32          high_score;
+    Game_State   state;
 
     // Enemy controller
-    f32         enemy_spawn_duration;
-    f32         spawn_timer;
-    f32         enemy_move_duration;
-    f32         enemy_move_timer;
+    f32          enemy_spawn_duration;
+    f32          spawn_timer;
+    f32          enemy_move_duration;
+    f32          enemy_move_timer;
 
     // Linked list sentinels
-    Enemy       enemy_sentinel;
-    Powerup     powerup_sentinel;
+    Enemy        enemy_sentinel;
+    Powerup      powerup_sentinel;
 
     // Hype Sound
-    f32         hype_sound_timer;
-    u32         hype_prev_index;
-    Sound       hype_sounds[HYPE_WORD_COUNT];
+    f32          hype_sound_timer;
+    u32          hype_prev_index;
+    Sound        hype_sounds[HYPE_WORD_COUNT];
 
-    Sound       sounds[SoundEffect_count];
-    Text_Burst  bursts[MAX_BURSTS];
+    Sound        sounds[SoundEffect_count];
+    Text_Burst   bursts[MAX_BURSTS];
+
+    Screen_Shake screen_shake;
 };
 
 struct StackU32 {
