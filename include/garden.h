@@ -147,6 +147,7 @@ struct Game_Title {
     u32       scale;
     Vector2   pos;
     f32       bob;
+    f32       bob_velocity;
 };
 
 struct Title_Screen_Background {

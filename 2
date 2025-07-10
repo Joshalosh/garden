@@ -321,11 +321,11 @@ void TriggerTitleBob(Game_Title *title, f32 impulse) {
 }
 
 void UpdateTitleBob(Game_Title *title, f32 delta_t) {
-    f32 damping = 0.85f;
-    float stiffness = 100.0f;
+    f32 damping = 4.0f;
+    float stiffness = 20.0f;
 
     title->bob_velocity -= stiffness * title->bob          * delta_t;
-    title->bob_velocity *= damping;
+    title->bob_velocity -= damping   * title->bob_velocity * delta_t;
 
     title->bob += title->bob_velocity * delta_t;
 }
@@ -1256,10 +1256,10 @@ int main() {
             if (!IsMusicStreamPlaying(song_intro))  
             {
                 PlayMusicStream(song_intro);
-                TriggerTitleBob(title, 5.0f);
+                TriggerTitleBob(title, 40.0f);
             }
 
-            //if (IsKeyPressed(KEY_P)) TriggerTitleBob(title, 150.0f);
+            if (IsKeyPressed(KEY_P)) TriggerTitleBob(title, 30.0f);
 
             Title_Screen_Background *bg = &title_screen_manager.bg;
             Vector2 title_bg_pos_1 = bg->initial_pos;
@@ -1287,10 +1287,7 @@ int main() {
             title->pos.y += 0.1f*sinf(8.0f*title->bob);
             title->bob   += delta_t;
 #endif
-            Vector2 draw_pos = {title->pos.x, title->pos.y += title->bob};
-            if (title->pos.y > base_screen_height) {
-                title->pos.y = 0.0f - title->texture.height;
-            }
+            Vector2 draw_pos = {title->pos.x, title->pos.y + title->bob};
             DrawTextureEx(title->texture, {draw_pos.x-4.0f, draw_pos.y+4.0f}, 0.0f, title->scale, BLACK);
             DrawTextureEx(title->texture, draw_pos, 0.0f, title->scale, WHITE);
 
