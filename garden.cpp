@@ -747,6 +747,8 @@ int main() {
     Music song_main  = LoadMusicStream("../assets/sounds/music.wav");
     Music song_muted = LoadMusicStream("../assets/sounds/music_muted.wav");
 
+    Music song_intro = LoadMusicStream("../assets/sounds/intro_music.wav");
+
     f32 song_volume  = 1.0f;
     f32 muted_volume = 0.0f;
 
@@ -754,6 +756,7 @@ int main() {
     SetMusicVolume(song_muted, muted_volume);
     song_main.looping  = true;
     song_muted.looping = true;
+    song_intro.looping = true;
 
     
     b32 fire_cleared; // NOTE: Perhaps this should live in the Game_Manager struct???
@@ -830,9 +833,7 @@ int main() {
 
         UpdateMusicStream(song_main);
         UpdateMusicStream(song_muted);
-
-        if (!IsMusicStreamPlaying(song_main))  PlayMusicStream(song_main);
-        if (!IsMusicStreamPlaying(song_muted)) PlayMusicStream(song_muted);
+        UpdateMusicStream(song_intro);
 
         // Set Shader variables
         SetShaderValue(bg_wobble.shader, bg_wobble.time_location,      &current_time,        SHADER_UNIFORM_FLOAT);
@@ -843,6 +844,10 @@ int main() {
         ClearBackground(BLACK);
             
         if (manager.state == GameState_play) {
+
+            if (IsMusicStreamPlaying(song_intro))  StopMusicStream(song_intro);
+            if (!IsMusicStreamPlaying(song_main))  PlayMusicStream(song_main);
+            if (!IsMusicStreamPlaying(song_muted)) PlayMusicStream(song_muted);
 
             fire_cleared = true;
             // Draw tiles in background
@@ -1230,6 +1235,8 @@ int main() {
                 GameOver(&player, &map, &manager);
             }
         } else if (manager.state == GameState_title) {
+
+            if (!IsMusicStreamPlaying(song_intro))  PlayMusicStream(song_intro);
 
             Title_Screen_Background *bg = &title_screen_manager.bg;
             Vector2 title_bg_pos_1 = bg->initial_pos;
