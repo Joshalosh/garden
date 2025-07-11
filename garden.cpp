@@ -147,10 +147,10 @@ void TitleScreenManagerInit(Title_Screen_Manager *manager) {
     bg.texture[6]    = LoadTexture("../assets/tiles/layer_7.png");
     bg.texture[7]    = LoadTexture("../assets/tiles/layer_8.png");
     bg.scroll_speed  = 50.0f;
-    bg.initial_pos_right   = {0.0f, 0.0f};
-    bg.secondary_pos_right = {base_screen_width, 0.0f};
-    bg.initial_pos_left   = {0.0f, 0.0f};
-    bg.secondary_pos_left = {base_screen_width, 0.0f};
+    bg.pos_right_1   = {0.0f, 0.0f};
+    bg.pos_left_1    = {0.0f, 0.0f};
+    bg.pos_right_2   = {base_screen_width, 0.0f};
+    bg.pos_left_2    = {base_screen_width, 0.0f};
     manager->bg = bg;
 
     Play_Text play_text;
@@ -1276,69 +1276,56 @@ int main() {
                 TriggerTitleBob(title, 5.0f);
             }
 
-            //if (IsKeyPressed(KEY_P)) TriggerTitleBob(title, 150.0f);
+            if (IsKeyPressed(KEY_P)) TriggerTitleBob(title, 150.0f);
 
+            // The background is split up into layers and moves in two different
+            // directions. Each background layer needs a secondary layer that is 
+            // drawn right next to the first layer for seamless bg scrolling. This is 
+            // why there are two positions for each background direction. It is to 
+            // accomodate for the position of both background textures next to each 
+            // other.
+            //
             Title_Screen_Background *bg = &title_screen_manager.bg;
-            // TODO: I really need to clean this code up;
-            Vector2 title_bg_pos_left_1 = bg->initial_pos_left;
-            Vector2 title_bg_pos_left_2 = bg->secondary_pos_left;
-            Vector2 title_bg_pos_right_1 = bg->initial_pos_right;
-            Vector2 title_bg_pos_right_2 = bg->secondary_pos_right;
-            title_bg_pos_left_1.x -= bg->scroll_speed * delta_t;
-            title_bg_pos_left_2.x -= bg->scroll_speed * delta_t;
-            title_bg_pos_right_1.x += bg->scroll_speed * delta_t;
-            title_bg_pos_right_2.x += bg->scroll_speed * delta_t;
 
-            if (title_bg_pos_left_1.x <= -base_screen_width) {
-                title_bg_pos_left_1.x = title_bg_pos_left_2.x + base_screen_width;
+            bg->pos_left_1.x  -= bg->scroll_speed * delta_t;
+            bg->pos_left_2.x  -= bg->scroll_speed * delta_t;
+            bg->pos_right_1.x += bg->scroll_speed * delta_t;
+            bg->pos_right_2.x += bg->scroll_speed * delta_t;
+
+            if (bg->pos_left_1.x <= -base_screen_width) {
+                bg->pos_left_1.x = bg->pos_left_2.x + base_screen_width;
+            }
+            if (bg->pos_left_2.x <= -base_screen_width) {
+                bg->pos_left_2.x = bg->pos_left_1.x + base_screen_width;
+            }
+            if (bg->pos_right_1.x >= base_screen_width) {
+                bg->pos_right_1.x = bg->pos_right_2.x - base_screen_width;
+            }
+            if (bg->pos_right_2.x >= base_screen_width) {
+                bg->pos_right_2.x = bg->pos_right_1.x - base_screen_width;
             }
 
-            if (title_bg_pos_right_1.x >= base_screen_width) {
-                title_bg_pos_right_1.x = title_bg_pos_right_2.x - base_screen_width;
-            }
-
-            if (title_bg_pos_left_2.x <= -base_screen_width) {
-                title_bg_pos_left_2.x = title_bg_pos_left_1.x + base_screen_width;
-            }
-
-            if (title_bg_pos_right_2.x >= base_screen_width) {
-                title_bg_pos_right_2.x = title_bg_pos_right_1.x - base_screen_width;
-            }
-
-            bg->initial_pos_left   = title_bg_pos_left_1;
-            bg->secondary_pos_left = title_bg_pos_left_2;
-            bg->initial_pos_right   = title_bg_pos_right_1;
-            bg->secondary_pos_right = title_bg_pos_right_2;
-
-            //BeginShaderMode(bg_wobble.shader);
-#if 0
-            DrawTextureV(bg->texture[0], bg->initial_pos, WHITE);
-            DrawTextureV(bg->texture[0], bg->secondary_pos, WHITE);
-            DrawTextureV(bg->texture[1], {bg->initial_pos.x, bg->initial_pos.y + bg->texture[1].height}, WHITE);
-            DrawTextureV(bg->texture[1], {bg->secondary_pos.x, bg->secondary_pos.y + bg->texture[1].height}, WHITE);
-#endif
             for (int index = 0; index < BG_LAYERS; index++ ) {
                 if (index % 2) {
-                    Vector2 draw_pos_right_initial   = {bg->initial_pos_right.x, 
-                                                        bg->initial_pos_right.y + bg->texture[index].height*index};
-                    Vector2 draw_pos_right_secondary = {bg->secondary_pos_right.x, 
-                                                        bg->secondary_pos_right.y + bg->texture[index].height*index};
+                    Vector2 draw_pos_right_1 = {bg->pos_right_1.x, 
+                                                bg->pos_right_1.y + bg->texture[index].height*index};
+                    Vector2 draw_pos_right_2 = {bg->pos_right_2.x, 
+                                                bg->pos_right_2.y + bg->texture[index].height*index};
+                    // I prefer the look when only half the layers have the wobble shader attached 
+                    // that's why the right moving ones wobble and the left moving ones don't.
                     BeginShaderMode(bg_wobble.shader);
-                    DrawTextureV(bg->texture[index], draw_pos_right_initial, WHITE);
-                    DrawTextureV(bg->texture[index], draw_pos_right_secondary, WHITE);
+                    DrawTextureV(bg->texture[index], draw_pos_right_1, WHITE);
+                    DrawTextureV(bg->texture[index], draw_pos_right_2, WHITE);
                     EndShaderMode();
                 } else {
-                    Vector2 draw_pos_left_initial   = {bg->initial_pos_left.x, 
-                                                        bg->initial_pos_left.y + bg->texture[index].height*index};
-                    Vector2 draw_pos_left_secondary = {bg->secondary_pos_left.x, 
-                                                        bg->secondary_pos_left.y + bg->texture[index].height*index};
-                    BeginShaderMode(bg_wobble.shader);
-                    DrawTextureV(bg->texture[index], draw_pos_left_initial, WHITE);
-                    DrawTextureV(bg->texture[index], draw_pos_left_secondary, WHITE);
-                    EndShaderMode();
+                    Vector2 draw_pos_left_1 = {bg->pos_left_1.x, 
+                                               bg->pos_left_1.y + bg->texture[index].height*index};
+                    Vector2 draw_pos_left_2 = {bg->pos_left_2.x, 
+                                               bg->pos_left_2.y + bg->texture[index].height*index};
+                    DrawTextureV(bg->texture[index], draw_pos_left_1, WHITE);
+                    DrawTextureV(bg->texture[index], draw_pos_left_2, WHITE);
                 }
             }
-            //EndShaderMode();
 
 #if 0
             title->pos.y += 0.1f*sinf(8.0f*title->bob);
@@ -1352,14 +1339,16 @@ int main() {
             DrawTextureEx(title->texture, draw_pos, 0.0f, title->scale, WHITE);
 
             Play_Text *play_text = &title_screen_manager.play_text;
-            play_text->pos.y  = draw_pos.y + 80.0f;
-            play_text->pos.y  += 1.0f*sinf(8.0f*play_text->bob);
-            play_text->bob   += delta_t;
+            play_text->pos.y     = draw_pos.y + 80.0f;
+            play_text->pos.y    += 1.0f*sinf(8.0f*play_text->bob);
+            play_text->bob      += delta_t;
+
             DrawText(play_text->text, (u32)play_text->pos.x+2.0f, (u32)play_text->pos.y+2.0f, 
                      play_text->font_size, BLACK);
             DrawText(play_text->text, (u32)play_text->pos.x+1.0f, (u32)play_text->pos.y+1.0f, 
                      play_text->font_size, MAROON);
-            DrawText(play_text->text, (u32)play_text->pos.x, (u32)play_text->pos.y, play_text->font_size, GOLD);
+            DrawText(play_text->text, (u32)play_text->pos.x, (u32)play_text->pos.y, 
+                     play_text->font_size, GOLD);
 
             if (IsKeyPressed(KEY_SPACE)) {
                 GameOver(&player, &map, &manager);

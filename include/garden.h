@@ -154,10 +154,10 @@ struct Game_Title {
 struct Title_Screen_Background {
     Texture2D texture[BG_LAYERS];
     f32       scroll_speed;
-    Vector2   initial_pos_left;
-    Vector2   secondary_pos_left;
-    Vector2   initial_pos_right;
-    Vector2   secondary_pos_right;
+    Vector2   pos_left_1;
+    Vector2   pos_left_2;
+    Vector2   pos_right_1;
+    Vector2   pos_right_2;
 };
 
 struct Play_Text {
