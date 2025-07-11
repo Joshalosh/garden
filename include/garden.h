@@ -14,6 +14,7 @@
 #define MAX_PLAYER_ANIMATORS 2
 #define HYPE_WORD_COUNT 12
 #define MAX_BURSTS 32
+#define BG_LAYERS 8 
 
 const int base_screen_width  = 320;
 const int base_screen_height = 320; //180;
@@ -151,10 +152,12 @@ struct Game_Title {
 };
 
 struct Title_Screen_Background {
-    Texture2D texture;
+    Texture2D texture[BG_LAYERS];
     f32       scroll_speed;
-    Vector2   initial_pos;
-    Vector2   secondary_pos;
+    Vector2   initial_pos_left;
+    Vector2   secondary_pos_left;
+    Vector2   initial_pos_right;
+    Vector2   secondary_pos_right;
 };
 
 struct Play_Text {

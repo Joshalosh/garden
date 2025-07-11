@@ -137,10 +137,20 @@ void TitleScreenManagerInit(Title_Screen_Manager *manager) {
     manager->title = title;
 
     Title_Screen_Background bg;
-    bg.texture       = LoadTexture("../assets/tiles/title_screen.png");
+    // TODO: Put this into a loop to load these textures with less lines
+    bg.texture[0]    = LoadTexture("../assets/tiles/layer_1.png");
+    bg.texture[1]    = LoadTexture("../assets/tiles/layer_2.png");
+    bg.texture[2]    = LoadTexture("../assets/tiles/layer_3.png");
+    bg.texture[3]    = LoadTexture("../assets/tiles/layer_4.png");
+    bg.texture[4]    = LoadTexture("../assets/tiles/layer_5.png");
+    bg.texture[5]    = LoadTexture("../assets/tiles/layer_6.png");
+    bg.texture[6]    = LoadTexture("../assets/tiles/layer_7.png");
+    bg.texture[7]    = LoadTexture("../assets/tiles/layer_8.png");
     bg.scroll_speed  = 50.0f;
-    bg.initial_pos   = {0.0f, 0.0f};
-    bg.secondary_pos = {base_screen_width, 0.0f};
+    bg.initial_pos_right   = {0.0f, 0.0f};
+    bg.secondary_pos_right = {base_screen_width, 0.0f};
+    bg.initial_pos_left   = {0.0f, 0.0f};
+    bg.secondary_pos_left = {base_screen_width, 0.0f};
     manager->bg = bg;
 
     Play_Text play_text;
@@ -795,7 +805,7 @@ int main() {
     // purely for the init shader function
     {
         f32 amplitude = 0.06f;
-        f32 frequency = 15.0f;
+        f32 frequency = 1.25f;
         f32 speed     = 2.0f;
         WobbleShaderInit(&bg_wobble, amplitude, frequency, speed); 
     }
@@ -1269,26 +1279,66 @@ int main() {
             //if (IsKeyPressed(KEY_P)) TriggerTitleBob(title, 150.0f);
 
             Title_Screen_Background *bg = &title_screen_manager.bg;
-            Vector2 title_bg_pos_1 = bg->initial_pos;
-            Vector2 title_bg_pos_2 = bg->secondary_pos;
-            title_bg_pos_1.x -= bg->scroll_speed * delta_t;
-            title_bg_pos_2.x -= bg->scroll_speed * delta_t;
+            // TODO: I really need to clean this code up;
+            Vector2 title_bg_pos_left_1 = bg->initial_pos_left;
+            Vector2 title_bg_pos_left_2 = bg->secondary_pos_left;
+            Vector2 title_bg_pos_right_1 = bg->initial_pos_right;
+            Vector2 title_bg_pos_right_2 = bg->secondary_pos_right;
+            title_bg_pos_left_1.x -= bg->scroll_speed * delta_t;
+            title_bg_pos_left_2.x -= bg->scroll_speed * delta_t;
+            title_bg_pos_right_1.x += bg->scroll_speed * delta_t;
+            title_bg_pos_right_2.x += bg->scroll_speed * delta_t;
 
-            if (title_bg_pos_1.x <= -base_screen_width) {
-                title_bg_pos_1.x = title_bg_pos_2.x + base_screen_width;
+            if (title_bg_pos_left_1.x <= -base_screen_width) {
+                title_bg_pos_left_1.x = title_bg_pos_left_2.x + base_screen_width;
             }
 
-            if (title_bg_pos_2.x <= -base_screen_width) {
-                title_bg_pos_2.x = title_bg_pos_1.x + base_screen_width;
+            if (title_bg_pos_right_1.x >= base_screen_width) {
+                title_bg_pos_right_1.x = title_bg_pos_right_2.x - base_screen_width;
             }
 
-            bg->initial_pos   = title_bg_pos_1;
-            bg->secondary_pos = title_bg_pos_2;
+            if (title_bg_pos_left_2.x <= -base_screen_width) {
+                title_bg_pos_left_2.x = title_bg_pos_left_1.x + base_screen_width;
+            }
 
-            BeginShaderMode(bg_wobble.shader);
-            DrawTextureV(bg->texture, title_bg_pos_1, WHITE);
-            DrawTextureV(bg->texture, title_bg_pos_2, WHITE);
-            EndShaderMode();
+            if (title_bg_pos_right_2.x >= base_screen_width) {
+                title_bg_pos_right_2.x = title_bg_pos_right_1.x - base_screen_width;
+            }
+
+            bg->initial_pos_left   = title_bg_pos_left_1;
+            bg->secondary_pos_left = title_bg_pos_left_2;
+            bg->initial_pos_right   = title_bg_pos_right_1;
+            bg->secondary_pos_right = title_bg_pos_right_2;
+
+            //BeginShaderMode(bg_wobble.shader);
+#if 0
+            DrawTextureV(bg->texture[0], bg->initial_pos, WHITE);
+            DrawTextureV(bg->texture[0], bg->secondary_pos, WHITE);
+            DrawTextureV(bg->texture[1], {bg->initial_pos.x, bg->initial_pos.y + bg->texture[1].height}, WHITE);
+            DrawTextureV(bg->texture[1], {bg->secondary_pos.x, bg->secondary_pos.y + bg->texture[1].height}, WHITE);
+#endif
+            for (int index = 0; index < BG_LAYERS; index++ ) {
+                if (index % 2) {
+                    Vector2 draw_pos_right_initial   = {bg->initial_pos_right.x, 
+                                                        bg->initial_pos_right.y + bg->texture[index].height*index};
+                    Vector2 draw_pos_right_secondary = {bg->secondary_pos_right.x, 
+                                                        bg->secondary_pos_right.y + bg->texture[index].height*index};
+                    BeginShaderMode(bg_wobble.shader);
+                    DrawTextureV(bg->texture[index], draw_pos_right_initial, WHITE);
+                    DrawTextureV(bg->texture[index], draw_pos_right_secondary, WHITE);
+                    EndShaderMode();
+                } else {
+                    Vector2 draw_pos_left_initial   = {bg->initial_pos_left.x, 
+                                                        bg->initial_pos_left.y + bg->texture[index].height*index};
+                    Vector2 draw_pos_left_secondary = {bg->secondary_pos_left.x, 
+                                                        bg->secondary_pos_left.y + bg->texture[index].height*index};
+                    BeginShaderMode(bg_wobble.shader);
+                    DrawTextureV(bg->texture[index], draw_pos_left_initial, WHITE);
+                    DrawTextureV(bg->texture[index], draw_pos_left_secondary, WHITE);
+                    EndShaderMode();
+                }
+            }
+            //EndShaderMode();
 
 #if 0
             title->pos.y += 0.1f*sinf(8.0f*title->bob);
