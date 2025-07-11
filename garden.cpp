@@ -134,7 +134,6 @@ void TitleScreenManagerInit(Title_Screen_Manager *manager) {
     title.pos.x    = (base_screen_width * 0.5) - ((title.texture.width * title.scale) * 0.5);
     title.pos.y    = base_screen_height * 0.25;
     title.bob      = 0.0f;
-
     manager->title = title;
 
     Title_Screen_Background bg;
@@ -142,8 +141,15 @@ void TitleScreenManagerInit(Title_Screen_Manager *manager) {
     bg.scroll_speed  = 50.0f;
     bg.initial_pos   = {0.0f, 0.0f};
     bg.secondary_pos = {base_screen_width, 0.0f};
-
     manager->bg = bg;
+
+    Play_Text play_text;
+    play_text.text      = "Spacebar Begins Ritual";
+    play_text.font_size = 14;
+    play_text.bob       = 0.0f;
+    play_text.pos       = {(base_screen_width*0.5f) - (MeasureText(play_text.text, play_text.font_size)*0.5f), 
+                           0.0f};
+    manager->play_text = play_text;
 }
 
 void LoadSoundBuffer(Sound *sounds) {
@@ -782,8 +788,6 @@ int main() {
     // Title screen initialisation
     Title_Screen_Manager title_screen_manager;
     TitleScreenManagerInit(&title_screen_manager);
-    Vector2 play_text_pos;
-    f32 play_text_bob = 0.0f;
 
 
     Wobble_Shader bg_wobble;
@@ -1297,14 +1301,15 @@ int main() {
             DrawTextureEx(title->texture, {draw_pos.x-4.0f, draw_pos.y+4.0f}, 0.0f, title->scale, BLACK);
             DrawTextureEx(title->texture, draw_pos, 0.0f, title->scale, WHITE);
 
-            const char *play_hint = "Spacebar Begins The Ritual";
-            u32 font_size = 14;
-            play_text_pos = {(base_screen_width*0.5f) - (MeasureText(play_hint, font_size)*0.5f), draw_pos.y + 80.0f};
-            play_text_pos.y += 1.0f*sinf(8.0f*play_text_bob);
-            play_text_bob   += delta_t;
-            DrawText(play_hint, (u32)play_text_pos.x+2.0f, (u32)play_text_pos.y+2.0f, font_size, BLACK);
-            DrawText(play_hint, (u32)play_text_pos.x+1.0f, (u32)play_text_pos.y+1.0f, font_size, MAROON);
-            DrawText(play_hint, (u32)play_text_pos.x, (u32)play_text_pos.y, font_size, GOLD);
+            Play_Text *play_text = &title_screen_manager.play_text;
+            play_text->pos.y  = draw_pos.y + 80.0f;
+            play_text->pos.y  += 1.0f*sinf(8.0f*play_text->bob);
+            play_text->bob   += delta_t;
+            DrawText(play_text->text, (u32)play_text->pos.x+2.0f, (u32)play_text->pos.y+2.0f, 
+                     play_text->font_size, BLACK);
+            DrawText(play_text->text, (u32)play_text->pos.x+1.0f, (u32)play_text->pos.y+1.0f, 
+                     play_text->font_size, MAROON);
+            DrawText(play_text->text, (u32)play_text->pos.x, (u32)play_text->pos.y, play_text->font_size, GOLD);
 
             if (IsKeyPressed(KEY_SPACE)) {
                 GameOver(&player, &map, &manager);

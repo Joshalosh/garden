@@ -157,8 +157,16 @@ struct Title_Screen_Background {
     Vector2   secondary_pos;
 };
 
+struct Play_Text {
+    const char *text;
+    u32         font_size;
+    f32         bob;
+    Vector2     pos;
+};
+
 struct Title_Screen_Manager {
-    Game_Title title;
+    Game_Title              title;
+    Play_Text               play_text;
     Title_Screen_Background bg;
 };
 
