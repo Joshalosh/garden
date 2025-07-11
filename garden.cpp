@@ -782,6 +782,9 @@ int main() {
     // Title screen initialisation
     Title_Screen_Manager title_screen_manager;
     TitleScreenManagerInit(&title_screen_manager);
+    Vector2 play_text_pos;
+    f32 play_text_bob = 0.0f;
+
 
     Wobble_Shader bg_wobble;
     // Putting these variables inside of a scope to make them temporary 
@@ -1293,6 +1296,15 @@ int main() {
             }
             DrawTextureEx(title->texture, {draw_pos.x-4.0f, draw_pos.y+4.0f}, 0.0f, title->scale, BLACK);
             DrawTextureEx(title->texture, draw_pos, 0.0f, title->scale, WHITE);
+
+            const char *play_hint = "Spacebar Begins The Ritual";
+            u32 font_size = 14;
+            play_text_pos = {(base_screen_width*0.5f) - (MeasureText(play_hint, font_size)*0.5f), draw_pos.y + 80.0f};
+            play_text_pos.y += 1.0f*sinf(8.0f*play_text_bob);
+            play_text_bob   += delta_t;
+            DrawText(play_hint, (u32)play_text_pos.x+2.0f, (u32)play_text_pos.y+2.0f, font_size, BLACK);
+            DrawText(play_hint, (u32)play_text_pos.x+1.0f, (u32)play_text_pos.y+1.0f, font_size, MAROON);
+            DrawText(play_hint, (u32)play_text_pos.x, (u32)play_text_pos.y, font_size, GOLD);
 
             if (IsKeyPressed(KEY_SPACE)) {
                 GameOver(&player, &map, &manager);
