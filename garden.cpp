@@ -206,6 +206,7 @@ void PowerupInit(Powerup *powerup, Powerup *sentinel, Tile *tile) {
     powerup->animator.texture[0]    = LoadTexture("../assets/sprites/bowl.png");
     powerup->animator.max_frames    = (f32)powerup->animator.texture[0].width/20;
     powerup->animator.current_frame = 0;
+    powerup->animator.looping       = true;
     powerup->animator.frame_rec     = {0, 0,
                                        (f32)powerup->animator.texture[0].width/powerup->animator.max_frames,
                                        (f32)powerup->animator.texture[0].height};
@@ -221,6 +222,7 @@ void EnemyInit(Enemy *enemy, Enemy *sentinel, u32 tile_index) {
     enemy->animator.texture[0]    = LoadTexture("../assets/sprites/demon.png");
     enemy->animator.max_frames    = (f32)enemy->animator.texture[0].width/20;
     enemy->animator.current_frame = 0;
+    enemy->animator.looping       = true;
     enemy->animator.frame_rec     = {0, 0, 
                                      (f32)enemy->animator.texture[0].width/enemy->animator.max_frames,
                                      (f32)enemy->animator.texture[0].height};
@@ -578,8 +580,12 @@ void Animate(Animation *animator, u32 frame_counter, u32 facing = 0) {
         animator->current_frame++;
     }
         
-    if (animator->current_frame > animator->max_frames) {
-        animator->current_frame = 0;
+    if (animator->current_frame >= animator->max_frames) {
+        if (animator->looping) {
+            animator->current_frame = 0;
+        } else { 
+            animator->current_frame = animator->max_frames - 1;
+        }
     }
 
     animator->frame_rec.x = (f32)animator->current_frame *
@@ -733,6 +739,7 @@ int main() {
                                     (f32)fire_animator.texture[0].width/fire_animator.max_frames,
                                     (f32)fire_animator.texture[0].height};
     fire_animator.current_frame  = 0;
+    fire_animator.looping        = true;
 
     map.original_map = (u32 *)&tilemap;
     map.tiles        = (Tile *)&tiles;
@@ -756,6 +763,7 @@ int main() {
         (f32)player.animators[PlayerAnimator_body].texture[DirectionFacing_down].width/4,
         (f32)player.animators[PlayerAnimator_body].texture[DirectionFacing_down].height}; 
     player.animators[PlayerAnimator_body].current_frame = 0;
+    player.animators[PlayerAnimator_body].looping       = true;
 
     // Initialise the powerup animator
     player.animators[PlayerAnimator_water].texture[0] = LoadTexture("../assets/sprites/water_down.png");
@@ -767,6 +775,7 @@ int main() {
              player.animators[PlayerAnimator_water].max_frames,
         (f32)player.animators[PlayerAnimator_water].texture[0].height};
     player.animators[PlayerAnimator_water].current_frame = 0;
+    player.animators[PlayerAnimator_water].looping       = true;
 
     Vector2 input_axis       = {0, 0};
 

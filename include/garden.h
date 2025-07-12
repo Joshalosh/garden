@@ -60,9 +60,10 @@ enum Player_Animator {
 
 struct Animation {
     Texture2D texture[10];
-    u32 max_frames;
-    u32 current_frame;
+    u32       max_frames;
+    u32       current_frame;
     Rectangle frame_rec;
+    bool      looping;
 };
 
 struct Tile {
