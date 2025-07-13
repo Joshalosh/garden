@@ -100,31 +100,36 @@ void PlayerInit(Player *player) {
 }
 
 void GameManagerInit(Game_Manager *manager) {
-    manager->score                = 0;
-    manager->high_score           = 0;
-    manager->state                = GameState_title; //GameState_play;
+    manager->score                  = 0;
+    manager->high_score             = 0;
+    manager->state                  = GameState_title; //GameState_play;
 
-    manager->enemy_spawn_duration = 500.0f;
-    manager->spawn_timer          = manager->enemy_spawn_duration;
-    manager->enemy_move_duration  = 250.0f;
-    manager->enemy_move_timer     = manager->enemy_move_duration;
+    manager->enemy_spawn_duration   = 500.0f;
+    manager->spawn_timer            = manager->enemy_spawn_duration;
+    manager->enemy_move_duration    = 250.0f;
+    manager->enemy_move_timer       = manager->enemy_move_duration;
 
-    manager->hype_sound_timer     = 0.0f;
-    manager->hype_prev_index      = 0;
+    manager->hype_sound_timer       = 0.0f;
+    manager->hype_prev_index        = 0;
 
-    manager->enemy_sentinel        = {};
-    manager->enemy_sentinel.next  = &manager->enemy_sentinel;
-    manager->enemy_sentinel.prev  = &manager->enemy_sentinel;
+    manager->enemy_sentinel         = {};
+    manager->enemy_sentinel.next    = &manager->enemy_sentinel;
+    manager->enemy_sentinel.prev    = &manager->enemy_sentinel;
 
     // The head of the powerup linked list
-    manager->powerup_sentinel          = {};
-    manager->powerup_sentinel.next    = &manager->powerup_sentinel;
-    manager->powerup_sentinel.prev    = &manager->powerup_sentinel;
+    manager->powerup_sentinel       = {};
+    manager->powerup_sentinel.next  = &manager->powerup_sentinel;
+    manager->powerup_sentinel.prev  = &manager->powerup_sentinel;
 
     manager->screen_shake.intensity = 0;
     manager->screen_shake.duration  = 0;
     manager->screen_shake.decay     = 0;
 
+    manager->fade.alpha             = 0.0f;
+    manager->fade.duration          = 0.0f;
+    manager->fade.timer             = 0.0f;
+    manager->fade.col               = BLACK;
+    manager->fade.type              = FadeType_none;
 }
 
 void TitleScreenManagerInit(Title_Screen_Manager *manager) {
@@ -664,16 +669,16 @@ void GatherInput(Player *player) {
 
 Text_Burst CreateTextBurst(const char *text, Vector2 pos) {
     Text_Burst burst =  {};
-    burst.text      =  text;
-    burst.pos       =  pos;
-    burst.alpha     =  0.0f;
-    burst.scale     =  0.25f;
-    burst.max_scale =  0.75f + (float)(rand() % 100) / 100.0f;
-    burst.drift.x   = -1.25f + (float)(rand() % 2);
-    burst.drift.y   = -1.25f + (float)(rand() % 2);
-    burst.lifetime  =  1.0f;
-    burst.age       =  0.0f;
-    burst.active    =  true;
+    burst.text       =  text;
+    burst.pos        =  pos;
+    burst.alpha      =  0.0f;
+    burst.scale      =  0.25f;
+    burst.max_scale  =  0.75f + (float)(rand() % 100) / 100.0f;
+    burst.drift.x    = -1.25f + (float)(rand() % 2);
+    burst.drift.y    = -1.25f + (float)(rand() % 2);
+    burst.lifetime   =  1.0f;
+    burst.age        =  0.0f;
+    burst.active     =  true;
     return burst;
 }
 
@@ -686,7 +691,7 @@ void UpdateTextBurst(Text_Burst *burst, float dt) {
         else if (t > 0.8f) burst->alpha = 1.0f - (t - 0.8f) / 0.2f; // fade out (last 0.2s)
         else               burst->alpha = 1.0f;
 
-        f32 eased_t = t*t;
+        f32 eased_t  = t*t;
         burst->scale = Lerp(0.25f, eased_t, burst->max_scale);
 
         burst->pos.x += burst->drift.x *t;
@@ -702,6 +707,52 @@ void DrawTextBurst(Text_Burst *burst, Font font) {
 
     DrawText(burst->text, (u32)burst->pos.x, (u32)burst->pos.y, font_size, col);
     //DrawTextEx(font, burst->text, burst->pos, font_size, 2, col);
+}
+
+void StartFadeOut(Screen_Fade *fade, Color col, f32 duration) {
+    fade->alpha    = 0.0f;
+    fade->duration = duration;
+    fade->timer    = 0.0f;
+    fade->col      = col;
+    fade->type     = FadeType_out;
+}
+
+void StartFadeIn(Screen_Fade *fade, Color col, f32 duration) {
+    fade->alpha    = 1.0f;
+    fade->duration = duration;
+    fade->timer    = 0.0f;
+    fade->col      = col;
+    fade->type     = FadeType_in;
+}
+
+void UpdateFade(Screen_Fade *fade, f32 delta_t) {
+    if (fade->type) {
+        fade->timer += delta_t;
+        if (fade->timer >= fade->duration) {
+            fade->timer = fade->duration;
+        }
+
+        f32 step = fade->timer / fade->duration;
+
+        if (fade->type == FadeType_out) {
+            fade->alpha = step;
+            if (step >= 1.0f) {
+                fade->type = FadeType_none;
+            }
+        } else if (fade->type == FadeType_in) {
+            fade->alpha = 1.0f - step;
+            if (step >= 1.0f) {
+                fade->type = FadeType_none;
+            }
+        }
+    }
+}
+
+void DrawFade(Screen_Fade *fade, u32 screen_width, u32 screen_height) {
+    if (fade->alpha > 0.0f)
+    {
+        DrawRectangle(0, 0, screen_width, screen_height, Fade(fade->col, fade->alpha));
+    }
 }
 
 int main() {
@@ -872,6 +923,7 @@ int main() {
         f32 current_time = GetTime();
 
         UpdateScreenShake(&manager.screen_shake, delta_t);
+        UpdateFade(&manager.fade, delta_t);
 
         // NOTE: reset the counter back to zero after everything to not mess up 
         // the individual animations
@@ -1341,6 +1393,10 @@ int main() {
             Vector2 texture_offset = {0.0f, 20.0f};
             DrawTexturePro(player.animators[PlayerAnimator_body].texture[player.facing], src,
                            dest_rect, texture_offset, 0.0f, player.col);
+            if (manager.fade.type == FadeType_none) {
+                StartFadeOut(&manager.fade, WHITE, 10.0f);
+            }
+            DrawFade(&manager.fade, base_screen_width, base_screen_height);
             if (IsKeyPressed(KEY_SPACE)) {
                 GameOver(&player, &map, &manager);
             }

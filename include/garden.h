@@ -65,6 +65,20 @@ enum Enemy_Animator {
     EnemyAnimator_count,
 };
 
+enum Fade_Type {
+    FadeType_none,
+    FadeType_in,
+    FadeType_out,
+};
+
+struct Screen_Fade {
+    f32       alpha;
+    f32       duration;
+    f32       timer;
+    Color     col;
+    Fade_Type type;
+};
+
 struct Animation {
     Texture2D texture[10];
     u32       max_frames;
@@ -211,6 +225,7 @@ struct Game_Manager {
     Text_Burst   bursts[MAX_BURSTS];
 
     Screen_Shake screen_shake;
+    Screen_Fade  fade;
 };
 
 struct StackU32 {
