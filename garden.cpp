@@ -758,6 +758,8 @@ int main() {
         LoadTexture("../assets/sprites/hat_right.png");
     player.animators[PlayerAnimator_body].texture[DirectionFacing_right] = 
         LoadTexture("../assets/sprites/hat_right.png");
+    player.animators[PlayerAnimator_body].texture[DirectionFacing_celebration] = 
+        LoadTexture("../assets/sprites/celebration.png");
     player.animators[PlayerAnimator_body].frame_rec = 
         {0.0f, 0.0f, 
         (f32)player.animators[PlayerAnimator_body].texture[DirectionFacing_down].width/4,
@@ -1229,6 +1231,10 @@ int main() {
                 }
             }
 
+            if (IsKeyPressed(KEY_P)) {
+                manager.state = GameState_win;
+            }
+
         } else if (manager.state == GameState_win) {
             // Draw tiles in background.
             {
@@ -1312,11 +1318,8 @@ int main() {
         
             Rectangle src = player.animators[PlayerAnimator_body].frame_rec;
 
-            if (player.facing == DirectionFacing_left) {
-                src.x     += src.width;
-                src.width  = -src.width;
-            }
-            
+            player.facing = DirectionFacing_celebration;
+
             f32 frame_width  = (f32)player.animators[PlayerAnimator_body].frame_rec.width;
             f32 frame_height = (f32)player.animators[PlayerAnimator_body].texture[player.facing].height;
 

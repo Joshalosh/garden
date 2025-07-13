@@ -11,7 +11,6 @@
 #define ARENA_SIZE MB(500)
 #define FRAME_SPEED 16
 #define INPUT_MAX 5
-#define MAX_PLAYER_ANIMATORS 2
 #define HYPE_WORD_COUNT 12
 #define MAX_BURSTS 32
 #define BG_LAYERS 8 
@@ -46,16 +45,18 @@ enum Game_State {
 };
 
 enum Direction_Facing {
-    DirectionFacing_down  = 0,
-    DirectionFacing_up    = 1,
-    DirectionFacing_left  = 2,
-    DirectionFacing_right = 3,
-    DirectionFacing_none  = 4,
+    DirectionFacing_down        = 0,
+    DirectionFacing_up          = 1,
+    DirectionFacing_left        = 2,
+    DirectionFacing_right       = 3,
+    DirectionFacing_celebration = 4,
+    DirectionFacing_none        = 5,
 };
 
 enum Player_Animator {
-    PlayerAnimator_body  = 0,
-    PlayerAnimator_water = 1,
+    PlayerAnimator_body,
+    PlayerAnimator_water,
+    PlayerAnimator_count,
 };
 
 struct Animation {
@@ -104,7 +105,7 @@ struct Player {
     bool             powered_up;
     bool             col_bool;
 
-    Animation        animators[MAX_PLAYER_ANIMATORS];
+    Animation        animators[PlayerAnimator_count];
     Direction_Facing facing;
     Input_Buffer     input_buffer;
 };
