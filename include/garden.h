@@ -9,7 +9,7 @@
 #define STACK_MAX_SIZE 4096
 #define MB(x) x*1024ULL*1024ULL
 #define ARENA_SIZE MB(500)
-#define FRAME_SPEED 16
+#define FRAME_SPEED 8
 #define INPUT_MAX 5
 #define HYPE_WORD_COUNT 12
 #define MAX_BURSTS 32
@@ -57,6 +57,12 @@ enum Player_Animator {
     PlayerAnimator_body,
     PlayerAnimator_water,
     PlayerAnimator_count,
+};
+
+enum Enemy_Animator {
+    EnemyAnimator_idle,
+    EnemyAnimator_destroy,
+    EnemyAnimator_count,
 };
 
 struct Animation {
@@ -112,7 +118,7 @@ struct Player {
 
 struct Enemy {
     u32        tile_index;
-    Animation  animator;
+    Animation  animators[EnemyAnimator_count];
     Enemy     *next;
     Enemy     *prev;
 };

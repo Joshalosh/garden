@@ -219,13 +219,23 @@ void PowerupInit(Powerup *powerup, Powerup *sentinel, Tile *tile) {
 
 void EnemyInit(Enemy *enemy, Enemy *sentinel, u32 tile_index) {
     enemy->tile_index             = tile_index;
-    enemy->animator.texture[0]    = LoadTexture("../assets/sprites/demon.png");
-    enemy->animator.max_frames    = (f32)enemy->animator.texture[0].width/20;
-    enemy->animator.current_frame = 0;
-    enemy->animator.looping       = true;
-    enemy->animator.frame_rec     = {0, 0, 
-                                     (f32)enemy->animator.texture[0].width/enemy->animator.max_frames,
-                                     (f32)enemy->animator.texture[0].height};
+    enemy->animators[EnemyAnimator_idle].texture[0]    = LoadTexture("../assets/sprites/demon.png");
+    enemy->animators[EnemyAnimator_idle].max_frames    = (f32)enemy->animators[EnemyAnimator_idle].texture[0].width/20;
+    enemy->animators[EnemyAnimator_idle].current_frame = 0;
+    enemy->animators[EnemyAnimator_idle].looping       = true;
+    enemy->animators[EnemyAnimator_idle].frame_rec     = {0, 0, 
+                                                          (f32)enemy->animators[EnemyAnimator_idle].texture[0].width /
+                                                               enemy->animators[EnemyAnimator_idle].max_frames,
+                                                          (f32)enemy->animators[EnemyAnimator_idle].texture[0].height};
+
+    enemy->animators[EnemyAnimator_destroy].texture[0]    = LoadTexture("../assets/sprites/disappear.png");
+    enemy->animators[EnemyAnimator_destroy].max_frames    = (f32)enemy->animators[EnemyAnimator_destroy].texture[0].width/20;
+    enemy->animators[EnemyAnimator_destroy].current_frame = 0;
+    enemy->animators[EnemyAnimator_destroy].looping       = false;
+    enemy->animators[EnemyAnimator_destroy].frame_rec     = {0, 0, 
+                                                          (f32)enemy->animators[EnemyAnimator_destroy].texture[0].width /
+                                                               enemy->animators[EnemyAnimator_destroy].max_frames,
+                                                          (f32)enemy->animators[EnemyAnimator_destroy].texture[0].height};
 
     enemy->next       = sentinel->next;
     enemy->prev       = sentinel;
@@ -575,6 +585,7 @@ Rectangle SetAtlasFrameRec(Tile_Type type, u32 seed) {
     return frame_rec;
 }
 
+// TODO: need to clean up this facing argument call
 void Animate(Animation *animator, u32 frame_counter, u32 facing = 0) {
     if (frame_counter >= 60/FRAME_SPEED) {
         animator->current_frame++;
@@ -954,14 +965,14 @@ int main() {
                             }
                             //DrawTextureV(powerup_texture, tile->pos, WHITE);
                         }
-                        // TODO: I need to draw enemies in a smarter way
                         if (IsFlagSet(tile, TileFlag_enemy)) {
                             Enemy *found_enemy = FindEnemyInList(&manager.enemy_sentinel, index);
                             if (found_enemy) {
-                                Animate(&found_enemy->animator, frame_counter);
+                                Animate(&found_enemy->animators[EnemyAnimator_idle], frame_counter);
                                 Vector2 draw_pos = {tile->pos.x, tile->pos.y - 20.f};
-                                DrawTextureRec(found_enemy->animator.texture[0],
-                                               found_enemy->animator.frame_rec, draw_pos, WHITE);
+                                DrawTextureRec(found_enemy->animators[EnemyAnimator_idle].texture[0],
+                                               found_enemy->animators[EnemyAnimator_idle].frame_rec, 
+                                               draw_pos, WHITE);
                             }
                         }
                         if (IsFlagSet(tile, TileFlag_moved)) {
@@ -1299,10 +1310,10 @@ int main() {
                         if (IsFlagSet(tile, TileFlag_enemy)) {
                             Enemy *found_enemy = FindEnemyInList(&manager.enemy_sentinel, index);
                             if (found_enemy) {
-                                Animate(&found_enemy->animator, frame_counter);
+                                Animate(&found_enemy->animators[EnemyAnimator_destroy], frame_counter);
                                 Vector2 draw_pos = {tile->pos.x, tile->pos.y - 20.f};
-                                DrawTextureRec(found_enemy->animator.texture[0],
-                                               found_enemy->animator.frame_rec, draw_pos, WHITE);
+                                DrawTextureRec(found_enemy->animators[EnemyAnimator_destroy].texture[0],
+                                               found_enemy->animators[EnemyAnimator_destroy].frame_rec, draw_pos, WHITE);
                             }
                         }
                         if (IsFlagSet(tile, TileFlag_moved)) {
@@ -1319,6 +1330,7 @@ int main() {
             Rectangle src = player.animators[PlayerAnimator_body].frame_rec;
 
             player.facing = DirectionFacing_celebration;
+            BeginScreenShake(&manager.screen_shake, 4.0f, 5.0f, 10.0f);
 
             f32 frame_width  = (f32)player.animators[PlayerAnimator_body].frame_rec.width;
             f32 frame_height = (f32)player.animators[PlayerAnimator_body].texture[player.facing].height;
