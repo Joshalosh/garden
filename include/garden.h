@@ -14,6 +14,7 @@
 #define HYPE_WORD_COUNT 12
 #define MAX_BURSTS 32
 #define BG_LAYERS 8 
+#define MAX_EVENTS 16
 
 const int base_screen_width  = 320;
 const int base_screen_height = 320; //180;
@@ -70,6 +71,27 @@ enum Fade_Type {
     FadeType_none,
     FadeType_in,
     FadeType_out,
+};
+
+enum Event_Type {
+    EventType_none,
+    EventType_wait,
+    EventType_fade_out,
+    EventType_fade_in,
+    Event_state_change,
+};
+
+struct Event {
+    Event_Type type;
+    f32 duration;
+    u32 new_state;
+};
+
+struct Event_Queue {
+    Event events[MAX_EVENTS];
+    u32 count;
+    u32 index;
+    f32 timer;
 };
 
 struct Screen_Fade {

@@ -709,7 +709,7 @@ void DrawTextBurst(Text_Burst *burst, Font font) {
     //DrawTextEx(font, burst->text, burst->pos, font_size, 2, col);
 }
 
-void StartFadeOut(Screen_Fade *fade, Color col, f32 duration) {
+void BeginFadeOut(Screen_Fade *fade, Color col, f32 duration) {
     fade->alpha    = 0.0f;
     fade->duration = duration;
     fade->timer    = 0.0f;
@@ -717,7 +717,7 @@ void StartFadeOut(Screen_Fade *fade, Color col, f32 duration) {
     fade->type     = FadeType_out;
 }
 
-void StartFadeIn(Screen_Fade *fade, Color col, f32 duration) {
+void BeginFadeIn(Screen_Fade *fade, Color col, f32 duration) {
     fade->alpha    = 1.0f;
     fade->duration = duration;
     fade->timer    = 0.0f;
@@ -1396,7 +1396,7 @@ int main() {
             DrawTexturePro(player.animators[PlayerAnimator_body].texture[player.facing], src,
                            dest_rect, texture_offset, 0.0f, player.col);
             if (manager.fade.alpha == 0.0f) {
-                StartFadeOut(&manager.fade, WHITE, 5.0f);
+                BeginFadeOut(&manager.fade, WHITE, 5.0f);
             } else if (manager.fade.alpha == 1.0f) {
                 manager.state = GameState_epilogue;
             }
@@ -1407,7 +1407,7 @@ int main() {
         } else if (manager.state == GameState_epilogue) {
             if (manager.fade.alpha == 1.0f)
             {
-                StartFadeIn(&manager.fade, WHITE, 5.0f);
+                BeginFadeIn(&manager.fade, WHITE, 5.0f);
             }
             DrawTextureV(chad_screen, {0, 0}, WHITE);
             DrawFade(&manager.fade, base_screen_width, base_screen_height);
@@ -1536,8 +1536,10 @@ int main() {
         };
 
         if (fire_cleared && player.powered_up) {
-            DrawText("WIN", window_width*0.5, window_height*0.5, 69, WHITE);
-            manager.state = GameState_win;
+            //DrawText("WIN", window_width*0.5, window_height*0.5, 69, WHITE);
+            if (manager.state != GameState_win && manager.state != GameState_epilogue) {
+                manager.state = GameState_win;
+            }
         }
 
         EndDrawing();
