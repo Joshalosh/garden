@@ -81,25 +81,33 @@ enum Event_Type {
     EventType_state_change,
 };
 
+struct Play_Text {
+    const char *text;
+    u32         font_size;
+    f32         bob;
+    Vector2     pos;
+};
+
 struct Event {
-    Event_Type type;
-    f32 duration;
-    u32 new_state;
+    Event_Type  type;
+    f32         duration;
+    u32         new_state;
+    Play_Text   text;
 };
 
 struct Event_Queue {
     Event events[MAX_EVENTS];
-    u32 count;
-    u32 index;
-    f32 timer;
+    u32   count;
+    u32   index;
+    f32   timer;
+    bool  active;
 };
 
-struct Screen_Fade {
+struct Fade_Object {
     f32       alpha;
     f32       duration;
     f32       timer;
-    Color     col;
-    Fade_Type type;
+    Fade_Type fade_type;
 };
 
 struct Animation {
@@ -205,13 +213,6 @@ struct Title_Screen_Background {
     Vector2   pos_right_2;
 };
 
-struct Play_Text {
-    const char *text;
-    u32         font_size;
-    f32         bob;
-    Vector2     pos;
-};
-
 struct Title_Screen_Manager {
     Game_Title              title;
     Play_Text               play_text;
@@ -248,7 +249,7 @@ struct Game_Manager {
     Text_Burst   bursts[MAX_BURSTS];
 
     Screen_Shake screen_shake;
-    Screen_Fade  fade;
+    Fade_Object  fade;
 };
 
 struct StackU32 {
