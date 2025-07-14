@@ -755,6 +755,47 @@ void DrawFade(Screen_Fade *fade, u32 screen_width, u32 screen_height) {
     }
 }
 
+void UpdateEventQueue(Event_Queue *queue, Game_Manager *manager, f32 delta_t) {
+    if (queue->index < queue->count) {
+        Event *event = &queue->events[queue->index];
+
+        switch (event->type) {
+            case EventType_wait: {
+                queue->timer += delta_t;
+                if (queue->timer >= event->duration) {
+                    queue->timer = 0.0f;
+                    queue->index++;
+                }
+            } break;
+            case EventType_fade_out: {
+                if (manager->fade.type == FadeType_none && queue->timer == 0.0f) {
+                    BeginFadeOut(&manager->fade, BLACK, event->duration);
+                }
+                if (manager->fade.type == FadeType_none) {
+                    queue->timer = 0.0f;
+                    queue->index++;
+                }
+            } break;
+            case EventType_fade_in: {
+                if (manager->fade.type == FadeType_none && queue->timer == 0.0f) {
+                    BeginFadeIn(&manager->fade, BLACK, event->duration);
+                }
+                if (manager->fade.type == FadeType_none) {
+                    queue->timer = 0.0f;
+                    queue->index++;
+                }
+            } break;
+            case EventType_state_change: {
+                manager->state = (Game_State)event->new_state;
+                queue->timer = 0.0f;
+                queue->index++;
+            } break;
+
+            default: queue->index++; break;
+        }
+    }
+}
+
 int main() {
     // -------------------------------------
     // Initialisation
@@ -911,6 +952,10 @@ int main() {
     size_t arena_size = 1024*1024;
     ArenaInit(&arena, arena_size); 
 
+    // TODO: I need to initialise an event in the queue, and then in the future 
+    // make this a list of queues to be able to hold multiple event queue sequences
+    Event_Queue event_queue;
+
     RenderTexture2D target   = LoadRenderTexture(base_screen_width, base_screen_height); 
     SetTargetFPS(60);
     // -------------------------------------
@@ -926,6 +971,7 @@ int main() {
 
         UpdateScreenShake(&manager.screen_shake, delta_t);
         UpdateFade(&manager.fade, delta_t);
+        UpdateEventQueue(&event_queue, &manager, delta_t);
 
         // NOTE: reset the counter back to zero after everything to not mess up 
         // the individual animations

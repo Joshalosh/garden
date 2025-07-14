@@ -78,7 +78,7 @@ enum Event_Type {
     EventType_wait,
     EventType_fade_out,
     EventType_fade_in,
-    Event_state_change,
+    EventType_state_change,
 };
 
 struct Event {
