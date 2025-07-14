@@ -902,6 +902,8 @@ int main() {
     SetShaderValue(fire_wobble.shader, fire_wobble.frequency_location, &fire_wobble.frequency, SHADER_UNIFORM_FLOAT);
     SetShaderValue(fire_wobble.shader, fire_wobble.speed_location,     &fire_wobble.speed,     SHADER_UNIFORM_FLOAT);
 
+    Texture2D chad_screen = LoadTexture("../assets/sprites/win_full.png");
+
     // TODO: Maybe this should go into the game manager?
     u32 frame_counter        = 0; 
 
@@ -1393,9 +1395,21 @@ int main() {
             Vector2 texture_offset = {0.0f, 20.0f};
             DrawTexturePro(player.animators[PlayerAnimator_body].texture[player.facing], src,
                            dest_rect, texture_offset, 0.0f, player.col);
-            if (manager.fade.type == FadeType_none) {
-                StartFadeOut(&manager.fade, WHITE, 10.0f);
+            if (manager.fade.alpha == 0.0f) {
+                StartFadeOut(&manager.fade, WHITE, 5.0f);
+            } else if (manager.fade.alpha == 1.0f) {
+                manager.state = GameState_epilogue;
             }
+            DrawFade(&manager.fade, base_screen_width, base_screen_height);
+            if (IsKeyPressed(KEY_SPACE)) {
+                GameOver(&player, &map, &manager);
+            }
+        } else if (manager.state == GameState_epilogue) {
+            if (manager.fade.alpha == 1.0f)
+            {
+                StartFadeIn(&manager.fade, WHITE, 5.0f);
+            }
+            DrawTextureV(chad_screen, {0, 0}, WHITE);
             DrawFade(&manager.fade, base_screen_width, base_screen_height);
             if (IsKeyPressed(KEY_SPACE)) {
                 GameOver(&player, &map, &manager);

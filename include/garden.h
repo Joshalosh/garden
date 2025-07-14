@@ -42,6 +42,7 @@ enum Game_State {
     GameState_lose,
     GameState_win,
     GameState_title,
+    GameState_epilogue,
 };
 
 enum Direction_Facing {
