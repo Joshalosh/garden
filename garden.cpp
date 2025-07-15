@@ -772,7 +772,8 @@ void UpdateEventQueue(Event_Queue *queue, Game_Manager *manager, f32 delta_t) {
                     if (event->fadeable.fade_type == FadeType_none && queue->timer == 0.0f) {
                         AlphaFadeOut(manager, &event->fadeable, event->duration);
                     }
-                    if (event->fadeable.fade_type == FadeType_none) {
+                    queue->timer += delta_t;
+                    if (event->fadeable.alpha == 0.0f) {
                         queue->timer = 0.0f;
                         queue->index++;
                     }
@@ -781,7 +782,8 @@ void UpdateEventQueue(Event_Queue *queue, Game_Manager *manager, f32 delta_t) {
                     if (event->fadeable.fade_type == FadeType_none && queue->timer == 0.0f) {
                         AlphaFadeIn(manager, &event->fadeable, event->duration);
                     }
-                    if (event->fadeable.fade_type == FadeType_none && queue->timer >= event->duration) {
+                    queue->timer += delta_t;
+                    if (event->fadeable.alpha == 1.0f) {
                         queue->timer = 0.0f;
                         queue->index++;
                     }
@@ -959,12 +961,13 @@ int main() {
     Event_Queue win_text_sequence;
     win_text_sequence.events[0] = {EventType_wait, 3.0f};
     win_text_sequence.events[1].type = EventType_fade_in;
-    win_text_sequence.events[1].duration = 5.0f;
+    win_text_sequence.events[1].duration = 1.0f;
     win_text_sequence.events[1].fadeable = {};
-    win_text_sequence.events[2] = {EventType_wait, 3.0f, 0, 0, 0};
+    win_text_sequence.events[2] = {EventType_wait, 1.0f, 0, 0, 0};
+    win_text_sequence.events[2].fadeable.alpha = 1.0f;
     win_text_sequence.events[3].type = EventType_fade_out;
-    win_text_sequence.events[3].duration = 5.0f;
-    win_text_sequence.events[3].fadeable = {};
+    win_text_sequence.events[3].duration = 2.0f;
+    win_text_sequence.events[3].fadeable.alpha = 1.0f;
     win_text_sequence.events[4] = {EventType_state_change, 0, GameState_epilogue};
     win_text_sequence.count = 5;
     win_text_sequence.active = false;
