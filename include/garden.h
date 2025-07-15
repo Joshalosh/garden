@@ -15,6 +15,7 @@
 #define MAX_BURSTS 32
 #define BG_LAYERS 8 
 #define MAX_EVENTS 16
+#define MAX_FADEABLES 32
 
 const int base_screen_width  = 320;
 const int base_screen_height = 320; //180;
@@ -250,7 +251,11 @@ struct Game_Manager {
     Text_Burst   bursts[MAX_BURSTS];
 
     Screen_Shake screen_shake;
-    Fade_Object  fade;
+
+    // For fadeable objects
+    Fade_Object  *fadeables[MAX_FADEABLES];
+    u32          fade_count;
+
 };
 
 struct StackU32 {

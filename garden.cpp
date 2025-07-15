@@ -125,10 +125,7 @@ void GameManagerInit(Game_Manager *manager) {
     manager->screen_shake.duration  = 0;
     manager->screen_shake.decay     = 0;
 
-    manager->fade.alpha             = 0.0f;
-    manager->fade.duration          = 0.0f;
-    manager->fade.timer             = 0.0f;
-    manager->fade.fade_type         = FadeType_none;
+    manager->fade_count             = 0;
 }
 
 void TitleScreenManagerInit(Title_Screen_Manager *manager) {
@@ -708,38 +705,44 @@ void DrawTextBurst(Text_Burst *burst, Font font) {
     //DrawTextEx(font, burst->text, burst->pos, font_size, 2, col);
 }
 
-void AlphaFadeOut(Fade_Object *object, f32 duration) {
+void AlphaFadeIn(Game_Manager *manager, Fade_Object *object, f32 duration) {
     object->alpha     = 0.0f;
     object->duration  = duration;
     object->timer     = 0.0f;
-    object->fade_type = FadeType_out;
+    object->fade_type = FadeType_in;
+    manager->fadeables[manager->fade_count] = object;
+    manager->fade_count++;
 }
 
-void AlphaFadeIn(Fade_Object *object, f32 duration) {
+void AlphaFadeOut(Game_Manager *manager, Fade_Object *object, f32 duration) {
     object->alpha     = 1.0f;
     object->duration  = duration;
     object->timer     = 0.0f;
-    object->fade_type = FadeType_in;
+    object->fade_type = FadeType_out;
+    manager->fadeables[manager->fade_count] = object;
+    manager->fade_count++;
 }
 
-void UpdateAlphaFade(Fade_Object *object, f32 delta_t) {
-    if (object->fade_type) {
-        object->timer += delta_t;
-        if (object->timer >= object->duration) {
-            object->timer = object->duration;
-        }
-
-        f32 step = object->timer / object->duration;
-
-        if (object->fade_type == FadeType_out) {
-            object->alpha = step;
-            if (step >= 1.0f) {
-                object->fade_type = FadeType_none;
+void UpdateAlphaFade(Game_Manager *manager, f32 delta_t) {
+    for (u32 index = 0; index < manager->fade_count; index++) {
+        if (manager->fadeables[index]->fade_type) {
+            manager->fadeables[index]->timer += delta_t;
+            if (manager->fadeables[index]->timer >= manager->fadeables[index]->duration) {
+                manager->fadeables[index]->timer = manager->fadeables[index]->duration;
             }
-        } else if (object->fade_type == FadeType_in) {
-            object->alpha = 1.0f - step;
-            if (step >= 1.0f) {
-                object->fade_type = FadeType_none;
+
+            f32 step = manager->fadeables[index]->timer / manager->fadeables[index]->duration;
+
+            if (manager->fadeables[index]->fade_type == FadeType_in) {
+                manager->fadeables[index]->alpha = step;
+                if (step >= 1.0f) {
+                    manager->fadeables[index]->fade_type = FadeType_none;
+                }
+            } else if (manager->fadeables[index]->fade_type == FadeType_out) {
+                manager->fadeables[index]->alpha = 1.0f - step;
+                if (step >= 1.0f) {
+                    manager->fadeables[index]->fade_type = FadeType_none;
+                }
             }
         }
     }
@@ -767,7 +770,7 @@ void UpdateEventQueue(Event_Queue *queue, Game_Manager *manager, f32 delta_t) {
                 } break;
                 case EventType_fade_out: {
                     if (event->fadeable.fade_type == FadeType_none && queue->timer == 0.0f) {
-                        AlphaFadeOut(&event->fadeable, event->duration);
+                        AlphaFadeOut(manager, &event->fadeable, event->duration);
                     }
                     if (event->fadeable.fade_type == FadeType_none) {
                         queue->timer = 0.0f;
@@ -776,7 +779,7 @@ void UpdateEventQueue(Event_Queue *queue, Game_Manager *manager, f32 delta_t) {
                 } break;
                 case EventType_fade_in: {
                     if (event->fadeable.fade_type == FadeType_none && queue->timer == 0.0f) {
-                        AlphaFadeIn(&event->fadeable, event->duration);
+                        AlphaFadeIn(manager, &event->fadeable, event->duration);
                     }
                     if (event->fadeable.fade_type == FadeType_none && queue->timer >= event->duration) {
                         queue->timer = 0.0f;
@@ -966,6 +969,8 @@ int main() {
     win_text_sequence.count = 5;
     win_text_sequence.active = false;
 
+    Fade_Object white_screen = {};
+
     // TODO: Maybe this should go into the game manager?
     u32 frame_counter        = 0; 
 
@@ -990,7 +995,7 @@ int main() {
         // TODO: figure out a way to make this work for multiple fade objects
         // perahps I should create an array of objects to fade and this will go through the list 
         // fading them all.
-        UpdateAlphaFade(&manager.fade, delta_t);
+        UpdateAlphaFade(&manager, delta_t);
         UpdateEventQueue(&win_text_sequence, &manager, delta_t);
 
         // NOTE: reset the counter back to zero after everything to not mess up 
@@ -1461,18 +1466,18 @@ int main() {
             Vector2 texture_offset = {0.0f, 20.0f};
             DrawTexturePro(player.animators[PlayerAnimator_body].texture[player.facing], src,
                            dest_rect, texture_offset, 0.0f, player.col);
-            if (manager.fade.alpha == 0.0f) {
-                AlphaFadeOut(&manager.fade, 5.0f);
-            } else if (manager.fade.alpha == 1.0f) {
+            if (white_screen.alpha == 0.0f) {
+                AlphaFadeIn(&manager, &white_screen, 5.0f);
+            } else if (white_screen.alpha == 1.0f) {
                 manager.state = GameState_win_text;
             }
-            DrawScreenFadeCol(&manager.fade, base_screen_width, base_screen_height, WHITE);
+            DrawScreenFadeCol(&white_screen, base_screen_width, base_screen_height, WHITE);
             if (IsKeyPressed(KEY_SPACE)) {
                 GameOver(&player, &map, &manager);
             }
         } else if (manager.state == GameState_win_text) {
 
-            DrawScreenFadeCol(&manager.fade, base_screen_width, base_screen_height, WHITE);
+            DrawScreenFadeCol(&white_screen, base_screen_width, base_screen_height, WHITE);
             if (!win_text_sequence.active) StartEventSequence(&win_text_sequence);
 
             Event event = win_text_sequence.events[win_text_sequence.index];
@@ -1488,12 +1493,12 @@ int main() {
                      Fade(GOLD, event.fadeable.alpha));
 
         } else if (manager.state == GameState_epilogue) {
-            if (manager.fade.alpha == 1.0f)
+            if (white_screen.alpha == 1.0f)
             {
-                AlphaFadeIn(&manager.fade, 5.0f);
+                AlphaFadeOut(&manager, &white_screen, 5.0f);
             }
             DrawTextureV(chad_screen, {0, 0}, WHITE);
-            DrawScreenFadeCol(&manager.fade, base_screen_width, base_screen_height, WHITE);
+            DrawScreenFadeCol(&white_screen, base_screen_width, base_screen_height, WHITE);
             if (IsKeyPressed(KEY_SPACE)) {
                 GameOver(&player, &map, &manager);
             }
