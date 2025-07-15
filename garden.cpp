@@ -365,6 +365,7 @@ void UpdateTitleBob(Game_Title *title, f32 delta_t) {
 // TODO: Need to set make sure the audio completely stops here perhaps put all the sounds into a sound 
 // buffer and loop through and stop all sounds... or close the audio device and re-init... but then I 
 // will have to load in all the sounds again.
+// TODO: Need to make sure the event sequencer goes back to the first index
 void GameOver(Player *player, Tilemap *tilemap,  Game_Manager *manager) {
     PlayerInit(player);
     if (manager->score > manager->high_score) {
@@ -377,6 +378,7 @@ void GameOver(Player *player, Tilemap *tilemap,  Game_Manager *manager) {
 
     manager->enemy_sentinel.next = &manager->enemy_sentinel;
     manager->enemy_sentinel.prev = &manager->enemy_sentinel;
+    manager->fade_count = 0;
 
     // Reset the tilemap back to it's original orientation
     TileInit(tilemap);
@@ -954,12 +956,27 @@ int main() {
     SetShaderValue(fire_wobble.shader, fire_wobble.frequency_location, &fire_wobble.frequency, SHADER_UNIFORM_FLOAT);
     SetShaderValue(fire_wobble.shader, fire_wobble.speed_location,     &fire_wobble.speed,     SHADER_UNIFORM_FLOAT);
 
+    Wobble_Shader tree_wobble;
+    {
+        f32 amplitude = 0.01f;
+        f32 frequency = 0.4f;
+        f32 speed     = 1.0f;
+        WobbleShaderInit(&tree_wobble, amplitude, frequency, speed); 
+    }
+    
+    SetShaderValue(tree_wobble.shader, tree_wobble.amplitude_location, &tree_wobble.amplitude, SHADER_UNIFORM_FLOAT);
+    SetShaderValue(tree_wobble.shader, tree_wobble.frequency_location, &tree_wobble.frequency, SHADER_UNIFORM_FLOAT);
+    SetShaderValue(tree_wobble.shader, tree_wobble.speed_location,     &tree_wobble.speed,     SHADER_UNIFORM_FLOAT);
+
     Texture2D chad_screen = LoadTexture("../assets/sprites/win_full.png");
+    Texture2D chad_bg     = LoadTexture("../assets/sprites/win_sky.png");
+    Texture2D chad_trees  = LoadTexture("../assets/sprites/win_trees.png");
+    Texture2D chad        = LoadTexture("../assets/sprites/win_chad.png");
 
     // TODO: I need to initialise an event in the queue, and then in the future 
     // make this a list of queues to be able to hold multiple event queue sequences
     Event_Queue win_text_sequence;
-    win_text_sequence.events[0] = {EventType_wait, 3.0f};
+    win_text_sequence.events[0] = {EventType_wait, 1.5f};
     win_text_sequence.events[1].type = EventType_fade_in;
     win_text_sequence.events[1].duration = 1.0f;
     win_text_sequence.events[1].fadeable = {};
@@ -1022,6 +1039,7 @@ int main() {
         // Set Shader variables
         SetShaderValue(bg_wobble.shader,   bg_wobble.time_location,   &current_time, SHADER_UNIFORM_FLOAT);
         SetShaderValue(fire_wobble.shader, fire_wobble.time_location, &current_time, SHADER_UNIFORM_FLOAT);
+        SetShaderValue(tree_wobble.shader, fire_wobble.time_location, &current_time, SHADER_UNIFORM_FLOAT);
 
         // Draw to render texture
         BeginTextureMode(target);
@@ -1478,7 +1496,7 @@ int main() {
             if (IsKeyPressed(KEY_SPACE)) {
                 GameOver(&player, &map, &manager);
             }
-        } else if (manager.state == GameState_win_text) {
+        } else if (manager.state == GameState_epilogue) {
 
             DrawScreenFadeCol(&white_screen, base_screen_width, base_screen_height, WHITE);
             if (!win_text_sequence.active) StartEventSequence(&win_text_sequence);
@@ -1500,7 +1518,13 @@ int main() {
             {
                 AlphaFadeOut(&manager, &white_screen, 5.0f);
             }
-            DrawTextureV(chad_screen, {0, 0}, WHITE);
+            BeginShaderMode(bg_wobble.shader);
+            DrawTextureV(chad_bg, {0, 0}, WHITE);
+            EndShaderMode();
+            BeginShaderMode(tree_wobble.shader);
+            DrawTextureV(chad_trees, {-30.0f, 0}, WHITE);
+            EndShaderMode();
+            DrawTextureV(chad, {0, 0}, WHITE);
             DrawScreenFadeCol(&white_screen, base_screen_width, base_screen_height, WHITE);
             if (IsKeyPressed(KEY_SPACE)) {
                 GameOver(&player, &map, &manager);
