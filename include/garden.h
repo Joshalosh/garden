@@ -43,6 +43,7 @@ enum Game_State {
     GameState_lose,
     GameState_win,
     GameState_title,
+    GameState_win_text,
     GameState_epilogue,
 };
 
@@ -86,21 +87,6 @@ struct Play_Text {
     u32         font_size;
     f32         bob;
     Vector2     pos;
-};
-
-struct Event {
-    Event_Type  type;
-    f32         duration;
-    u32         new_state;
-    Play_Text   text;
-};
-
-struct Event_Queue {
-    Event events[MAX_EVENTS];
-    u32   count;
-    u32   index;
-    f32   timer;
-    bool  active;
 };
 
 struct Fade_Object {
@@ -223,6 +209,21 @@ struct Screen_Shake {
     f32 intensity;
     f32 duration;
     f32 decay;
+};
+
+struct Event {
+    Event_Type  type;
+    f32         duration;
+    u32         new_state;
+    Fade_Object fadeable;
+};
+
+struct Event_Queue {
+    Event events[MAX_EVENTS];
+    u32   count;
+    u32   index;
+    f32   timer;
+    bool  active;
 };
 
 struct Game_Manager {

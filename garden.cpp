@@ -766,19 +766,19 @@ void UpdateEventQueue(Event_Queue *queue, Game_Manager *manager, f32 delta_t) {
                     }
                 } break;
                 case EventType_fade_out: {
-                    if (manager->fade.fade_type == FadeType_none && queue->timer == 0.0f) {
-                        AlphaFadeOut(&manager->fade, event->duration);
+                    if (event->fadeable.fade_type == FadeType_none && queue->timer == 0.0f) {
+                        AlphaFadeOut(&event->fadeable, event->duration);
                     }
-                    if (manager->fade.fade_type == FadeType_none) {
+                    if (event->fadeable.fade_type == FadeType_none) {
                         queue->timer = 0.0f;
                         queue->index++;
                     }
                 } break;
                 case EventType_fade_in: {
-                    if (manager->fade.fade_type == FadeType_none && queue->timer == 0.0f) {
-                        AlphaFadeIn(&manager->fade, event->duration);
+                    if (event->fadeable.fade_type == FadeType_none && queue->timer == 0.0f) {
+                        AlphaFadeIn(&event->fadeable, event->duration);
                     }
-                    if (manager->fade.fade_type == FadeType_none) {
+                    if (event->fadeable.fade_type == FadeType_none) {
                         queue->timer = 0.0f;
                         queue->index++;
                     }
@@ -953,6 +953,19 @@ int main() {
 
     Texture2D chad_screen = LoadTexture("../assets/sprites/win_full.png");
 
+    Event_Queue win_text_sequence;
+    win_text_sequence.events[0] = {EventType_wait, 3.0f};
+    win_text_sequence.events[1].type = EventType_fade_in;
+    win_text_sequence.events[1].duration = 3.0f;
+    win_text_sequence.events[1].fadeable = {};
+    win_text_sequence.events[2] = {EventType_wait, 3.0f, 0, 0, 0};
+    win_text_sequence.events[3].type = EventType_fade_out;
+    win_text_sequence.events[3].duration = 3.0f;
+    win_text_sequence.events[3].fadeable = {};
+    win_text_sequence.events[4] = {EventType_state_change, 0, GameState_epilogue};
+    win_text_sequence.count = 5;
+    win_text_sequence.active = false;
+
     // TODO: Maybe this should go into the game manager?
     u32 frame_counter        = 0; 
 
@@ -978,6 +991,9 @@ int main() {
         f32 current_time = GetTime();
 
         UpdateScreenShake(&manager.screen_shake, delta_t);
+        // TODO: figure out a way to make this work for multiple fade objects
+        // perahps I should create an array of objects to fade and this will go through the list 
+        // fading them all.
         UpdateAlphaFade(&manager.fade, delta_t);
         UpdateEventQueue(&event_queue, &manager, delta_t);
 
@@ -1452,12 +1468,30 @@ int main() {
             if (manager.fade.alpha == 0.0f) {
                 AlphaFadeOut(&manager.fade, 5.0f);
             } else if (manager.fade.alpha == 1.0f) {
-                manager.state = GameState_epilogue;
+                manager.state = GameState_win_text;
             }
             DrawScreenFadeCol(&manager.fade, base_screen_width, base_screen_height, WHITE);
             if (IsKeyPressed(KEY_SPACE)) {
                 GameOver(&player, &map, &manager);
             }
+        } else if (manager.state == GameState_win_text) {
+
+            DrawScreenFadeCol(&manager.fade, base_screen_width, base_screen_height, WHITE);
+            StartEventSequence(&win_text_sequence);
+            Event event = win_text_sequence.events[win_text_sequence.index];
+            if (event.type == EventType_fade_in || event.type == EventType_fade_out) {
+                const char *message = "The Gods Are Pleased!";
+                u32 font_size = 14;
+                Vector2 text_pos = {(base_screen_width*0.5f) - (MeasureText(message, font_size)*0.5f), 
+                                    base_screen_height*0.5f};
+                DrawText(message, (u32)text_pos.x+2.0f, (u32)text_pos.y+2.0f, font_size, 
+                         Fade(BLACK, event.fadeable.alpha));
+                DrawText(message, (u32)text_pos.x+1.0f, (u32)text_pos.y+1.0f, font_size, 
+                         Fade(MAROON, event.fadeable.alpha));
+                DrawText(message, (u32)text_pos.x, (u32)text_pos.y, font_size, 
+                         Fade(GOLD, event.fadeable.alpha));
+            }
+
         } else if (manager.state == GameState_epilogue) {
             if (manager.fade.alpha == 1.0f)
             {
