@@ -83,6 +83,12 @@ enum Event_Type {
     EventType_state_change,
 };
 
+enum End_Layers {
+    EndLayer_sky,
+    EndLayer_trees,
+    EndLayer_count,
+};
+
 struct Play_Text {
     const char *text;
     u32         font_size;
@@ -204,6 +210,14 @@ struct Title_Screen_Manager {
     Game_Title              title;
     Play_Text               play_text;
     Title_Screen_Background bg;
+};
+
+struct End_Screen {
+    Texture2D     textures[EndLayer_count];
+    Wobble_Shader shaders[EndLayer_count];
+    Animation     animator;
+    f32           timer;
+    f32           blink_duration;
 };
 
 struct Screen_Shake {

@@ -5,8 +5,8 @@
 #include "types.h"
 #include "mymath.h"
 #include "memory.h"
-#include "garden.h"
 #include "shader.h"
+#include "garden.h"
 
 #include "shader.cpp"
 
@@ -161,6 +161,50 @@ void TitleScreenManagerInit(Title_Screen_Manager *manager) {
     play_text.pos       = {(base_screen_width*0.5f) - (MeasureText(play_text.text, play_text.font_size)*0.5f), 
                            0.0f};
     manager->play_text = play_text;
+}
+
+void EndScreenInit(End_Screen *screen) {
+    screen->textures[EndLayer_sky]   = LoadTexture("../assets/sprites/win_sky.png"); 
+    screen->textures[EndLayer_trees] = LoadTexture("../assets/sprites/win_trees.png"); 
+
+    screen->animator.texture[0]      = LoadTexture("../assets/sprites/win_blink.png"); 
+    screen->animator.max_frames      = (f32)screen->animator.texture[0].width/base_screen_width;
+    screen->animator.frame_rec       = {0.0f, 0.0f,
+                                        (f32)screen->animator.texture[0].width/screen->animator.max_frames,
+                                        (f32)screen->animator.texture[0].height};
+    screen->animator.current_frame   = 0;
+    screen->animator.looping         = false;
+
+    screen->timer                    = 0;
+    screen->blink_duration           = 5.0f;
+
+    // Setup the shaders used on the background layers of the end 
+    // screen.
+    {
+        f32 amplitude = 0.6f;
+        f32 frequency = 12.0f;
+        f32 speed     = 0.05f;
+        WobbleShaderInit(&screen->shaders[EndLayer_sky], amplitude, frequency, speed);
+    }
+    SetShaderValue(screen->shaders[EndLayer_sky].shader, screen->shaders[EndLayer_sky].amplitude_location, 
+                   &screen->shaders[EndLayer_sky].amplitude, SHADER_UNIFORM_FLOAT);
+    SetShaderValue(screen->shaders[EndLayer_sky].shader, screen->shaders[EndLayer_sky].frequency_location, 
+                   &screen->shaders[EndLayer_sky].frequency, SHADER_UNIFORM_FLOAT);
+    SetShaderValue(screen->shaders[EndLayer_sky].shader, screen->shaders[EndLayer_sky].speed_location,     
+                   &screen->shaders[EndLayer_sky].speed, SHADER_UNIFORM_FLOAT);
+
+    {
+        f32 amplitude = 0.01f;
+        f32 frequency = 0.7f;
+        f32 speed     = 1.0f;
+        WobbleShaderInit(&screen->shaders[EndLayer_trees], amplitude, frequency, speed);
+    }
+    SetShaderValue(screen->shaders[EndLayer_trees].shader, screen->shaders[EndLayer_trees].amplitude_location, 
+                   &screen->shaders[EndLayer_trees].amplitude, SHADER_UNIFORM_FLOAT);
+    SetShaderValue(screen->shaders[EndLayer_trees].shader, screen->shaders[EndLayer_trees].frequency_location, 
+                   &screen->shaders[EndLayer_trees].frequency, SHADER_UNIFORM_FLOAT);
+    SetShaderValue(screen->shaders[EndLayer_trees].shader, screen->shaders[EndLayer_trees].speed_location,     
+                   &screen->shaders[EndLayer_trees].speed, SHADER_UNIFORM_FLOAT);
 }
 
 void LoadSoundBuffer(Sound *sounds) {
@@ -933,6 +977,8 @@ int main() {
     Wobble_Shader bg_wobble;
     // Putting these variables inside of a scope to make them temporary 
     // purely for the init shader function
+    // TODO: Need to figure out a better way to get this variables into the setup of 
+    // these shaders without being super jank.
     {
         f32 amplitude = 0.06f;
         f32 frequency = 1.25f;
@@ -956,22 +1002,8 @@ int main() {
     SetShaderValue(fire_wobble.shader, fire_wobble.frequency_location, &fire_wobble.frequency, SHADER_UNIFORM_FLOAT);
     SetShaderValue(fire_wobble.shader, fire_wobble.speed_location,     &fire_wobble.speed,     SHADER_UNIFORM_FLOAT);
 
-    Wobble_Shader tree_wobble;
-    {
-        f32 amplitude = 0.01f;
-        f32 frequency = 0.4f;
-        f32 speed     = 1.0f;
-        WobbleShaderInit(&tree_wobble, amplitude, frequency, speed); 
-    }
-    
-    SetShaderValue(tree_wobble.shader, tree_wobble.amplitude_location, &tree_wobble.amplitude, SHADER_UNIFORM_FLOAT);
-    SetShaderValue(tree_wobble.shader, tree_wobble.frequency_location, &tree_wobble.frequency, SHADER_UNIFORM_FLOAT);
-    SetShaderValue(tree_wobble.shader, tree_wobble.speed_location,     &tree_wobble.speed,     SHADER_UNIFORM_FLOAT);
-
-    Texture2D chad_screen = LoadTexture("../assets/sprites/win_full.png");
-    Texture2D chad_bg     = LoadTexture("../assets/sprites/win_sky.png");
-    Texture2D chad_trees  = LoadTexture("../assets/sprites/win_trees.png");
-    Texture2D chad        = LoadTexture("../assets/sprites/win_chad.png");
+    End_Screen end_screen;
+    EndScreenInit(&end_screen);
 
     // TODO: I need to initialise an event in the queue, and then in the future 
     // make this a list of queues to be able to hold multiple event queue sequences
@@ -1039,7 +1071,8 @@ int main() {
         // Set Shader variables
         SetShaderValue(bg_wobble.shader,   bg_wobble.time_location,   &current_time, SHADER_UNIFORM_FLOAT);
         SetShaderValue(fire_wobble.shader, fire_wobble.time_location, &current_time, SHADER_UNIFORM_FLOAT);
-        SetShaderValue(tree_wobble.shader, fire_wobble.time_location, &current_time, SHADER_UNIFORM_FLOAT);
+        SetShaderValue(end_screen.shaders[EndLayer_sky].shader,   end_screen.shaders[EndLayer_sky].time_location,  &current_time, SHADER_UNIFORM_FLOAT);
+        SetShaderValue(end_screen.shaders[EndLayer_trees].shader, end_screen.shaders[EndLayer_trees].time_location, &current_time, SHADER_UNIFORM_FLOAT);
 
         // Draw to render texture
         BeginTextureMode(target);
@@ -1490,13 +1523,13 @@ int main() {
             if (white_screen.alpha == 0.0f) {
                 AlphaFadeIn(&manager, &white_screen, 5.0f);
             } else if (white_screen.alpha == 1.0f) {
-                manager.state = GameState_win_text;
+                manager.state = GameState_epilogue;
             }
             DrawScreenFadeCol(&white_screen, base_screen_width, base_screen_height, WHITE);
             if (IsKeyPressed(KEY_SPACE)) {
                 GameOver(&player, &map, &manager);
             }
-        } else if (manager.state == GameState_epilogue) {
+        } else if (manager.state == GameState_win_text) {
 
             DrawScreenFadeCol(&white_screen, base_screen_width, base_screen_height, WHITE);
             if (!win_text_sequence.active) StartEventSequence(&win_text_sequence);
@@ -1518,13 +1551,21 @@ int main() {
             {
                 AlphaFadeOut(&manager, &white_screen, 5.0f);
             }
-            BeginShaderMode(bg_wobble.shader);
-            DrawTextureV(chad_bg, {0, 0}, WHITE);
+            end_screen.timer += delta_t;
+            BeginShaderMode(end_screen.shaders[EndLayer_sky].shader);
+            DrawTextureV(end_screen.textures[EndLayer_sky], {0, 0}, WHITE);
             EndShaderMode();
-            BeginShaderMode(tree_wobble.shader);
-            DrawTextureV(chad_trees, {-30.0f, 0}, WHITE);
+            BeginShaderMode(end_screen.shaders[EndLayer_trees].shader);
+            DrawTextureV(end_screen.textures[EndLayer_trees], {-30.0f, 0}, WHITE);
             EndShaderMode();
-            DrawTextureV(chad, {0, 0}, WHITE);
+            Animate(&end_screen.animator, frame_counter);
+            DrawTextureRec(end_screen.animator.texture[0], 
+                           end_screen.animator.frame_rec, {0, 0}, WHITE);
+            if (end_screen.timer > end_screen.blink_duration) {
+                end_screen.animator.current_frame = 0;
+                end_screen.timer = 0;
+            }
+
             DrawScreenFadeCol(&white_screen, base_screen_width, base_screen_height, WHITE);
             if (IsKeyPressed(KEY_SPACE)) {
                 GameOver(&player, &map, &manager);
