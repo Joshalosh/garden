@@ -176,7 +176,7 @@ void EndScreenInit(End_Screen *screen) {
     screen->animator.looping         = false;
 
     screen->timer                    = 0;
-    screen->blink_duration           = 5.0f;
+    screen->blink_duration           = 3.0f;
 
     // Setup the shaders used on the background layers of the end 
     // screen.
@@ -860,7 +860,8 @@ int main() {
 
     const int window_width  = 1280;
     const int window_height = 1280; //720;
-    InitWindow(window_width, window_height, "Garden");
+    const int extra_height  = 100; //720;
+    InitWindow(window_width, window_height + extra_height, "Garden");
 
     InitAudioDevice();
 
@@ -1677,7 +1678,7 @@ int main() {
 
         Rectangle dest_rect = {
             ((window_width - (base_screen_width * scale_x)) * 0.5f) + shake_offset.x,
-            ((window_height - (base_screen_height * scale_y)) * 0.5f) + shake_offset.y,
+            ((window_height - (base_screen_height * scale_y)) * 0.5f) + extra_height + shake_offset.y,
             base_screen_width * scale_x,
             base_screen_height * scale_y,
         };
