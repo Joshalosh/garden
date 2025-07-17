@@ -861,7 +861,7 @@ int main() {
     const int window_width  = 1280;
     const int window_height = 1280; //720;
     const int extra_height  = 100; //720;
-    InitWindow(window_width, window_height + extra_height, "Garden");
+    InitWindow(window_width, window_height, "Garden");
 
     InitAudioDevice();
 
@@ -872,6 +872,7 @@ int main() {
 
     Tilemap map;
     TilemapInit(&map);
+#if 0
     u32 tilemap[TILEMAP_HEIGHT][TILEMAP_WIDTH] = {
         { 4, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 1, },
         { 1, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 4, },
@@ -891,6 +892,27 @@ int main() {
         { 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, },
 
     };
+#else 
+    u32 tilemap[TILEMAP_HEIGHT][TILEMAP_WIDTH] = {
+        { 4, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 1, },
+        { 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, },
+        { 4, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 1, },
+        { 1, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 4, },
+        { 4, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 1, },
+        { 1, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 4, },
+        { 4, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 1, },
+        { 1, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 4, },
+        { 4, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 1, },
+        { 1, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 4, },
+        { 4, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 1, },
+        { 1, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 4, },
+        { 4, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 1, },
+        { 1, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 4, },
+        { 4, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 1, },
+        { 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, },
+
+    };
+#endif
     Tile tiles[TILEMAP_HEIGHT][TILEMAP_WIDTH];
 
     Animation fire_animator;
@@ -1672,16 +1694,25 @@ int main() {
         ClearBackground(DARKGRAY);
 
         float scale_x = (float)window_width  / base_screen_width;
-        float scale_y = (float)window_height / base_screen_height;
-
+        float scale_y = (float)(window_height ) / base_screen_height;
         Vector2 shake_offset = GetScreenShakeOffset(&manager.screen_shake);
 
+#if 0
         Rectangle dest_rect = {
             ((window_width - (base_screen_width * scale_x)) * 0.5f) + shake_offset.x,
             ((window_height - (base_screen_height * scale_y)) * 0.5f) + extra_height + shake_offset.y,
             base_screen_width * scale_x,
             base_screen_height * scale_y,
         };
+
+#else
+            Rectangle dest_rect = {
+                ((window_width - (base_screen_width * scale_x)) * 0.5f) + shake_offset.x,
+                ((window_height - (base_screen_height * scale_y)) * 0.5f) + shake_offset.y,
+                base_screen_width * scale_x,
+                base_screen_height * scale_y,
+            };
+#endif
 
         Rectangle rect = {0.0f, 0.0f, (float)target.texture.width, -(float)target.texture.height}; 
         Vector2 zero_vec = {0, 0};
