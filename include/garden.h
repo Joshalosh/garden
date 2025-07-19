@@ -69,6 +69,13 @@ enum Enemy_Animator {
     EnemyAnimator_count,
 };
 
+enum God_Animator{
+    GodAnimator_angry,
+    GodAnimator_satisfied,
+    GodAnimator_happy,
+    GodAnimator_count,
+};
+
 enum Fade_Type {
     FadeType_none,
     FadeType_in,
@@ -88,6 +95,7 @@ enum End_Layers {
     EndLayer_trees,
     EndLayer_count,
 };
+
 
 struct Play_Text {
     const char *text;
@@ -245,6 +253,8 @@ struct Game_Manager {
     u32          score;
     u32          high_score;
     u32          score_multiplier;
+    Texture2D    gui;
+    Animation    animators[GodAnimator_count];
     Game_State   state;
 
     // Enemy controller

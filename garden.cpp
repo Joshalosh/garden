@@ -103,6 +103,35 @@ void GameManagerInit(Game_Manager *manager) {
     manager->score                  = 0;
     manager->high_score             = 0;
     manager->score_multiplier       = 1;
+    manager->gui                    = LoadTexture("../assets/tiles/bar.png");
+
+    manager->animators[GodAnimator_angry].texture[0] = LoadTexture("../assets/sprites/angry.png");
+    manager->animators[GodAnimator_angry].max_frames    = (f32)manager->animators[GodAnimator_angry].texture[0].width/40;
+    manager->animators[GodAnimator_angry].current_frame = 0;
+    manager->animators[GodAnimator_angry].looping       = false;
+    manager->animators[GodAnimator_angry].frame_rec     = {0, 0, 
+                                                          (f32)manager->animators[GodAnimator_angry].texture[0].width /
+                                                               manager->animators[GodAnimator_angry].max_frames,
+                                                          (f32)manager->animators[GodAnimator_angry].texture[0].height};
+
+    manager->animators[GodAnimator_satisfied].texture[1] = LoadTexture("../assets/sprites/satisfied.png");
+    manager->animators[GodAnimator_satisfied].max_frames    = (f32)manager->animators[GodAnimator_satisfied].texture[0].width/40;
+    manager->animators[GodAnimator_satisfied].current_frame = 0;
+    manager->animators[GodAnimator_satisfied].looping       = false;
+    manager->animators[GodAnimator_satisfied].frame_rec     = {0, 0, 
+                                                          (f32)manager->animators[GodAnimator_satisfied].texture[0].width /
+                                                               manager->animators[GodAnimator_satisfied].max_frames,
+                                                          (f32)manager->animators[GodAnimator_satisfied].texture[0].height};
+
+    manager->animators[GodAnimator_happy].texture[2] = LoadTexture("../assets/sprites/happy.png");
+    manager->animators[GodAnimator_happy].max_frames    = (f32)manager->animators[GodAnimator_happy].texture[0].width/40;
+    manager->animators[GodAnimator_happy].current_frame = 0;
+    manager->animators[GodAnimator_happy].looping       = false;
+    manager->animators[GodAnimator_happy].frame_rec     = {0, 0, 
+                                                          (f32)manager->animators[GodAnimator_happy].texture[0].width /
+                                                               manager->animators[GodAnimator_happy].max_frames,
+                                                          (f32)manager->animators[GodAnimator_happy].texture[0].height};
+
     manager->state                  = GameState_title; //GameState_play;
 
     manager->enemy_spawn_duration   = 500.0f;
@@ -1048,8 +1077,6 @@ int main() {
 
     Fade_Object white_screen = {};
 
-    Texture2D gui = LoadTexture("../assets/tiles/bar.png");
-
     // TODO: Maybe this should go into the game manager?
     u32 frame_counter        = 0; 
 
@@ -1114,7 +1141,11 @@ int main() {
             fire_cleared = true;
             // Draw tiles in background
             {
-                DrawTextureV(gui, {0, 0}, WHITE);
+                DrawTextureV(manager.gui, {0, 0}, WHITE);
+                Animate(&manager.animators[GodAnimator_angry], frame_counter);
+                Vector2 centre_pos = {(f32)(manager.gui.width*0.5) - (f32)(manager.animators[GodAnimator_satisfied].texture[0].width*0.5),
+                                      (f32)(manager.gui.height*0.5) - (f32)(manager.animators[GodAnimator_satisfied].texture[0].height*0.5)};
+                DrawTextureV(manager.animators[GodAnimator_angry].texture[0], centre_pos, WHITE);
                 for (u32 y = 0; y < map.height; y++) {
                     for (u32 x = 0; x < map.width; x++) {
                         u32 index  = TilemapIndex(x, y, map.width);
