@@ -244,6 +244,7 @@ struct Event_Queue {
 struct Game_Manager {
     u32          score;
     u32          high_score;
+    u32          score_multiplier;
     Game_State   state;
 
     // Enemy controller
