@@ -104,6 +104,8 @@ void GameManagerInit(Game_Manager *manager) {
     manager->high_score             = 0;
     manager->score_multiplier       = 1;
     manager->gui                    = LoadTexture("../assets/tiles/bar.png");
+    manager->timer                  = 0;
+    manager->anim_duration          = 4.0f;
 
     manager->animators[GodAnimator_angry].texture[0] = LoadTexture("../assets/sprites/angry.png");
     manager->animators[GodAnimator_angry].max_frames    = (f32)manager->animators[GodAnimator_angry].texture[0].width/40;
@@ -1144,6 +1146,14 @@ int main() {
                 DrawTextureV(manager.gui, {0, 0}, WHITE);
                 Vector2 centre_pos = {(f32)(manager.gui.width*0.5) - 20, 0};
                 Animate(&manager.animators[GodAnimator_angry], frame_counter);
+                manager.timer += delta_t;
+                if (manager.timer > manager.anim_duration) {
+                    for (int index = 0; index < GodAnimator_count; index++)
+                    {
+                        manager.animators[index].current_frame = 0;
+                        manager.timer = 0;
+                    }
+                }
                 DrawTextureRec(manager.animators[GodAnimator_angry].texture[0], 
                                manager.animators[GodAnimator_angry].frame_rec, centre_pos, WHITE);
                 for (u32 y = 0; y < map.height; y++) {

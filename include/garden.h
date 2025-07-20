@@ -255,6 +255,8 @@ struct Game_Manager {
     u32          score_multiplier;
     Texture2D    gui;
     Animation    animators[GodAnimator_count];
+    f32          timer;
+    f32          anim_duration;
     Game_State   state;
 
     // Enemy controller
