@@ -1142,10 +1142,6 @@ int main() {
             // Draw tiles in background
             {
                 DrawTextureV(manager.gui, {0, 0}, WHITE);
-                Animate(&manager.animators[GodAnimator_angry], frame_counter);
-                Vector2 centre_pos = {(f32)(manager.gui.width*0.5) - (f32)(manager.animators[GodAnimator_satisfied].texture[0].width*0.5),
-                                      (f32)(manager.gui.height*0.5) - (f32)(manager.animators[GodAnimator_satisfied].texture[0].height*0.5)};
-                DrawTextureV(manager.animators[GodAnimator_angry].texture[0], centre_pos, WHITE);
                 for (u32 y = 0; y < map.height; y++) {
                     for (u32 x = 0; x < map.width; x++) {
                         u32 index  = TilemapIndex(x, y, map.width);
@@ -1220,6 +1216,11 @@ int main() {
                         }
                     }
                 }
+                Vector2 centre_pos = {(f32)(manager.gui.width*0.5) - (f32)(manager.animators[GodAnimator_satisfied].texture[0].width*0.5),
+                                      (f32)(manager.gui.height*0.5) - (f32)(manager.animators[GodAnimator_satisfied].texture[0].height*0.5)};
+                Animate(&manager.animators[GodAnimator_angry], frame_counter);
+                DrawTextureRec(manager.animators[GodAnimator_angry].texture[0], 
+                               manager.animators[GodAnimator_angry].frame_rec, centre_pos, WHITE);
             }
 
             GatherInput(&player);
