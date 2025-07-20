@@ -1216,8 +1216,8 @@ int main() {
                         }
                     }
                 }
-                Vector2 centre_pos = {(f32)(manager.gui.width*0.5) - (f32)(manager.animators[GodAnimator_satisfied].texture[0].width*0.5),
-                                      (f32)(manager.gui.height*0.5) - (f32)(manager.animators[GodAnimator_satisfied].texture[0].height*0.5)};
+
+                Vector2 centre_pos = {(f32)(manager.gui.width*0.5) - 20, 0};
                 Animate(&manager.animators[GodAnimator_angry], frame_counter);
                 DrawTextureRec(manager.animators[GodAnimator_angry].texture[0], 
                                manager.animators[GodAnimator_angry].frame_rec, centre_pos, WHITE);
