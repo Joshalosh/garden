@@ -2,7 +2,6 @@
 - Player
 
 - UI
-  - Fix win screen.
 
 - Art Assets
   
@@ -16,8 +15,6 @@
    - Fire douse?
    - Start?
    - Win?
-   - Title screen music 
-   - "Press spacebar to play" text/texture
   
 - Juice
  - Figure our better scoring system.

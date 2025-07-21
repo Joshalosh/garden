@@ -249,15 +249,20 @@ struct Event_Queue {
     bool  active;
 };
 
+struct Gui {
+    Texture2D    bar;
+    Animation    animators[GodAnimator_count];
+    f32          anim_timer;
+    f32          anim_duration;
+};
+
 struct Game_Manager {
     u32          score;
     u32          high_score;
     u32          score_multiplier;
-    Texture2D    gui;
-    Animation    animators[GodAnimator_count];
-    f32          timer;
-    f32          anim_duration;
     Game_State   state;
+
+    Gui          gui;
 
     // Enemy controller
     f32          enemy_spawn_duration;

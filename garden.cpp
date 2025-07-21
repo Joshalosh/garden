@@ -103,36 +103,36 @@ void GameManagerInit(Game_Manager *manager) {
     manager->score                  = 0;
     manager->high_score             = 0;
     manager->score_multiplier       = 1;
-    manager->gui                    = LoadTexture("../assets/tiles/bar.png");
-    manager->timer                  = 0;
-    manager->anim_duration          = 4.0f;
+    manager->gui.bar                = LoadTexture("../assets/tiles/bar.png");
+    manager->gui.anim_timer              = 0;
+    manager->gui.anim_duration      = 4.0f;
 
-    manager->animators[GodAnimator_angry].texture[0] = LoadTexture("../assets/sprites/angry.png");
-    manager->animators[GodAnimator_angry].max_frames    = (f32)manager->animators[GodAnimator_angry].texture[0].width/40;
-    manager->animators[GodAnimator_angry].current_frame = 0;
-    manager->animators[GodAnimator_angry].looping       = false;
-    manager->animators[GodAnimator_angry].frame_rec     = {0, 0, 
-                                                          (f32)manager->animators[GodAnimator_angry].texture[0].width /
-                                                               manager->animators[GodAnimator_angry].max_frames,
-                                                          (f32)manager->animators[GodAnimator_angry].texture[0].height};
+    manager->gui.animators[GodAnimator_angry].texture[0]    = LoadTexture("../assets/sprites/angry.png");
+    manager->gui.animators[GodAnimator_angry].max_frames    = (f32)manager->gui.animators[GodAnimator_angry].texture[0].width/40;
+    manager->gui.animators[GodAnimator_angry].current_frame = 0;
+    manager->gui.animators[GodAnimator_angry].looping       = false;
+    manager->gui.animators[GodAnimator_angry].frame_rec     = {0, 0, 
+                                                          (f32)manager->gui.animators[GodAnimator_angry].texture[0].width /
+                                                               manager->gui.animators[GodAnimator_angry].max_frames,
+                                                          (f32)manager->gui.animators[GodAnimator_angry].texture[0].height};
 
-    manager->animators[GodAnimator_satisfied].texture[1] = LoadTexture("../assets/sprites/satisfied.png");
-    manager->animators[GodAnimator_satisfied].max_frames    = (f32)manager->animators[GodAnimator_satisfied].texture[0].width/40;
-    manager->animators[GodAnimator_satisfied].current_frame = 0;
-    manager->animators[GodAnimator_satisfied].looping       = false;
-    manager->animators[GodAnimator_satisfied].frame_rec     = {0, 0, 
-                                                          (f32)manager->animators[GodAnimator_satisfied].texture[0].width /
-                                                               manager->animators[GodAnimator_satisfied].max_frames,
-                                                          (f32)manager->animators[GodAnimator_satisfied].texture[0].height};
+    manager->gui.animators[GodAnimator_satisfied].texture[0]    = LoadTexture("../assets/sprites/meh.png");
+    manager->gui.animators[GodAnimator_satisfied].max_frames    = (f32)manager->gui.animators[GodAnimator_satisfied].texture[0].width/40;
+    manager->gui.animators[GodAnimator_satisfied].current_frame = 0;
+    manager->gui.animators[GodAnimator_satisfied].looping       = false;
+    manager->gui.animators[GodAnimator_satisfied].frame_rec     = {0, 0, 
+                                                          (f32)manager->gui.animators[GodAnimator_satisfied].texture[0].width /
+                                                               manager->gui.animators[GodAnimator_satisfied].max_frames,
+                                                          (f32)manager->gui.animators[GodAnimator_satisfied].texture[0].height};
 
-    manager->animators[GodAnimator_happy].texture[2] = LoadTexture("../assets/sprites/happy.png");
-    manager->animators[GodAnimator_happy].max_frames    = (f32)manager->animators[GodAnimator_happy].texture[0].width/40;
-    manager->animators[GodAnimator_happy].current_frame = 0;
-    manager->animators[GodAnimator_happy].looping       = false;
-    manager->animators[GodAnimator_happy].frame_rec     = {0, 0, 
-                                                          (f32)manager->animators[GodAnimator_happy].texture[0].width /
-                                                               manager->animators[GodAnimator_happy].max_frames,
-                                                          (f32)manager->animators[GodAnimator_happy].texture[0].height};
+    manager->gui.animators[GodAnimator_happy].texture[0]    = LoadTexture("../assets/sprites/happy.png");
+    manager->gui.animators[GodAnimator_happy].max_frames    = (f32)manager->gui.animators[GodAnimator_happy].texture[0].width/40;
+    manager->gui.animators[GodAnimator_happy].current_frame = 0;
+    manager->gui.animators[GodAnimator_happy].looping       = false;
+    manager->gui.animators[GodAnimator_happy].frame_rec     = {0, 0, 
+                                                          (f32)manager->gui.animators[GodAnimator_happy].texture[0].width /
+                                                               manager->gui.animators[GodAnimator_happy].max_frames,
+                                                          (f32)manager->gui.animators[GodAnimator_happy].texture[0].height};
 
     manager->state                  = GameState_title; //GameState_play;
 
@@ -1141,21 +1141,34 @@ int main() {
             if (!IsMusicStreamPlaying(song_muted)) PlayMusicStream(song_muted);
 
             fire_cleared = true;
-            // Draw tiles in background
             {
-                DrawTextureV(manager.gui, {0, 0}, WHITE);
-                Vector2 centre_pos = {(f32)(manager.gui.width*0.5) - 20, 0};
-                Animate(&manager.animators[GodAnimator_angry], frame_counter);
-                manager.timer += delta_t;
-                if (manager.timer > manager.anim_duration) {
+                DrawTextureV(manager.gui.bar, {0, 0}, WHITE);
+                Vector2 centre_pos = {(f32)(manager.gui.bar.width*0.5) - (f32)(manager.gui.animators[0].frame_rec.width*0.5), 
+                                      0};
+                for (int index = 0; index < GodAnimator_count; index++)
+                {
+                    Animate(&manager.gui.animators[index], frame_counter);
+                }
+                manager.gui.anim_timer += delta_t;
+                if (manager.gui.anim_timer > manager.gui.anim_duration) {
                     for (int index = 0; index < GodAnimator_count; index++)
                     {
-                        manager.animators[index].current_frame = 0;
-                        manager.timer = 0;
+                        manager.gui.animators[index].current_frame = 0;
+                        manager.gui.anim_timer = 0;
+                        manager.gui.anim_duration = GetRandomValue(1.0f, 4.0f);
                     }
                 }
-                DrawTextureRec(manager.animators[GodAnimator_angry].texture[0], 
-                               manager.animators[GodAnimator_angry].frame_rec, centre_pos, WHITE);
+                if (manager.score > 10000) {
+                    DrawTextureRec(manager.gui.animators[GodAnimator_happy].texture[0], 
+                                   manager.gui.animators[GodAnimator_happy].frame_rec, centre_pos, WHITE);
+                } else if (manager.score > 2500) {
+                    DrawTextureRec(manager.gui.animators[GodAnimator_satisfied].texture[0], 
+                                   manager.gui.animators[GodAnimator_satisfied].frame_rec, centre_pos, WHITE);
+                } else {
+                    DrawTextureRec(manager.gui.animators[GodAnimator_angry].texture[0], 
+                                   manager.gui.animators[GodAnimator_angry].frame_rec, centre_pos, WHITE);
+                }
+                // Draw tiles in background
                 for (u32 y = 0; y < map.height; y++) {
                     for (u32 x = 0; x < map.width; x++) {
                         u32 index  = TilemapIndex(x, y, map.width);
@@ -1636,6 +1649,7 @@ int main() {
             if (end_screen.timer > end_screen.blink_duration) {
                 end_screen.animator.current_frame = 0;
                 end_screen.timer = 0;
+                end_screen.blink_duration = GetRandomValue(0.5f, 3.0f);
             }
 
             DrawScreenFadeCol(&white_screen, base_screen_width, base_screen_height, WHITE);
