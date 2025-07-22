@@ -186,6 +186,12 @@ enum Sound_Index {
     SoundEffect_count,
 };
 
+struct Tutorial_Entities {
+    Animation enemy;
+    Animation powerup;
+    Animation fire;
+};
+
 struct Text_Burst {
     const char *text;
     Vector2     pos;

@@ -320,6 +320,32 @@ void EnemyInit(Enemy *enemy, Enemy *sentinel, u32 tile_index) {
     enemy->prev->next = enemy;
 }
 
+void TutorialInit(Tutorial_Entities *entities) {
+    entities->enemy.texture[0]      = LoadTexture("../assets/sprites/demon.png");
+    entities->enemy.max_frames      = (f32)entities->enemy.texture[0].width/20;
+    entities->enemy.current_frame   = 0;
+    entities->enemy.looping         = true;
+    entities->enemy.frame_rec       = {0, 0, (f32)entities->enemy.texture[0].width / entities->enemy.max_frames,
+                                       (f32)entities->enemy.texture[0].height};
+
+    entities->powerup.texture[0]    = LoadTexture("../assets/sprites/bowl.png");
+    entities->powerup.max_frames    = (f32)entities->powerup.texture[0].width/20;
+    entities->powerup.current_frame = 0;
+    entities->powerup.looping       = true;
+    entities->powerup.frame_rec     = {0, 0,
+                                       (f32)entities->powerup.texture[0].width/entities->powerup.max_frames,
+                                       (f32)entities->powerup.texture[0].height};
+
+    entities->fire.texture[0]       = LoadTexture("../assets/sprites/fire.png");
+    entities->fire.max_frames       = (f32)entities->fire.texture[0].width/SPRITE_SIZE;
+    entities->fire.frame_rec        = {0.0f, 0.0f,
+                                       (f32)entities->fire.texture[0].width / entities->fire.max_frames,
+                                       (f32)entities->fire.texture[0].height};
+    entities->fire.current_frame    = 0;
+    entities->fire.looping          = true;
+
+}
+
 Enemy *FindEnemyInList(Enemy *sentinel, u32 index)
 {
     Enemy *enemy_to_find = sentinel->next;
@@ -1086,6 +1112,9 @@ int main() {
     win_text_sequence.count = 5;
     win_text_sequence.active = false;
 
+    Tutorial_Entities tutorial_entities;
+    TutorialInit(&tutorial_entities);
+
     Event_Queue tutorial;
 
     Fade_Object white_screen = {};
@@ -1624,6 +1653,7 @@ int main() {
             if (IsKeyPressed(KEY_SPACE)) {
                 GameOver(&player, &map, &manager);
             }
+
         } else if (manager.state == GameState_win_text) {
             UpdateEventQueue(&win_text_sequence, &manager, delta_t);
 
@@ -1667,27 +1697,47 @@ int main() {
             if (IsKeyPressed(KEY_SPACE)) {
                 GameOver(&player, &map, &manager);
             }
+
         } else if (manager.state == GameState_tutorial) {
             UpdateEventQueue(&tutorial, &manager, delta_t);
             DrawRectangle(0, 0, base_screen_width, base_screen_height, BLACK);
 
             u32 font_size = 7;
-            const char *demon        = "Sacrifice demons by enclosing them in sacred fire";
-            Vector2 demon_text_pos   = {(base_screen_width*0.5f) - (MeasureText(demon, font_size)*0.5f), 
+            const char *powerup      = "Collect powerups to clear the fire";
+            Vector2 powerup_text_pos = {(base_screen_width*0.5f) - (MeasureText(powerup, font_size)*0.5f), 
                                         base_screen_height*0.5f};
-            const char *powerup      = "Collect powerups to clear the sacred fire";
-            Vector2 powerup_text_pos = {(base_screen_width*0.5f) - (MeasureText(demon, font_size)*0.5f), 
-                                        demon_text_pos.y + font_size*2};
-            const char *sacred_fire  = "Clear all of the sacred fire to complete the ritual";
-            Vector2 fire_text_pos    = {(base_screen_width*0.5f) - (MeasureText(demon, font_size)*0.5f), 
-                                        powerup_text_pos.y + font_size*2};
+            const char *demon        = "Sacrifice demons by trapping them in fire";
+            Vector2 demon_text_pos   = {(base_screen_width*0.5f) - (MeasureText(demon, font_size)*0.5f), 
+                                        powerup_text_pos.y - font_size*4};
+            const char *sacred_fire  = "Clear all of the fire to complete the ritual";
+            Vector2 fire_text_pos    = {(base_screen_width*0.5f) - (MeasureText(sacred_fire, font_size)*0.5f), 
+                                        powerup_text_pos.y + font_size*4};
             DrawTextTripleEffect(demon,       demon_text_pos,   font_size);
             DrawTextTripleEffect(powerup,     powerup_text_pos, font_size);
             DrawTextTripleEffect(sacred_fire, fire_text_pos,    font_size);
+            f32 padding = 10.0f;
+            Animate(&tutorial_entities.enemy, frame_counter);
+            Vector2 demon_pos = {(f32)demon_text_pos.x - tutorial_entities.enemy.frame_rec.width - padding, 
+                                 (f32)demon_text_pos.y - (tutorial_entities.enemy.frame_rec.height*0.5f) - font_size};
+            DrawTextureRec(tutorial_entities.enemy.texture[0], tutorial_entities.enemy.frame_rec, 
+                           demon_pos, WHITE); 
+            Animate(&tutorial_entities.powerup, frame_counter);
+            Vector2 powerup_pos = {(f32)powerup_text_pos.x - tutorial_entities.powerup.frame_rec.width - padding, 
+                                 (f32)powerup_text_pos.y - font_size};
+            DrawTextureRec(tutorial_entities.powerup.texture[0], tutorial_entities.powerup.frame_rec, 
+                           powerup_pos, WHITE); 
+            Animate(&tutorial_entities.fire, frame_counter);
+            Vector2 fire_pos = {(f32)fire_text_pos.x - tutorial_entities.fire.frame_rec.width - padding, 
+                                (f32)fire_text_pos.y - font_size};
+            BeginShaderMode(fire_wobble.shader);
+            DrawTextureRec(tutorial_entities.fire.texture[0], tutorial_entities.fire.frame_rec, 
+                           fire_pos, WHITE); 
+            EndShaderMode();
 
             if (IsKeyPressed(KEY_SPACE)) {
                 GameOver(&player, &map, &manager);
             }
+
         } else if (manager.state == GameState_title) {
 
             Game_Title *title = &title_screen_manager.title;
@@ -1766,12 +1816,7 @@ int main() {
             play_text->pos.y    += 1.0f*sinf(8.0f*play_text->bob);
             play_text->bob      += delta_t;
 
-            DrawText(play_text->text, (u32)play_text->pos.x+2.0f, (u32)play_text->pos.y+2.0f, 
-                     play_text->font_size, BLACK);
-            DrawText(play_text->text, (u32)play_text->pos.x+1.0f, (u32)play_text->pos.y+1.0f, 
-                     play_text->font_size, MAROON);
-            DrawText(play_text->text, (u32)play_text->pos.x, (u32)play_text->pos.y, 
-                     play_text->font_size, GOLD);
+            DrawTextTripleEffect(play_text->text, play_text->pos, play_text->font_size);
 
             if (IsKeyPressed(KEY_SPACE)) {
                 manager.state = GameState_tutorial;
