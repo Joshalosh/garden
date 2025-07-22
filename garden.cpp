@@ -1077,6 +1077,8 @@ int main() {
     win_text_sequence.count = 5;
     win_text_sequence.active = false;
 
+    Event_Queue tutorial;
+
     Fade_Object white_screen = {};
 
     // TODO: Maybe this should go into the game manager?
@@ -1104,7 +1106,6 @@ int main() {
         // perahps I should create an array of objects to fade and this will go through the list 
         // fading them all.
         UpdateAlphaFade(&manager, delta_t);
-        UpdateEventQueue(&win_text_sequence, &manager, delta_t);
 
         // NOTE: reset the counter back to zero after everything to not mess up 
         // the individual animations
@@ -1210,13 +1211,13 @@ int main() {
                             continue;
                         }
                         if (IsFlagSet(tile, TileFlag_fire)) {
-                            tile_col = {168, 0, 0, 255};
+                            tile_col = player.powered_up ? PURPLE : WHITE;
                             fire_cleared = false;
                             //DrawRectangleV(tile->pos, tile_size, tile_col);
                             Animate(&tile->animator, frame_counter);
                             BeginShaderMode(fire_wobble.shader);
                             DrawTextureRec(tile->animator.texture[0], 
-                                           tile->animator.frame_rec, tile->pos, WHITE);
+                                           tile->animator.frame_rec, tile->pos, tile_col);
                             EndShaderMode();
                         }
                         if (IsFlagSet(tile, TileFlag_powerup)) {
@@ -1615,6 +1616,7 @@ int main() {
                 GameOver(&player, &map, &manager);
             }
         } else if (manager.state == GameState_win_text) {
+            UpdateEventQueue(&win_text_sequence, &manager, delta_t);
 
             DrawScreenFadeCol(&white_screen, base_screen_width, base_screen_height, WHITE);
             if (!win_text_sequence.active) StartEventSequence(&win_text_sequence);
@@ -1653,6 +1655,13 @@ int main() {
             }
 
             DrawScreenFadeCol(&white_screen, base_screen_width, base_screen_height, WHITE);
+            if (IsKeyPressed(KEY_SPACE)) {
+                GameOver(&player, &map, &manager);
+            }
+        } else if (manager.state == GameState_tutorial) {
+            UpdateEventQueue(&tutorial, &manager, delta_t);
+            DrawRectangle(0, 0, base_screen_width, base_screen_height, BLACK);
+
             if (IsKeyPressed(KEY_SPACE)) {
                 GameOver(&player, &map, &manager);
             }
@@ -1742,7 +1751,8 @@ int main() {
                      play_text->font_size, GOLD);
 
             if (IsKeyPressed(KEY_SPACE)) {
-                GameOver(&player, &map, &manager);
+                manager.state = GameState_tutorial;
+                //GameOver(&player, &map, &manager);
             }
         }
 
