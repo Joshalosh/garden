@@ -879,11 +879,20 @@ void UpdateEventQueue(Event_Queue *queue, Game_Manager *manager, f32 delta_t) {
     }
 }
 
-void StartEventSequence(Event_Queue *queue)
-{
+void StartEventSequence(Event_Queue *queue) {
     queue->index  = 0;
     queue->timer  = 0.0f;
     queue->active = true;
+}
+
+// TODO: might need to make this function work with taking in a custom alpha value 
+// for text that wants to fade
+void DrawTextTripleEffect (const char *text, Vector2 pos, u32 size) {
+
+    DrawText(text, (u32)pos.x+2.0f, (u32)pos.y+2.0f, size, BLACK);
+    DrawText(text, (u32)pos.x+1.0f, (u32)pos.y+1.0f, size, MAROON);
+    DrawText(text, (u32)pos.x,      (u32)pos.y,      size, GOLD);
+
 }
 
 int main() {
@@ -1661,6 +1670,20 @@ int main() {
         } else if (manager.state == GameState_tutorial) {
             UpdateEventQueue(&tutorial, &manager, delta_t);
             DrawRectangle(0, 0, base_screen_width, base_screen_height, BLACK);
+
+            u32 font_size = 7;
+            const char *demon        = "Sacrifice demons by enclosing them in sacred fire";
+            Vector2 demon_text_pos   = {(base_screen_width*0.5f) - (MeasureText(demon, font_size)*0.5f), 
+                                        base_screen_height*0.5f};
+            const char *powerup      = "Collect powerups to clear the sacred fire";
+            Vector2 powerup_text_pos = {(base_screen_width*0.5f) - (MeasureText(demon, font_size)*0.5f), 
+                                        demon_text_pos.y + font_size*2};
+            const char *sacred_fire  = "Clear all of the sacred fire to complete the ritual";
+            Vector2 fire_text_pos    = {(base_screen_width*0.5f) - (MeasureText(demon, font_size)*0.5f), 
+                                        powerup_text_pos.y + font_size*2};
+            DrawTextTripleEffect(demon,       demon_text_pos,   font_size);
+            DrawTextTripleEffect(powerup,     powerup_text_pos, font_size);
+            DrawTextTripleEffect(sacred_fire, fire_text_pos,    font_size);
 
             if (IsKeyPressed(KEY_SPACE)) {
                 GameOver(&player, &map, &manager);
