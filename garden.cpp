@@ -344,7 +344,7 @@ void TutorialInit(Tutorial_Entities *entities) {
     entities->fire.current_frame    = 0;
     entities->fire.looping          = true;
 
-    entities->text                  = "Press SPACEBAR to continue";
+    entities->text                  = "Press Spacebar";
     entities->font_size             = 7;
     entities->text_pos = {(base_screen_width*0.5f) - (MeasureText(entities->text, entities->font_size)*0.5f),
                           base_screen_height*0.70};
@@ -1138,6 +1138,12 @@ int main() {
     tutorial.count = 5;
     tutorial.active = false;
 
+    Event_Queue title_press;
+    title_press.events[0] = {EventType_wait, 1.0f};
+    title_press.events[1] = {EventType_state_change, 0, GameState_tutorial};
+    title_press.count     = 2;
+    title_press.active    = false;
+
 
     Fade_Object white_screen = {};
 
@@ -1767,6 +1773,7 @@ int main() {
 
         } else if (manager.state == GameState_title) {
 
+            UpdateEventQueue(&title_press, &manager, delta_t);
             Game_Title *title = &title_screen_manager.title;
             UpdateTitleBob(title, delta_t);
 
@@ -1845,16 +1852,17 @@ int main() {
 
             DrawTextTripleEffect(play_text->text, play_text->pos, play_text->font_size);
             
-            f32 pulse = (sinf(GetTime() * 24.0f) * 0.5f + 0.5f);
-
-            u32 alpha = (u32)(pulse * 255);
-            Color flash_col = {255, 255, 255, (u8)alpha};
-
-            DrawText(play_text->text, play_text->pos.x, play_text->pos.y, play_text->font_size, flash_col);
-
             if (IsKeyPressed(KEY_SPACE)) {
-                manager.state = GameState_tutorial;
+                if (!title_press.active) StartEventSequence(&title_press);
                 //GameOver(&player, &map, &manager);
+            }
+
+            if (title_press.active) {
+                f32 pulse = (sinf(GetTime() * 48.0f) * 0.5f + 0.5f);
+                u32 alpha = (u32)(pulse * 255);
+                Color flash_col = {255, 255, 255, (u8)alpha};
+
+                DrawText(play_text->text, play_text->pos.x, play_text->pos.y, play_text->font_size, flash_col);
             }
         }
 
