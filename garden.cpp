@@ -1844,6 +1844,13 @@ int main() {
             play_text->bob      += delta_t;
 
             DrawTextTripleEffect(play_text->text, play_text->pos, play_text->font_size);
+            
+            f32 pulse = (sinf(GetTime() * 24.0f) * 0.5f + 0.5f);
+
+            u32 alpha = (u32)(pulse * 255);
+            Color flash_col = {255, 255, 255, (u8)alpha};
+
+            DrawText(play_text->text, play_text->pos.x, play_text->pos.y, play_text->font_size, flash_col);
 
             if (IsKeyPressed(KEY_SPACE)) {
                 manager.state = GameState_tutorial;
