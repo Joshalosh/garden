@@ -344,6 +344,11 @@ void TutorialInit(Tutorial_Entities *entities) {
     entities->fire.current_frame    = 0;
     entities->fire.looping          = true;
 
+    entities->text                  = "Press SPACEBAR to continue";
+    entities->font_size             = 7;
+    entities->text_pos = {(base_screen_width*0.5f) - (MeasureText(entities->text, entities->font_size)*0.5f),
+                          base_screen_height*0.70};
+    entities->bob                   = 0.0f;
 }
 
 Enemy *FindEnemyInList(Enemy *sentinel, u32 index)
@@ -1723,24 +1728,25 @@ int main() {
             const char *sacred_fire  = "Clear all of the fire to complete the ritual";
             const char *powerup      = "Collect powerups to clear the fire";
             const char *demon        = "Sacrifice demons by trapping them in fire";
-            const char *spacebar     = "Press SPACEBAR to continue";
-            u32 font_size = 7;
+            u32 font_size = tutorial_entities.font_size;
             f32 icon_padding         = 10.0f;
             f32 text_pos_x           = (base_screen_width*0.5f) - ((MeasureText(sacred_fire, font_size) - 
                                        (SPRITE_WIDTH + icon_padding))*0.5f);
             Vector2 powerup_text_pos = {text_pos_x, (base_screen_height*0.5f) - font_size};
             Vector2 demon_text_pos   = {text_pos_x, powerup_text_pos.y - font_size*4};
             Vector2 fire_text_pos    = {text_pos_x, powerup_text_pos.y + font_size*4};
-            Vector2 spacebar_pos     = {(base_screen_width*0.5f) - (MeasureText(spacebar, font_size)*0.5f),
-                                        fire_text_pos.y + font_size*6};
             DrawTextTripleEffect(demon,       demon_text_pos,   font_size, tutorial.events[0].fadeable.alpha);
             DrawTextTripleEffect(powerup,     powerup_text_pos, font_size, tutorial.events[1].fadeable.alpha);
             DrawTextTripleEffect(sacred_fire, fire_text_pos,    font_size, tutorial.events[2].fadeable.alpha);
-            DrawTextTripleEffect(spacebar,    spacebar_pos,     font_size, tutorial.events[4].fadeable.alpha);
+
+            tutorial_entities.text_pos.y += 0.1f*sinf(8.0f*tutorial_entities.bob);
+            tutorial_entities.bob        += delta_t;
+            DrawTextTripleEffect(tutorial_entities.text, tutorial_entities.text_pos, font_size, 
+                                 tutorial.events[4].fadeable.alpha);
             Vector2 demon_pos   = {(f32)demon_text_pos.x - tutorial_entities.enemy.frame_rec.width - icon_padding, 
                                    (f32)demon_text_pos.y - (tutorial_entities.enemy.frame_rec.height*0.5f)-font_size};
             Vector2 powerup_pos = {(f32)powerup_text_pos.x - tutorial_entities.powerup.frame_rec.width - icon_padding, 
-                                 (f32)powerup_text_pos.y - font_size};
+                                   (f32)powerup_text_pos.y - font_size};
             Vector2 fire_pos    = {(f32)fire_text_pos.x - tutorial_entities.fire.frame_rec.width - icon_padding, 
                                    (f32)fire_text_pos.y - font_size};
             Animate(&tutorial_entities.enemy, frame_counter);

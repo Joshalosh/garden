@@ -187,9 +187,13 @@ enum Sound_Index {
 };
 
 struct Tutorial_Entities {
-    Animation enemy;
-    Animation powerup;
-    Animation fire;
+    Animation   enemy;
+    Animation   powerup;
+    Animation   fire;
+    const char *text;
+    u32         font_size;
+    Vector2     text_pos;
+    f32         bob;
 };
 
 struct Text_Burst {
