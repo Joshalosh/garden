@@ -1904,7 +1904,7 @@ int main() {
         if (manager.state == GameState_play || manager.state == GameState_win) {
             DrawText(TextFormat("%d", manager.score), 194 + shake_offset.x, 27 + shake_offset.y, 38, BLACK);
             DrawText(TextFormat("%d", manager.score), 192 + shake_offset.x, 25 + shake_offset.y, 38, WHITE);
-            DrawText(TextFormat("High Score: %d", manager.high_score), window_width - 350, 25, 38, WHITE);
+            //DrawText(TextFormat("High Score: %d", manager.high_score), window_width - 350, 25, 38, WHITE);
         };
 
         if (fire_cleared && player.powered_up) {
