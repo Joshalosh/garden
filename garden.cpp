@@ -479,8 +479,9 @@ void GameOver(Player *player, Tilemap *tilemap,  Game_Manager *manager) {
     if (manager->score > manager->high_score) {
         manager->high_score = manager->score;
     }
-    manager->score         = 0;
-    manager->state         = GameState_play;
+    manager->state            = GameState_play;
+    manager->score            = 0;
+    manager->score_multiplier = 0;
 
     StopSoundBuffer(manager->sounds);
 
@@ -928,6 +929,113 @@ void DrawTextTripleEffect (const char *text, Vector2 pos, u32 size, f32 alpha = 
 
 }
 
+void DrawGame(Tilemap *map, Game_Manager *manager, Player *player, Wobble_Shader *fire_wobble, 
+              u32 frame_counter, u32 delta_t, Texture2D tile_atlas, Texture2D wall_atlas, b32 *fire_cleared)
+{
+    DrawTextureV(manager->gui.bar, {0, 0}, WHITE);
+    Vector2 centre_pos = {(f32)(manager->gui.bar.width*0.5) - (f32)(manager->gui.animators[0].frame_rec.width*0.5), 
+                          0};
+    for (int index = 0; index < GodAnimator_count; index++)
+    {
+        Animate(&manager->gui.animators[index], frame_counter);
+    }
+    manager->gui.anim_timer += delta_t;
+    if (manager->gui.anim_timer > manager->gui.anim_duration) {
+        for (int index = 0; index < GodAnimator_count; index++)
+        {
+            manager->gui.animators[index].current_frame = 0;
+            manager->gui.anim_timer = 0;
+            manager->gui.anim_duration = GetRandomValue(1.0f, 4.0f);
+        }
+    }
+    // TODO: would it be cleaner to use the assignment *if* here on the animator 
+    // instead of these sperate *if* statements?
+    if (manager->score > 10000) {
+        DrawTextureRec(manager->gui.animators[GodAnimator_happy].texture[0], 
+                       manager->gui.animators[GodAnimator_happy].frame_rec, centre_pos, WHITE);
+    } else if (manager->score > 2500) {
+        DrawTextureRec(manager->gui.animators[GodAnimator_satisfied].texture[0], 
+                       manager->gui.animators[GodAnimator_satisfied].frame_rec, centre_pos, WHITE);
+    } else {
+        DrawTextureRec(manager->gui.animators[GodAnimator_angry].texture[0], 
+                       manager->gui.animators[GodAnimator_angry].frame_rec, centre_pos, WHITE);
+    }
+    // Draw tiles in background
+    for (u32 y = 0; y < map->height; y++) {
+        for (u32 x = 0; x < map->width; x++) {
+            u32 index  = TilemapIndex(x, y, map->width);
+            Tile *tile = &map->tiles[index];
+            tile->pos  = {(float)x * map->tile_size, (float)y * map->tile_size};
+
+            Color tile_col;
+            switch (tile->type) {
+                case TileType_none:       tile_col = BLACK;                break;
+                case TileType_wall:       tile_col = PURPLE;               break;
+                case TileType_wall2:      tile_col = {140, 20, 140, 255};  break;
+                case TileType_grass:      tile_col = {68, 68, 68, 255};    break;
+                case TileType_dirt:       tile_col = {168, 168, 168, 255}; break;
+                case TileType_fire:       tile_col = {168, 0, 0, 255};     break;
+                case TileType_temp_grass: tile_col = {68, 68, 68, 255};    break;
+                case TileType_temp_dirt:  tile_col = {168, 168, 168, 255}; break;
+            }
+            
+
+            Vector2 tile_size = {(f32)map->tile_size, (f32)map->tile_size};
+
+            // TODO: I need to make getting the source rec and the random seed for 
+            // the atlas seperate functions
+            
+            Rectangle atlas_frame_rec = SetAtlasFrameRec(tile->type, tile->seed);
+
+            if (tile->type == TileType_grass || tile->type == TileType_dirt) {
+                DrawTextureRec(tile_atlas, atlas_frame_rec, tile->pos, WHITE);
+            } else if (tile->type == TileType_wall || tile->type == TileType_wall2) {  
+                if (player->powered_up) {
+                    BeginShaderMode(fire_wobble->shader);
+                    DrawTextureRec(wall_atlas, atlas_frame_rec, tile->pos, WHITE);
+                    EndShaderMode();
+                } else {
+                    DrawTextureRec(wall_atlas, atlas_frame_rec, tile->pos, WHITE);
+                }
+            } else {
+                //DrawRectangleV(tile->pos, tile_size, tile_col);
+                continue;
+            }
+            if (IsFlagSet(tile, TileFlag_fire)) {
+                tile_col = player->powered_up ? PURPLE : WHITE;
+                *fire_cleared = false;
+                Animate(&tile->animator, frame_counter);
+                BeginShaderMode(fire_wobble->shader);
+                DrawTextureRec(tile->animator.texture[0], 
+                               tile->animator.frame_rec, tile->pos, tile_col);
+                EndShaderMode();
+            }
+            if (IsFlagSet(tile, TileFlag_powerup)) {
+                Powerup *found_powerup = FindPowerupInList(&manager->powerup_sentinel, tile);
+                if (found_powerup) {
+                    Animate(&found_powerup->animator, frame_counter);
+                    DrawTextureRec(found_powerup->animator.texture[0], 
+                                   found_powerup->animator.frame_rec, tile->pos, WHITE);
+                }
+                //DrawTextureV(powerup_texture, tile->pos, WHITE);
+            }
+            if (IsFlagSet(tile, TileFlag_enemy)) {
+                Enemy *found_enemy = FindEnemyInList(&manager->enemy_sentinel, index);
+                if (found_enemy) {
+                    Animate(&found_enemy->animators[EnemyAnimator_idle], frame_counter);
+                    Vector2 draw_pos = {tile->pos.x, tile->pos.y - 20.f};
+                    DrawTextureRec(found_enemy->animators[EnemyAnimator_idle].texture[0],
+                                   found_enemy->animators[EnemyAnimator_idle].frame_rec, 
+                                   draw_pos, WHITE);
+                }
+            }
+            if (IsFlagSet(tile, TileFlag_moved)) {
+                ClearFlag(tile, TileFlag_moved);
+            }
+        }
+    }
+}
+
 int main() {
     // -------------------------------------
     // Initialisation
@@ -1077,7 +1185,7 @@ int main() {
     Wobble_Shader bg_wobble;
     // Putting these variables inside of a scope to make them temporary 
     // purely for the init shader function
-    // TODO: Need to figure out a better way to get this variables into the setup of 
+    // TODO: Need to figure out a better way to get these variables into the setup of 
     // these shaders without being super jank.
     {
         f32 amplitude = 0.06f;
@@ -1200,8 +1308,10 @@ int main() {
         // Set Shader variables
         SetShaderValue(bg_wobble.shader,   bg_wobble.time_location,   &current_time, SHADER_UNIFORM_FLOAT);
         SetShaderValue(fire_wobble.shader, fire_wobble.time_location, &current_time, SHADER_UNIFORM_FLOAT);
-        SetShaderValue(end_screen.shaders[EndLayer_sky].shader,   end_screen.shaders[EndLayer_sky].time_location,  &current_time, SHADER_UNIFORM_FLOAT);
-        SetShaderValue(end_screen.shaders[EndLayer_trees].shader, end_screen.shaders[EndLayer_trees].time_location, &current_time, SHADER_UNIFORM_FLOAT);
+        SetShaderValue(end_screen.shaders[EndLayer_sky].shader, end_screen.shaders[EndLayer_sky].time_location,  
+                       &current_time, SHADER_UNIFORM_FLOAT);
+        SetShaderValue(end_screen.shaders[EndLayer_trees].shader, end_screen.shaders[EndLayer_trees].time_location, 
+                       &current_time, SHADER_UNIFORM_FLOAT);
 
         // Draw to render texture
         BeginTextureMode(target);
@@ -1215,109 +1325,11 @@ int main() {
             if (!IsMusicStreamPlaying(song_muted)) PlayMusicStream(song_muted);
 
             fire_cleared = true;
-            {
-                DrawTextureV(manager.gui.bar, {0, 0}, WHITE);
-                Vector2 centre_pos = {(f32)(manager.gui.bar.width*0.5) - (f32)(manager.gui.animators[0].frame_rec.width*0.5), 
-                                      0};
-                for (int index = 0; index < GodAnimator_count; index++)
-                {
-                    Animate(&manager.gui.animators[index], frame_counter);
-                }
-                manager.gui.anim_timer += delta_t;
-                if (manager.gui.anim_timer > manager.gui.anim_duration) {
-                    for (int index = 0; index < GodAnimator_count; index++)
-                    {
-                        manager.gui.animators[index].current_frame = 0;
-                        manager.gui.anim_timer = 0;
-                        manager.gui.anim_duration = GetRandomValue(1.0f, 4.0f);
-                    }
-                }
-                if (manager.score > 10000) {
-                    DrawTextureRec(manager.gui.animators[GodAnimator_happy].texture[0], 
-                                   manager.gui.animators[GodAnimator_happy].frame_rec, centre_pos, WHITE);
-                } else if (manager.score > 2500) {
-                    DrawTextureRec(manager.gui.animators[GodAnimator_satisfied].texture[0], 
-                                   manager.gui.animators[GodAnimator_satisfied].frame_rec, centre_pos, WHITE);
-                } else {
-                    DrawTextureRec(manager.gui.animators[GodAnimator_angry].texture[0], 
-                                   manager.gui.animators[GodAnimator_angry].frame_rec, centre_pos, WHITE);
-                }
-                // Draw tiles in background
-                for (u32 y = 0; y < map.height; y++) {
-                    for (u32 x = 0; x < map.width; x++) {
-                        u32 index  = TilemapIndex(x, y, map.width);
-                        Tile *tile = &map.tiles[index];
-                        tile->pos  = {(float)x * map.tile_size, (float)y * map.tile_size};
 
-                        Color tile_col;
-                        switch (tile->type) {
-                            case TileType_none:       tile_col = BLACK;                break;
-                            case TileType_wall:       tile_col = PURPLE;               break;
-                            case TileType_wall2:      tile_col = {140, 20, 140, 255};  break;
-                            case TileType_grass:      tile_col = {68, 68, 68, 255};    break;
-                            case TileType_dirt:       tile_col = {168, 168, 168, 255}; break;
-                            case TileType_fire:       tile_col = {168, 0, 0, 255};     break;
-                            case TileType_temp_grass: tile_col = {68, 68, 68, 255};    break;
-                            case TileType_temp_dirt:  tile_col = {168, 168, 168, 255}; break;
-                        }
-                        
-
-                        Vector2 tile_size = {(f32)map.tile_size, (f32)map.tile_size};
-
-                        // TODO: I need to make getting the source rec and the random seed for 
-                        // the atlas seperate functions
-                        
-                        Rectangle atlas_frame_rec = SetAtlasFrameRec(tile->type, tile->seed);
-
-                        if (tile->type == TileType_grass || tile->type == TileType_dirt) {
-                            DrawTextureRec(tile_atlas, atlas_frame_rec, tile->pos, WHITE);
-                        } else if (tile->type == TileType_wall || tile->type == TileType_wall2) {  
-                            if (player.powered_up) {
-                                BeginShaderMode(fire_wobble.shader);
-                                DrawTextureRec(wall_atlas, atlas_frame_rec, tile->pos, WHITE);
-                                EndShaderMode();
-                            } else {
-                                DrawTextureRec(wall_atlas, atlas_frame_rec, tile->pos, WHITE);
-                            }
-                        } else {
-                            //DrawRectangleV(tile->pos, tile_size, tile_col);
-                            continue;
-                        }
-                        if (IsFlagSet(tile, TileFlag_fire)) {
-                            tile_col = player.powered_up ? PURPLE : WHITE;
-                            fire_cleared = false;
-                            //DrawRectangleV(tile->pos, tile_size, tile_col);
-                            Animate(&tile->animator, frame_counter);
-                            BeginShaderMode(fire_wobble.shader);
-                            DrawTextureRec(tile->animator.texture[0], 
-                                           tile->animator.frame_rec, tile->pos, tile_col);
-                            EndShaderMode();
-                        }
-                        if (IsFlagSet(tile, TileFlag_powerup)) {
-                            Powerup *found_powerup = FindPowerupInList(&manager.powerup_sentinel, tile);
-                            if (found_powerup) {
-                                Animate(&found_powerup->animator, frame_counter);
-                                DrawTextureRec(found_powerup->animator.texture[0], 
-                                               found_powerup->animator.frame_rec, tile->pos, WHITE);
-                            }
-                            //DrawTextureV(powerup_texture, tile->pos, WHITE);
-                        }
-                        if (IsFlagSet(tile, TileFlag_enemy)) {
-                            Enemy *found_enemy = FindEnemyInList(&manager.enemy_sentinel, index);
-                            if (found_enemy) {
-                                Animate(&found_enemy->animators[EnemyAnimator_idle], frame_counter);
-                                Vector2 draw_pos = {tile->pos.x, tile->pos.y - 20.f};
-                                DrawTextureRec(found_enemy->animators[EnemyAnimator_idle].texture[0],
-                                               found_enemy->animators[EnemyAnimator_idle].frame_rec, 
-                                               draw_pos, WHITE);
-                            }
-                        }
-                        if (IsFlagSet(tile, TileFlag_moved)) {
-                            ClearFlag(tile, TileFlag_moved);
-                        }
-                    }
-                }
-            }
+            // TODO: I need to put a bunch of these arguments into the game manager 
+            // to simplify things and make shiz a bit cleaner
+            DrawGame(&map, &manager, &player, &fire_wobble, frame_counter, delta_t, 
+                     tile_atlas, wall_atlas, &fire_cleared);
 
             GatherInput(&player);
 
@@ -1586,80 +1598,8 @@ int main() {
 
         } else if (manager.state == GameState_win) {
             // Draw tiles in background.
-            {
-                for (u32 y = 0; y < map.height; y++) {
-                    for (u32 x = 0; x < map.width; x++) {
-                        u32 index  = TilemapIndex(x, y, map.width);
-                        Tile *tile = &map.tiles[index];
-                        tile->pos  = {(float)x * map.tile_size, (float)y * map.tile_size};
-
-                        Color tile_col;
-                        switch (tile->type) {
-                            case TileType_none:       tile_col = BLACK;                break;
-                            case TileType_wall:       tile_col = PURPLE;               break;
-                            case TileType_wall2:      tile_col = {140, 20, 140, 255};  break;
-                            case TileType_grass:      tile_col = {68, 68, 68, 255};    break;
-                            case TileType_dirt:       tile_col = {168, 168, 168, 255}; break;
-                            case TileType_fire:       tile_col = {168, 0, 0, 255};     break;
-                            case TileType_temp_grass: tile_col = {68, 68, 68, 255};    break;
-                            case TileType_temp_dirt:  tile_col = {168, 168, 168, 255}; break;
-                        }
-
-                        Vector2 tile_size = {(f32)map.tile_size, (f32)map.tile_size};
-
-                        // TODO: I need to make getting the source rec and the random seed for 
-                        // the atlas seperate functions
-                        
-                        Rectangle atlas_frame_rec = SetAtlasFrameRec(tile->type, tile->seed);
-
-                        if (tile->type == TileType_grass || tile->type == TileType_dirt) {
-                            DrawTextureRec(tile_atlas, atlas_frame_rec, tile->pos, WHITE);
-                        } else if (tile->type == TileType_wall || tile->type == TileType_wall2) {  
-                            if (player.powered_up) {
-                                BeginShaderMode(fire_wobble.shader);
-                                DrawTextureRec(wall_atlas, atlas_frame_rec, tile->pos, WHITE);
-                                EndShaderMode();
-                            } else {
-                                DrawTextureRec(wall_atlas, atlas_frame_rec, tile->pos, WHITE);
-                            }
-                        } else {
-                            DrawRectangleV(tile->pos, tile_size, tile_col);
-                        }
-                        if (IsFlagSet(tile, TileFlag_fire)) {
-                            tile_col = {168, 0, 0, 255};
-                            fire_cleared = false;
-                            //DrawRectangleV(tile->pos, tile_size, tile_col);
-                            Animate(&tile->animator, frame_counter);
-                            BeginShaderMode(fire_wobble.shader);
-                            DrawTextureRec(tile->animator.texture[0], 
-                                           tile->animator.frame_rec, tile->pos, WHITE);
-                            EndShaderMode();
-                        }
-                        if (IsFlagSet(tile, TileFlag_powerup)) {
-                            Powerup *found_powerup = FindPowerupInList(&manager.powerup_sentinel, tile);
-                            if (found_powerup) {
-                                Animate(&found_powerup->animator, frame_counter);
-                                DrawTextureRec(found_powerup->animator.texture[0], 
-                                               found_powerup->animator.frame_rec, tile->pos, WHITE);
-                            }
-                            //DrawTextureV(powerup_texture, tile->pos, WHITE);
-                        }
-                        // TODO: I need to draw enemies in a smarter way
-                        if (IsFlagSet(tile, TileFlag_enemy)) {
-                            Enemy *found_enemy = FindEnemyInList(&manager.enemy_sentinel, index);
-                            if (found_enemy) {
-                                Animate(&found_enemy->animators[EnemyAnimator_destroy], frame_counter);
-                                Vector2 draw_pos = {tile->pos.x, tile->pos.y - 20.f};
-                                DrawTextureRec(found_enemy->animators[EnemyAnimator_destroy].texture[0],
-                                               found_enemy->animators[EnemyAnimator_destroy].frame_rec, draw_pos, WHITE);
-                            }
-                        }
-                        if (IsFlagSet(tile, TileFlag_moved)) {
-                            ClearFlag(tile, TileFlag_moved);
-                        }
-                    }
-                }
-            }
+            DrawGame(&map, &manager, &player, &fire_wobble, frame_counter, delta_t, 
+                     tile_atlas, wall_atlas, &fire_cleared);
 
             input_axis = {0, 0};
 
@@ -1918,9 +1858,23 @@ int main() {
         DrawTexturePro(target.texture, rect,
                        dest_rect, zero_vec, 0.0f, WHITE);
         if (manager.state == GameState_play || manager.state == GameState_win) {
-            DrawText(TextFormat("%d", manager.score), 194 + shake_offset.x, 27 + shake_offset.y, 38, BLACK);
-            DrawText(TextFormat("%d", manager.score), 192 + shake_offset.x, 25 + shake_offset.y, 38, WHITE);
-            //DrawText(TextFormat("High Score: %d", manager.high_score), window_width - 350, 25, 38, WHITE);
+            u32 font_size = 38;
+            u32 text_base_x = 192;
+            u32 text_base_y = 25;
+            u32 shadow_offset = 2;
+
+            DrawText(TextFormat("%d", manager.score), (text_base_x + shadow_offset) + shake_offset.x, 
+                     (text_base_y + shadow_offset) + shake_offset.y, font_size, BLACK);
+            DrawText(TextFormat("%d", manager.score), text_base_x + shake_offset.x, 
+                     text_base_y + shake_offset.y, font_size, WHITE);
+            
+            const char *combo = manager.score_multiplier > 1 ? 
+                                TextFormat("%d Combo", manager.score_multiplier) :
+                                ("0 Combo");
+            DrawText(combo, window_width - ((text_base_x + shadow_offset) + MeasureText(combo, font_size)) + shake_offset.x, 
+                     (text_base_y + shadow_offset) + shake_offset.y, font_size, BLACK);
+            DrawText(combo, window_width - (text_base_x + MeasureText(combo, font_size)) + shake_offset.x, 
+                         text_base_y + shake_offset.y, font_size, WHITE);
         };
 
         if (fire_cleared && player.powered_up) {
