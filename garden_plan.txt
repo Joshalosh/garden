@@ -29,3 +29,6 @@
    this work for the instance there are literally no spaces available).
  - Make sure to unload all the assets and sounds and stuff. I need to pay attention to the 
    de-initialisation phase.
+ - The game bugs out when going up into the top wall because i've gotten rid of the wall up there,
+   to make space for the GUI bar. The solution is probably to just make it so that if the player target 
+   position also goes into a tile_type of none its a game over as well.

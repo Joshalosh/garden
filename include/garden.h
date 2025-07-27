@@ -182,6 +182,7 @@ enum Sound_Index {
     SoundEffect_powerup_end,
     SoundEffect_powerup_collect,
     SoundEffect_powerup_appear,
+    SoundEffect_spacebar,
 
     SoundEffect_count,
 };

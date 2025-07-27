@@ -244,6 +244,7 @@ void LoadSoundBuffer(Sound *sounds) {
     sounds[SoundEffect_powerup_end]     = LoadSound("../assets/sounds/powerup_end.wav");
     sounds[SoundEffect_powerup_collect] = LoadSound("../assets/sounds/powerup_collect.wav");
     sounds[SoundEffect_powerup_appear]  = LoadSound("../assets/sounds/powerup_appear.wav");
+    sounds[SoundEffect_spacebar]        = LoadSound("../assets/sounds/start.wav");
 }
 
 void LoadHypeSoundBuffer(Sound *sounds) {
@@ -1048,6 +1049,7 @@ int main() {
     Music song_main  = LoadMusicStream("../assets/sounds/music.wav");
     Music song_muted = LoadMusicStream("../assets/sounds/music_muted.wav");
 
+    Music song_tutorial = LoadMusicStream("../assets/sounds/tutorial_track.wav");
     Music song_intro = LoadMusicStream("../assets/sounds/intro_music.wav");
 
     f32 song_volume  = 1.0f;
@@ -1058,6 +1060,7 @@ int main() {
     song_main.looping  = true;
     song_muted.looping = true;
     song_intro.looping = true;
+    song_tutorial.looping = true;
 
     
     b32 fire_cleared; // NOTE: Perhaps this should live in the Game_Manager struct???
@@ -1123,17 +1126,17 @@ int main() {
 
     Event_Queue tutorial;
     tutorial.events[0].type = EventType_fade_in;
-    tutorial.events[0].duration = 1.0f;
+    tutorial.events[0].duration = 2.0f;
     tutorial.events[0].fadeable = {};
     tutorial.events[1].type = EventType_fade_in;
-    tutorial.events[1].duration = 1.0f;
+    tutorial.events[1].duration = 2.5f;
     tutorial.events[1].fadeable = {};
     tutorial.events[2].type = EventType_fade_in;
-    tutorial.events[2].duration = 1.0f;
+    tutorial.events[2].duration = 2.5f;
     tutorial.events[2].fadeable = {};
-    tutorial.events[3] = {EventType_wait, 2.0f, 0, 0, 0};
+    tutorial.events[3] = {EventType_wait, 2.5f, 0, 0, 0};
     tutorial.events[4].type     = EventType_fade_in;
-    tutorial.events[4].duration = 1.0f;
+    tutorial.events[4].duration = 2.0f;
     tutorial.events[4].fadeable = {};
     tutorial.count = 5;
     tutorial.active = false;
@@ -1187,9 +1190,12 @@ int main() {
             (f32)player.animators[PlayerAnimator_body].texture[player.facing].width/20;
         Animate(&player.animators[PlayerAnimator_body], frame_counter, player.facing);
 
+        // TODO: these probably only need to be updated in the states they are used 
+        // rather than above everything like this.
         UpdateMusicStream(song_main);
         UpdateMusicStream(song_muted);
         UpdateMusicStream(song_intro);
+        UpdateMusicStream(song_tutorial);
 
         // Set Shader variables
         SetShaderValue(bg_wobble.shader,   bg_wobble.time_location,   &current_time, SHADER_UNIFORM_FLOAT);
@@ -1204,6 +1210,7 @@ int main() {
         if (manager.state == GameState_play) {
 
             if (IsMusicStreamPlaying(song_intro))  StopMusicStream(song_intro);
+            if (IsMusicStreamPlaying(song_tutorial))  StopMusicStream(song_tutorial);
             if (!IsMusicStreamPlaying(song_main))  PlayMusicStream(song_main);
             if (!IsMusicStreamPlaying(song_muted)) PlayMusicStream(song_muted);
 
@@ -1727,6 +1734,11 @@ int main() {
             }
 
         } else if (manager.state == GameState_tutorial) {
+            if (!IsMusicStreamPlaying(song_tutorial))  
+            {
+                PlayMusicStream(song_tutorial);
+            }
+
             UpdateEventQueue(&tutorial, &manager, delta_t);
             DrawRectangle(0, 0, base_screen_width, base_screen_height, BLACK);
             if (!tutorial.active) StartEventSequence(&tutorial);
@@ -1777,7 +1789,7 @@ int main() {
             Game_Title *title = &title_screen_manager.title;
             UpdateTitleBob(title, delta_t);
 
-            if (!IsMusicStreamPlaying(song_intro))  
+            if (!IsMusicStreamPlaying(song_intro) && !title_press.active)  
             {
                 PlayMusicStream(song_intro);
                 TriggerTitleBob(title, 5.0f);
@@ -1854,6 +1866,10 @@ int main() {
             
             if (IsKeyPressed(KEY_SPACE)) {
                 if (!title_press.active) StartEventSequence(&title_press);
+                if (IsMusicStreamPlaying(song_intro)) StopMusicStream(song_intro);
+                if (!IsSoundPlaying(manager.sounds[SoundEffect_spacebar])) {
+                    PlaySound(manager.sounds[SoundEffect_spacebar]);
+                }
                 //GameOver(&player, &map, &manager);
             }
 
