@@ -103,8 +103,9 @@ void GameManagerInit(Game_Manager *manager) {
     manager->score                  = 0;
     manager->high_score             = 0;
     manager->score_multiplier       = 1;
+    manager->frame_counter          = 0;
     manager->gui.bar                = LoadTexture("../assets/tiles/bar.png");
-    manager->gui.anim_timer              = 0;
+    manager->gui.anim_timer         = 0;
     manager->gui.anim_duration      = 4.0f;
 
     manager->gui.animators[GodAnimator_angry].texture[0]    = LoadTexture("../assets/sprites/angry.png");
@@ -930,14 +931,14 @@ void DrawTextTripleEffect (const char *text, Vector2 pos, u32 size, f32 alpha = 
 }
 
 void DrawGame(Tilemap *map, Game_Manager *manager, Player *player, Wobble_Shader *fire_wobble, 
-              u32 frame_counter, u32 delta_t, Texture2D tile_atlas, Texture2D wall_atlas, b32 *fire_cleared)
+              u32 delta_t, Texture2D tile_atlas, Texture2D wall_atlas, b32 *fire_cleared)
 {
     DrawTextureV(manager->gui.bar, {0, 0}, WHITE);
     Vector2 centre_pos = {(f32)(manager->gui.bar.width*0.5) - (f32)(manager->gui.animators[0].frame_rec.width*0.5), 
                           0};
     for (int index = 0; index < GodAnimator_count; index++)
     {
-        Animate(&manager->gui.animators[index], frame_counter);
+        Animate(&manager->gui.animators[index], manager->frame_counter);
     }
     manager->gui.anim_timer += delta_t;
     if (manager->gui.anim_timer > manager->gui.anim_duration) {
@@ -1004,7 +1005,7 @@ void DrawGame(Tilemap *map, Game_Manager *manager, Player *player, Wobble_Shader
             if (IsFlagSet(tile, TileFlag_fire)) {
                 tile_col = player->powered_up ? PURPLE : WHITE;
                 *fire_cleared = false;
-                Animate(&tile->animator, frame_counter);
+                Animate(&tile->animator, manager->frame_counter);
                 BeginShaderMode(fire_wobble->shader);
                 DrawTextureRec(tile->animator.texture[0], 
                                tile->animator.frame_rec, tile->pos, tile_col);
@@ -1013,7 +1014,7 @@ void DrawGame(Tilemap *map, Game_Manager *manager, Player *player, Wobble_Shader
             if (IsFlagSet(tile, TileFlag_powerup)) {
                 Powerup *found_powerup = FindPowerupInList(&manager->powerup_sentinel, tile);
                 if (found_powerup) {
-                    Animate(&found_powerup->animator, frame_counter);
+                    Animate(&found_powerup->animator, manager->frame_counter);
                     DrawTextureRec(found_powerup->animator.texture[0], 
                                    found_powerup->animator.frame_rec, tile->pos, WHITE);
                 }
@@ -1022,7 +1023,7 @@ void DrawGame(Tilemap *map, Game_Manager *manager, Player *player, Wobble_Shader
             if (IsFlagSet(tile, TileFlag_enemy)) {
                 Enemy *found_enemy = FindEnemyInList(&manager->enemy_sentinel, index);
                 if (found_enemy) {
-                    Animate(&found_enemy->animators[EnemyAnimator_idle], frame_counter);
+                    Animate(&found_enemy->animators[EnemyAnimator_idle], manager->frame_counter);
                     Vector2 draw_pos = {tile->pos.x, tile->pos.y - 20.f};
                     DrawTextureRec(found_enemy->animators[EnemyAnimator_idle].texture[0],
                                    found_enemy->animators[EnemyAnimator_idle].frame_rec, 
@@ -1258,9 +1259,6 @@ int main() {
 
     Fade_Object white_screen = {};
 
-    // TODO: Maybe this should go into the game manager?
-    u32 frame_counter        = 0; 
-
     Memory_Arena arena;
     size_t arena_size = 1024*1024;
     ArenaInit(&arena, arena_size); 
@@ -1286,17 +1284,17 @@ int main() {
 
         // NOTE: reset the counter back to zero after everything to not mess up 
         // the individual animations
-        if (frame_counter >= 60/FRAME_SPEED) {
-            frame_counter = 0;
+        if (manager.frame_counter >= 60/FRAME_SPEED) {
+            manager.frame_counter = 0;
         }
 
-        frame_counter++;
+        manager.frame_counter++;
 
         // The max frames for the body need to be set up here during the main loop 
         // because they are dependant on whichever direction the player is facing
         player.animators[PlayerAnimator_body].max_frames = 
             (f32)player.animators[PlayerAnimator_body].texture[player.facing].width/20;
-        Animate(&player.animators[PlayerAnimator_body], frame_counter, player.facing);
+        Animate(&player.animators[PlayerAnimator_body], manager.frame_counter, player.facing);
 
         // TODO: these probably only need to be updated in the states they are used 
         // rather than above everything like this.
@@ -1328,8 +1326,7 @@ int main() {
 
             // TODO: I need to put a bunch of these arguments into the game manager 
             // to simplify things and make shiz a bit cleaner
-            DrawGame(&map, &manager, &player, &fire_wobble, frame_counter, delta_t, 
-                     tile_atlas, wall_atlas, &fire_cleared);
+            DrawGame(&map, &manager, &player, &fire_wobble, delta_t, tile_atlas, wall_atlas, &fire_cleared);
 
             GatherInput(&player);
 
@@ -1459,7 +1456,7 @@ int main() {
             // Powerup blinking
             if (player.powered_up) {
                 f32 end_duration_signal  = 3.0f;
-                u32 water_frame_counter  = frame_counter;
+                u32 water_frame_counter  = manager.frame_counter;
 
                 song_volume  -= 0.02f;
                 muted_volume += 0.02f;
@@ -1598,8 +1595,7 @@ int main() {
 
         } else if (manager.state == GameState_win) {
             // Draw tiles in background.
-            DrawGame(&map, &manager, &player, &fire_wobble, frame_counter, delta_t, 
-                     tile_atlas, wall_atlas, &fire_cleared);
+            DrawGame(&map, &manager, &player, &fire_wobble, delta_t, tile_atlas, wall_atlas, &fire_cleared);
 
             input_axis = {0, 0};
 
@@ -1659,7 +1655,7 @@ int main() {
             BeginShaderMode(end_screen.shaders[EndLayer_trees].shader);
             DrawTextureV(end_screen.textures[EndLayer_trees], {-30.0f, 0}, WHITE);
             EndShaderMode();
-            Animate(&end_screen.animator, frame_counter);
+            Animate(&end_screen.animator, manager.frame_counter);
             DrawTextureRec(end_screen.animator.texture[0], 
                            end_screen.animator.frame_rec, {0, 0}, WHITE);
             if (end_screen.timer > end_screen.blink_duration) {
@@ -1707,9 +1703,9 @@ int main() {
                                    (f32)powerup_text_pos.y - font_size};
             Vector2 fire_pos    = {(f32)fire_text_pos.x - tutorial_entities.fire.frame_rec.width - icon_padding, 
                                    (f32)fire_text_pos.y - font_size};
-            Animate(&tutorial_entities.enemy, frame_counter);
-            Animate(&tutorial_entities.powerup, frame_counter);
-            Animate(&tutorial_entities.fire, frame_counter);
+            Animate(&tutorial_entities.enemy, manager.frame_counter);
+            Animate(&tutorial_entities.powerup, manager.frame_counter);
+            Animate(&tutorial_entities.fire, manager.frame_counter);
             DrawTextureRec(tutorial_entities.enemy.texture[0], tutorial_entities.enemy.frame_rec, 
                            demon_pos, Fade(WHITE, tutorial.events[0].fadeable.alpha)); 
             DrawTextureRec(tutorial_entities.powerup.texture[0], tutorial_entities.powerup.frame_rec, 
