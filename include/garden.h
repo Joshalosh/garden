@@ -97,6 +97,12 @@ enum End_Layers {
     EndLayer_count,
 };
 
+enum Atlas_Type {
+    Atlas_tile,
+    Atlas_wall,
+    Atlas_count,
+};
+
 
 struct Play_Text {
     const char *text;
@@ -266,6 +272,7 @@ struct Gui {
     Animation    animators[GodAnimator_count];
     f32          anim_timer;
     f32          anim_duration;
+    f32          step;
 };
 
 struct Game_Manager {
@@ -275,6 +282,8 @@ struct Game_Manager {
 
     Game_State   state;
     u32          frame_counter;
+
+    Texture2D    atlas[Atlas_count];
 
     Gui          gui;
 
