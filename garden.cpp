@@ -706,7 +706,7 @@ Rectangle SetAtlasFrameRec(Tile_Type type, u32 seed) {
 // TODO: need to clean up this facing argument call
 // TODO: Maybe it would be cleaner to draw the texture as well as animate?
 void Animate(Animation *animator, u32 frame_counter, u32 facing = 0) {
-    if (frame_counter >= 60/FRAME_SPEED) {
+    if (frame_counter % (60/FRAME_SPEED) == 0) {
         animator->current_frame++;
     }
         
@@ -935,36 +935,24 @@ void DrawTextTripleEffect (const char *text, Vector2 pos, u32 size, f32 alpha = 
 }
 
 void DrawGame(Tilemap *map, Game_Manager *manager, Player *player, Wobble_Shader *fire_wobble, 
-              u32 delta_t, b32 *fire_cleared)
+              f32 delta_t, b32 *fire_cleared)
 {
     DrawTextureV(manager->gui.bar, {0, 0}, WHITE);
     Vector2 face_pos = {(f32)(manager->gui.bar.width*0.5) - (f32)(manager->gui.animators[0].frame_rec.width*0.5), 
                           0};
-    for (int index = 0; index < GodAnimator_count; index++)
-    {
-        Animate(&manager->gui.animators[index], manager->frame_counter);
-    }
+
     manager->gui.anim_timer += delta_t;
+    God_Animator face_type = manager->score > 2500 ? GodAnimator_happy     :
+                             manager->score > 500  ? GodAnimator_satisfied : GodAnimator_angry;
     if (manager->gui.anim_timer > manager->gui.anim_duration) {
-        for (int index = 0; index < GodAnimator_count; index++)
-        {
-            manager->gui.animators[index].current_frame = 0;
-            manager->gui.anim_timer = 0;
-            manager->gui.anim_duration = GetRandomValue(1.0f, 4.0f);
-        }
+        manager->gui.anim_timer = 0;
+        manager->gui.anim_duration = GetRandomValue(1.0f, 4.0f);
+        manager->gui.animators[face_type].current_frame = 0;
     }
-    // TODO: would it be cleaner to use the assignment *if* here on the animator 
-    // instead of these sperate *if* statements?
-    if (manager->score > 10000) {
-        DrawTextureRec(manager->gui.animators[GodAnimator_happy].texture[0], 
-                       manager->gui.animators[GodAnimator_happy].frame_rec, face_pos, WHITE);
-    } else if (manager->score > 2500) {
-        DrawTextureRec(manager->gui.animators[GodAnimator_satisfied].texture[0], 
-                       manager->gui.animators[GodAnimator_satisfied].frame_rec, face_pos, WHITE);
-    } else {
-        DrawTextureRec(manager->gui.animators[GodAnimator_angry].texture[0], 
-                       manager->gui.animators[GodAnimator_angry].frame_rec, face_pos, WHITE);
-    }
+    Animate(&manager->gui.animators[face_type], manager->frame_counter);
+    DrawTextureRec(manager->gui.animators[face_type].texture[0], 
+                   manager->gui.animators[face_type].frame_rec, face_pos, WHITE);
+
     // Draw tiles in background
     for (u32 y = 0; y < map->height; y++) {
         for (u32 x = 0; x < map->width; x++) {
@@ -1603,6 +1591,8 @@ int main() {
 
             StopSoundBuffer(manager.sounds);
         
+            // TODO: Probably should make the player draw it's own function because I use this code 
+            // multiple times I think.
             Rectangle src = player.animators[PlayerAnimator_body].frame_rec;
 
             player.facing = DirectionFacing_celebration;
@@ -1674,6 +1664,13 @@ int main() {
             }
 
             Vector2 current_pos = V2Lerp(start_pos, manager.gui.step, end_pos);
+
+#if 0
+            u32 start_scale = 1;
+            u32 end_scale   = 2;
+            f32 current_scale = Lerp(start_scale, manager.gui.step, end_scale);
+#endif
+
             for (int index = 0; index < GodAnimator_count; index++)
             {
                 Animate(&manager.gui.animators[index], manager.frame_counter);
@@ -1687,8 +1684,26 @@ int main() {
                     manager.gui.anim_duration = GetRandomValue(1.0f, 4.0f);
                 }
             }
+
+            Rectangle src = player.animators[PlayerAnimator_body].frame_rec;
+
+            if (player.facing == DirectionFacing_left) {
+                src.x     += src.width;
+                src.width  = -src.width;
+            }
+            
+            f32 frame_width  = (f32)player.animators[PlayerAnimator_body].frame_rec.width;
+            f32 frame_height = (f32)player.animators[PlayerAnimator_body].texture[player.facing].height;
+
+            Rectangle dest_rect = {player.pos.x, player.pos.y, 
+                                   frame_width, frame_height}; 
+
+            Vector2 texture_offset = {0.0f, 20.0f};
+            DrawTexturePro(player.animators[PlayerAnimator_body].texture[player.facing], src,
+                           dest_rect, texture_offset, 0.0f, player.col);
             // TODO: would it be cleaner to use the assignment *if* here on the animator 
             // instead of these sperate *if* statements?
+
             if (manager.score > 10000) {
                 DrawTextureRec(manager.gui.animators[GodAnimator_happy].texture[0], 
                                manager.gui.animators[GodAnimator_happy].frame_rec, current_pos, WHITE);
