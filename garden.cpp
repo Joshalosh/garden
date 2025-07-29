@@ -934,12 +934,9 @@ void DrawTextTripleEffect (const char *text, Vector2 pos, u32 size, f32 alpha = 
 
 }
 
-void DrawGame(Tilemap *map, Game_Manager *manager, Player *player, Wobble_Shader *fire_wobble, 
-              f32 delta_t, b32 *fire_cleared)
-{
-    DrawTextureV(manager->gui.bar, {0, 0}, WHITE);
-    Vector2 face_pos = {(f32)(manager->gui.bar.width*0.5) - (f32)(manager->gui.animators[0].frame_rec.width*0.5), 
-                          0};
+void DrawGodFace(Game_Manager *manager, f32 delta_t) {
+    Vector2 face_pos = {(f32)(manager->gui.bar.width*0.5) - 
+                        (f32)(manager->gui.animators[0].frame_rec.width*0.5), 0};
 
     manager->gui.anim_timer += delta_t;
     God_Animator face_type = manager->score > 2500 ? GodAnimator_happy     :
@@ -952,7 +949,14 @@ void DrawGame(Tilemap *map, Game_Manager *manager, Player *player, Wobble_Shader
     Animate(&manager->gui.animators[face_type], manager->frame_counter);
     DrawTextureRec(manager->gui.animators[face_type].texture[0], 
                    manager->gui.animators[face_type].frame_rec, face_pos, WHITE);
+}
 
+void DrawGame(Tilemap *map, Game_Manager *manager, Player *player, Wobble_Shader *fire_wobble, 
+              f32 delta_t, b32 *fire_cleared)
+{
+    DrawTextureV(manager->gui.bar, {0, 0}, WHITE);
+    DrawGodFace(manager, delta_t);
+    
     // Draw tiles in background
     for (u32 y = 0; y < map->height; y++) {
         for (u32 x = 0; x < map->width; x++) {
@@ -1613,33 +1617,8 @@ int main() {
                 manager.state = GameState_win_text;
             }
             DrawScreenFadeCol(&white_screen, base_screen_width, base_screen_height, WHITE);
-            Vector2 face_pos = {(f32)(manager.gui.bar.width*0.5) - (f32)(manager.gui.animators[0].frame_rec.width*0.5), 
-                                  0};
-            for (int index = 0; index < GodAnimator_count; index++)
-            {
-                Animate(&manager.gui.animators[index], manager.frame_counter);
-            }
-            manager.gui.anim_timer += delta_t;
-            if (manager.gui.anim_timer > manager.gui.anim_duration) {
-                for (int index = 0; index < GodAnimator_count; index++)
-                {
-                    manager.gui.animators[index].current_frame = 0;
-                    manager.gui.anim_timer = 0;
-                    manager.gui.anim_duration = GetRandomValue(1.0f, 4.0f);
-                }
-            }
-            // TODO: would it be cleaner to use the assignment *if* here on the animator 
-            // instead of these sperate *if* statements?
-            if (manager.score > 10000) {
-                DrawTextureRec(manager.gui.animators[GodAnimator_happy].texture[0], 
-                               manager.gui.animators[GodAnimator_happy].frame_rec, face_pos, WHITE);
-            } else if (manager.score > 2500) {
-                DrawTextureRec(manager.gui.animators[GodAnimator_satisfied].texture[0], 
-                               manager.gui.animators[GodAnimator_satisfied].frame_rec, face_pos, WHITE);
-            } else {
-                DrawTextureRec(manager.gui.animators[GodAnimator_angry].texture[0], 
-                               manager.gui.animators[GodAnimator_angry].frame_rec, face_pos, WHITE);
-            }
+            DrawGodFace(&manager, delta_t);
+
             if (IsKeyPressed(KEY_SPACE)) {
                 GameOver(&player, &map, &manager);
             }
@@ -1650,11 +1629,6 @@ int main() {
             DrawScreenFadeCol(&white_screen, base_screen_width, base_screen_height, WHITE);
             const char *message = "The Gods Are Pleased!";
             u32 font_size = 14;
-            Vector2 text_pos = {(base_screen_width*0.5f) - (MeasureText(message, font_size)*0.5f), 
-                                base_screen_height*0.5f};
-            Vector2 start_pos = {(f32)(manager.gui.bar.width*0.5) - 
-                                (f32)(manager.gui.animators[0].frame_rec.width*0.5), 0};
-            Vector2 end_pos = {start_pos.x, text_pos.y - 60};
             f32 translation_duration = 3.0f;
             if (manager.gui.step < 1.0f) {
                 manager.gui.step += delta_t / translation_duration;
@@ -1663,57 +1637,44 @@ int main() {
                 }
             }
 
-            Vector2 current_pos = V2Lerp(start_pos, manager.gui.step, end_pos);
+            manager.gui.anim_timer += delta_t;
+            God_Animator face_type = manager.score > 2500 ? GodAnimator_happy     :
+                                     manager.score > 500  ? GodAnimator_satisfied : GodAnimator_angry;
+            if (manager.gui.anim_timer > manager.gui.anim_duration) {
+                manager.gui.anim_timer = 0;
+                manager.gui.anim_duration = GetRandomValue(1.0f, 4.0f);
+                manager.gui.animators[face_type].current_frame = 0;
+            }
 
-#if 0
+            Vector2 text_pos = {(base_screen_width*0.5f) - (MeasureText(message, font_size)*0.5f), 
+                                base_screen_height*0.5f};
+            Vector2 start_pos = {(f32)(manager.gui.bar.width*0.5) - 
+                                (f32)(manager.gui.animators[0].frame_rec.width*0.5), 0};
+            Vector2 end_pos = {start_pos.x, text_pos.y - 60};
+
             u32 start_scale = 1;
             u32 end_scale   = 2;
             f32 current_scale = Lerp(start_scale, manager.gui.step, end_scale);
+
+            Rectangle src = manager.gui.animators[face_type].frame_rec;
+
+            f32 frame_width  = (f32)manager.gui.animators[face_type].frame_rec.width;
+            f32 frame_height = (f32)manager.gui.animators[face_type].texture[0].height;
+
+            Vector2 current_pos = V2Lerp(start_pos, manager.gui.step, end_pos);
+            Rectangle dest_rect = {current_pos.x, current_pos.y, 
+                                   frame_width*current_scale, frame_height*current_scale}; 
+
+
+            Animate(&manager.gui.animators[face_type], manager.frame_counter);
+#if 1
+            DrawTexturePro(manager.gui.animators[face_type].texture[0], src,
+                           dest_rect, {20, 20}, 0.0f, WHITE);
+#else
+            DrawTextureRec(manager.gui.animators[face_type].texture[0], 
+                           manager.gui.animators[face_type].frame_rec, current_pos, WHITE);
 #endif
 
-            for (int index = 0; index < GodAnimator_count; index++)
-            {
-                Animate(&manager.gui.animators[index], manager.frame_counter);
-            }
-            manager.gui.anim_timer += delta_t;
-            if (manager.gui.anim_timer > manager.gui.anim_duration) {
-                for (int index = 0; index < GodAnimator_count; index++)
-                {
-                    manager.gui.animators[index].current_frame = 0;
-                    manager.gui.anim_timer = 0;
-                    manager.gui.anim_duration = GetRandomValue(1.0f, 4.0f);
-                }
-            }
-
-            Rectangle src = player.animators[PlayerAnimator_body].frame_rec;
-
-            if (player.facing == DirectionFacing_left) {
-                src.x     += src.width;
-                src.width  = -src.width;
-            }
-            
-            f32 frame_width  = (f32)player.animators[PlayerAnimator_body].frame_rec.width;
-            f32 frame_height = (f32)player.animators[PlayerAnimator_body].texture[player.facing].height;
-
-            Rectangle dest_rect = {player.pos.x, player.pos.y, 
-                                   frame_width, frame_height}; 
-
-            Vector2 texture_offset = {0.0f, 20.0f};
-            DrawTexturePro(player.animators[PlayerAnimator_body].texture[player.facing], src,
-                           dest_rect, texture_offset, 0.0f, player.col);
-            // TODO: would it be cleaner to use the assignment *if* here on the animator 
-            // instead of these sperate *if* statements?
-
-            if (manager.score > 10000) {
-                DrawTextureRec(manager.gui.animators[GodAnimator_happy].texture[0], 
-                               manager.gui.animators[GodAnimator_happy].frame_rec, current_pos, WHITE);
-            } else if (manager.score > 2500) {
-                DrawTextureRec(manager.gui.animators[GodAnimator_satisfied].texture[0], 
-                               manager.gui.animators[GodAnimator_satisfied].frame_rec, current_pos, WHITE);
-            } else {
-                DrawTextureRec(manager.gui.animators[GodAnimator_angry].texture[0], 
-                               manager.gui.animators[GodAnimator_angry].frame_rec, current_pos, WHITE);
-            }
             if (!win_text_sequence.active) StartEventSequence(&win_text_sequence);
 
             Event event = win_text_sequence.events[win_text_sequence.index];
