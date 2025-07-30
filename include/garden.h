@@ -277,7 +277,8 @@ struct Gui {
 
 struct Game_Manager {
     u32          score;
-    u32          high_score;
+    u32          happy_score;
+    u32          satisfied_score;
     u32          score_multiplier;
 
     Game_State   state;

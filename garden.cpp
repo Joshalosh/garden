@@ -101,7 +101,8 @@ void PlayerInit(Player *player) {
 
 void GameManagerInit(Game_Manager *manager) {
     manager->score                  = 0;
-    manager->high_score             = 0;
+    manager->happy_score            = 10000;
+    manager->satisfied_score        = 2500;
     manager->score_multiplier       = 1;
     manager->frame_counter          = 0;
 
@@ -481,9 +482,6 @@ void UpdateTitleBob(Game_Title *title, f32 delta_t) {
 // TODO: Need to make sure the event sequencer goes back to the first index
 void GameOver(Player *player, Tilemap *tilemap,  Game_Manager *manager) {
     PlayerInit(player);
-    if (manager->score > manager->high_score) {
-        manager->high_score = manager->score;
-    }
     manager->state            = GameState_play;
     manager->score            = 0;
     manager->score_multiplier = 0;
@@ -935,12 +933,13 @@ void DrawTextTripleEffect (const char *text, Vector2 pos, u32 size, f32 alpha = 
 }
 
 void DrawGodFace(Game_Manager *manager, f32 delta_t) {
+    manager->gui.anim_timer += delta_t;
+    God_Animator face_type = manager->score > manager->happy_score     ? GodAnimator_happy     :
+                             manager->score > manager->satisfied_score ? GodAnimator_satisfied : 
+                                                                         GodAnimator_angry;
     Vector2 face_pos = {(f32)(manager->gui.bar.width*0.5) - 
                         (f32)(manager->gui.animators[0].frame_rec.width*0.5), 0};
 
-    manager->gui.anim_timer += delta_t;
-    God_Animator face_type = manager->score > 2500 ? GodAnimator_happy     :
-                             manager->score > 500  ? GodAnimator_satisfied : GodAnimator_angry;
     if (manager->gui.anim_timer > manager->gui.anim_duration) {
         manager->gui.anim_timer = 0;
         manager->gui.anim_duration = GetRandomValue(1.0f, 4.0f);
@@ -1215,7 +1214,7 @@ int main() {
     win_text_sequence.events[1].type = EventType_fade_in;
     win_text_sequence.events[1].duration = 1.0f;
     win_text_sequence.events[1].fadeable = {};
-    win_text_sequence.events[2] = {EventType_wait, 1.0f, 0, 0, 0};
+    win_text_sequence.events[2] = {EventType_wait, 2.0f, 0, 0, 0};
     win_text_sequence.events[2].fadeable.alpha = 1.0f;
     win_text_sequence.events[3].type = EventType_fade_out;
     win_text_sequence.events[3].duration = 2.0f;
@@ -1356,6 +1355,7 @@ int main() {
 
                         if (target_tile->type != TileType_wall  && 
                             target_tile->type != TileType_wall2 && 
+                            target_tile->type != TileType_none  &&
                             target_tile->type != TileType_fire) {
                             
                             // Start moving
@@ -1624,11 +1624,13 @@ int main() {
             }
 
         } else if (manager.state == GameState_win_text) {
+            // TODO: this whole state is a bit of a messy bessy and I need to clean 
+            // dat ass up.
             UpdateEventQueue(&win_text_sequence, &manager, delta_t);
 
             DrawScreenFadeCol(&white_screen, base_screen_width, base_screen_height, WHITE);
-            const char *message = "The Gods Are Pleased!";
-            u32 font_size = 14;
+
+            manager.gui.anim_timer += delta_t;
             f32 translation_duration = 3.0f;
             if (manager.gui.step < 1.0f) {
                 manager.gui.step += delta_t / translation_duration;
@@ -1637,39 +1639,41 @@ int main() {
                 }
             }
 
-            manager.gui.anim_timer += delta_t;
-            God_Animator face_type = manager.score > 2500 ? GodAnimator_happy     :
-                                     manager.score > 500  ? GodAnimator_satisfied : GodAnimator_angry;
+            u32 start_scale   = 1;
+            u32 end_scale     = 2;
+            f32 current_scale = Lerp(start_scale, manager.gui.step, end_scale);
+
+            God_Animator face_type = manager.score > manager.happy_score      ? GodAnimator_happy     :
+                                     manager.score > manager.satisfied_score  ? GodAnimator_satisfied : 
+                                                                                GodAnimator_angry;
+            const char *message = manager.score > manager.happy_score     ? "The Gods are Pleased!"     : 
+                                  manager.score > manager.satisfied_score ? "The Gods are Satisfied..." : 
+                                                                            "The Gods are Unsatisfied";
+            u32 font_size = 14;
             if (manager.gui.anim_timer > manager.gui.anim_duration) {
                 manager.gui.anim_timer = 0;
                 manager.gui.anim_duration = GetRandomValue(1.0f, 4.0f);
                 manager.gui.animators[face_type].current_frame = 0;
             }
 
-            Vector2 text_pos = {(base_screen_width*0.5f) - (MeasureText(message, font_size)*0.5f), 
-                                base_screen_height*0.5f};
-            Vector2 start_pos = {(f32)(manager.gui.bar.width*0.5) - 
-                                (f32)(manager.gui.animators[0].frame_rec.width*0.5), 0};
-            Vector2 end_pos = {start_pos.x, text_pos.y - 60};
-
-            u32 start_scale = 1;
-            u32 end_scale   = 2;
-            f32 current_scale = Lerp(start_scale, manager.gui.step, end_scale);
-
-            Rectangle src = manager.gui.animators[face_type].frame_rec;
-
             f32 frame_width  = (f32)manager.gui.animators[face_type].frame_rec.width;
             f32 frame_height = (f32)manager.gui.animators[face_type].texture[0].height;
 
+            Vector2 text_pos = {(base_screen_width*0.5f) - (MeasureText(message, font_size)*0.5f), 
+                                base_screen_height*0.5f};
+            Vector2 start_pos = {(f32)(manager.gui.bar.width*0.5) - 
+                                 (f32)((frame_width*current_scale)*0.5), 0};
+            Vector2 end_pos = {start_pos.x, text_pos.y - (frame_height*current_scale)};
             Vector2 current_pos = V2Lerp(start_pos, manager.gui.step, end_pos);
+
+            Rectangle src = manager.gui.animators[face_type].frame_rec;
             Rectangle dest_rect = {current_pos.x, current_pos.y, 
                                    frame_width*current_scale, frame_height*current_scale}; 
-
 
             Animate(&manager.gui.animators[face_type], manager.frame_counter);
 #if 1
             DrawTexturePro(manager.gui.animators[face_type].texture[0], src,
-                           dest_rect, {20, 20}, 0.0f, WHITE);
+                           dest_rect, {0, 0}, 0.0f, Fade(WHITE, win_text_sequence.events[3].fadeable.alpha));
 #else
             DrawTextureRec(manager.gui.animators[face_type].texture[0], 
                            manager.gui.animators[face_type].frame_rec, current_pos, WHITE);
@@ -1678,12 +1682,7 @@ int main() {
             if (!win_text_sequence.active) StartEventSequence(&win_text_sequence);
 
             Event event = win_text_sequence.events[win_text_sequence.index];
-            DrawText(message, (u32)text_pos.x+2.0f, (u32)text_pos.y+2.0f, font_size, 
-                     Fade(BLACK, event.fadeable.alpha));
-            DrawText(message, (u32)text_pos.x+1.0f, (u32)text_pos.y+1.0f, font_size, 
-                     Fade(MAROON, event.fadeable.alpha));
-            DrawText(message, (u32)text_pos.x, (u32)text_pos.y, font_size, 
-                     Fade(GOLD, event.fadeable.alpha));
+            DrawTextTripleEffect(message, text_pos, font_size, event.fadeable.alpha); 
 
         } else if (manager.state == GameState_epilogue) {
             if (white_screen.alpha == 1.0f)
@@ -1895,24 +1894,28 @@ int main() {
         Vector2 zero_vec = {0, 0};
         DrawTexturePro(target.texture, rect,
                        dest_rect, zero_vec, 0.0f, WHITE);
-        if (manager.state == GameState_play || manager.state == GameState_win) {
+        if (manager.state == GameState_play || manager.state == GameState_win || 
+            manager.state == GameState_win_text) {
             u32 font_size = 38;
             u32 text_base_x = 192;
             u32 text_base_y = 25;
             u32 shadow_offset = 2;
 
+            f32 alpha = win_text_sequence.events[3].fadeable.alpha;
             DrawText(TextFormat("%d", manager.score), (text_base_x + shadow_offset) + shake_offset.x, 
-                     (text_base_y + shadow_offset) + shake_offset.y, font_size, BLACK);
+                     (text_base_y + shadow_offset) + shake_offset.y, font_size, Fade(BLACK, alpha));
             DrawText(TextFormat("%d", manager.score), text_base_x + shake_offset.x, 
-                     text_base_y + shake_offset.y, font_size, WHITE);
+                     text_base_y + shake_offset.y, font_size, Fade(WHITE, alpha));
             
-            const char *combo = manager.score_multiplier > 1 ? 
-                                TextFormat("%d Combo", manager.score_multiplier) :
-                                ("0 Combo");
-            DrawText(combo, window_width - ((text_base_x + shadow_offset) + MeasureText(combo, font_size)) + shake_offset.x, 
-                     (text_base_y + shadow_offset) + shake_offset.y, font_size, BLACK);
-            DrawText(combo, window_width - (text_base_x + MeasureText(combo, font_size)) + shake_offset.x, 
-                         text_base_y + shake_offset.y, font_size, WHITE);
+            if (manager.state == GameState_play || manager.state == GameState_win) {
+                const char *combo = manager.score_multiplier > 1 ? 
+                                    TextFormat("%d Combo", manager.score_multiplier) :
+                                    ("0 Combo");
+                DrawText(combo, window_width - ((text_base_x + shadow_offset) + MeasureText(combo, font_size)) + shake_offset.x, 
+                         (text_base_y + shadow_offset) + shake_offset.y, font_size, BLACK);
+                DrawText(combo, window_width - (text_base_x + MeasureText(combo, font_size)) + shake_offset.x, 
+                             text_base_y + shake_offset.y, font_size, WHITE);
+            }
         };
 
         if (fire_cleared && player.powered_up) {
