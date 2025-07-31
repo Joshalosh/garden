@@ -101,8 +101,8 @@ void PlayerInit(Player *player) {
 
 void GameManagerInit(Game_Manager *manager) {
     manager->score                  = 0;
-    manager->happy_score            = 10000;
-    manager->satisfied_score        = 2500;
+    manager->happy_score            = 2500;
+    manager->satisfied_score        = 500;
     manager->score_multiplier       = 1;
     manager->frame_counter          = 0;
 
@@ -1220,11 +1220,14 @@ int main() {
     win_text_sequence.events[1].fadeable = {};
     win_text_sequence.events[2] = {EventType_wait, 2.0f, 0, 0, 0};
     win_text_sequence.events[2].fadeable.alpha = 1.0f;
-    win_text_sequence.events[3].type = EventType_fade_out;
+    //win_text_sequence.events[3].type = EventType_fade_out;
+    //win_text_sequence.events[3].duration = 2.0f;
+    //win_text_sequence.events[3].fadeable.alpha = 1.0f;
+    //win_text_sequence.events[4] = {EventType_wait, 2.0f};
+    win_text_sequence.events[3].type = EventType_fade_in;
     win_text_sequence.events[3].duration = 2.0f;
-    win_text_sequence.events[3].fadeable.alpha = 1.0f;
-    win_text_sequence.events[4] = {EventType_state_change, 0, GameState_epilogue};
-    win_text_sequence.count = 5;
+    win_text_sequence.events[3].fadeable = {};
+    win_text_sequence.count = 4;
     win_text_sequence.active = false;
 
     Tutorial_Entities tutorial_entities;
@@ -1655,9 +1658,11 @@ int main() {
             God_Animator face_type = manager.score > manager.happy_score      ? GodAnimator_happy     :
                                      manager.score > manager.satisfied_score  ? GodAnimator_satisfied : 
                                                                                 GodAnimator_angry;
+#if 0
             if (face_type != GodAnimator_happy) {
                 win_text_sequence.events[4].new_state = GameState_title;
             }
+#endif
 
             const char *message = manager.score > manager.happy_score     ? "The Gods are Pleased!"     : 
                                   manager.score > manager.satisfied_score ? "The Gods are Satisfied..." : 
@@ -1686,7 +1691,7 @@ int main() {
             Animate(&manager.gui.animators[face_type], manager.frame_counter);
 #if 1
             DrawTexturePro(manager.gui.animators[face_type].texture[0], src,
-                           dest_rect, {0, 0}, 0.0f, Fade(WHITE, win_text_sequence.events[3].fadeable.alpha));
+                           dest_rect, {0, 0}, 0.0f, WHITE);//Fade(WHITE, win_text_sequence.events[3].fadeable.alpha));
 #else
             DrawTextureRec(manager.gui.animators[face_type].texture[0], 
                            manager.gui.animators[face_type].frame_rec, current_pos, WHITE);
@@ -1694,8 +1699,20 @@ int main() {
 
             if (!win_text_sequence.active) StartEventSequence(&win_text_sequence);
 
-            Event event = win_text_sequence.events[win_text_sequence.index];
+            Event event = win_text_sequence.events[1];
             DrawTextTripleEffect(message, text_pos, font_size, event.fadeable.alpha); 
+            const char *spacebar = "Press Spacebar";
+            u32 spacebar_font_size = 7;
+            Vector2 spacebar_pos = {(base_screen_width*0.5f) - MeasureText(spacebar, spacebar_font_size)*0.5f, 
+                                    text_pos.y + (font_size + 50)};
+            DrawTextTripleEffect(spacebar, spacebar_pos, spacebar_font_size, 
+                                 win_text_sequence.events[3].fadeable.alpha); 
+
+            if (IsKeyPressed(KEY_SPACE)) {
+                win_text_sequence.active = false;
+                if (face_type != GodAnimator_happy) manager.state = GameState_title;
+                else                                manager.state = GameState_epilogue;
+            }
 
         } else if (manager.state == GameState_epilogue) {
             if (white_screen.alpha == 1.0f)
@@ -1720,7 +1737,7 @@ int main() {
 
             DrawScreenFadeCol(&white_screen, base_screen_width, base_screen_height, WHITE);
             if (IsKeyPressed(KEY_SPACE)) {
-                GameOver(&player, &map, &manager);
+                manager.state = GameState_title;
             }
 
         } else if (manager.state == GameState_tutorial) {
@@ -1917,11 +1934,11 @@ int main() {
             u32 text_base_y = 25;
             u32 shadow_offset = 2;
 
-            f32 alpha = win_text_sequence.events[3].fadeable.alpha;
+            //f32 alpha = win_text_sequence.events[3].fadeable.alpha;
             DrawText(TextFormat("%d", manager.score), (text_base_x + shadow_offset) + shake_offset.x, 
-                     (text_base_y + shadow_offset) + shake_offset.y, font_size, Fade(BLACK, alpha));
+                     (text_base_y + shadow_offset) + shake_offset.y, font_size, BLACK);//Fade(BLACK, alpha));
             DrawText(TextFormat("%d", manager.score), text_base_x + shake_offset.x, 
-                     text_base_y + shake_offset.y, font_size, Fade(WHITE, alpha));
+                     text_base_y + shake_offset.y, font_size, WHITE);//Fade(WHITE, alpha));
             
             if (manager.state == GameState_play || manager.state == GameState_win) {
                 const char *combo = manager.score_multiplier > 1 ? 
