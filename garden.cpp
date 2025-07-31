@@ -908,6 +908,7 @@ void UpdateEventQueue(Event_Queue *queue, Game_Manager *manager, f32 delta_t) {
                     manager->state = (Game_State)event->new_state;
                     queue->timer = 0.0f;
                     queue->index++;
+                    queue->active = false;
                 } break;
 
                 default: queue->index++; break;
@@ -1154,7 +1155,9 @@ int main() {
     Music song_muted = LoadMusicStream("../assets/sounds/music_muted.wav");
 
     Music song_tutorial = LoadMusicStream("../assets/sounds/tutorial_track.wav");
-    Music song_intro = LoadMusicStream("../assets/sounds/intro_music.wav");
+    Music song_intro    = LoadMusicStream("../assets/sounds/intro_music.wav");
+
+    Music song_win      = LoadMusicStream("../assets/sounds/win_track.wav");
 
     f32 song_volume  = 1.0f;
     f32 muted_volume = 0.0f;
@@ -1165,6 +1168,7 @@ int main() {
     song_muted.looping = true;
     song_intro.looping = true;
     song_tutorial.looping = true;
+    song_win.looping = true;
 
     
     b32 fire_cleared; // NOTE: Perhaps this should live in the Game_Manager struct???
@@ -1295,6 +1299,7 @@ int main() {
         UpdateMusicStream(song_muted);
         UpdateMusicStream(song_intro);
         UpdateMusicStream(song_tutorial);
+        UpdateMusicStream(song_win);
 
         // Set Shader variables
         SetShaderValue(bg_wobble.shader,   bg_wobble.time_location,   &current_time, SHADER_UNIFORM_FLOAT);
@@ -1589,6 +1594,10 @@ int main() {
 
         } else if (manager.state == GameState_win) {
             // Draw tiles in background.
+            if (IsMusicStreamPlaying(song_main))  StopMusicStream(song_main);
+            if (IsMusicStreamPlaying(song_muted))  StopMusicStream(song_muted);
+            if (!IsMusicStreamPlaying(song_win))  PlayMusicStream(song_win);
+
             DrawGame(&map, &manager, &player, &fire_wobble, delta_t, &fire_cleared);
 
             input_axis = {0, 0};
@@ -1646,6 +1655,10 @@ int main() {
             God_Animator face_type = manager.score > manager.happy_score      ? GodAnimator_happy     :
                                      manager.score > manager.satisfied_score  ? GodAnimator_satisfied : 
                                                                                 GodAnimator_angry;
+            if (face_type != GodAnimator_happy) {
+                win_text_sequence.events[4].new_state = GameState_title;
+            }
+
             const char *message = manager.score > manager.happy_score     ? "The Gods are Pleased!"     : 
                                   manager.score > manager.satisfied_score ? "The Gods are Satisfied..." : 
                                                                             "The Gods are Unsatisfied";
@@ -1711,10 +1724,8 @@ int main() {
             }
 
         } else if (manager.state == GameState_tutorial) {
-            if (!IsMusicStreamPlaying(song_tutorial))  
-            {
-                PlayMusicStream(song_tutorial);
-            }
+            if (IsMusicStreamPlaying(song_intro))     StopMusicStream(song_intro);
+            if (!IsMusicStreamPlaying(song_tutorial)) PlayMusicStream(song_tutorial);
 
             UpdateEventQueue(&tutorial, &manager, delta_t);
             DrawRectangle(0, 0, base_screen_width, base_screen_height, BLACK);
@@ -1757,10 +1768,15 @@ int main() {
             EndShaderMode();
 
             if (IsKeyPressed(KEY_SPACE)) {
+                tutorial.active = false;
                 GameOver(&player, &map, &manager);
             }
 
         } else if (manager.state == GameState_title) {
+
+            if (IsMusicStreamPlaying(song_main))      StopMusicStream(song_main);
+            if (IsMusicStreamPlaying(song_muted))     StopMusicStream(song_muted);
+            if (IsMusicStreamPlaying(song_win))       StopMusicStream(song_win);
 
             UpdateEventQueue(&title_press, &manager, delta_t);
             Game_Title *title = &title_screen_manager.title;
