@@ -327,6 +327,14 @@ void EnemyInit(Enemy *enemy, Enemy *sentinel, u32 tile_index) {
     enemy->prev->next = enemy;
 }
 
+void SpacebarTextInit(Spacebar_Text *text) {
+    text->text = "Press Spacebar";
+    text->size = 7;
+    text->pos  = {(base_screen_width*0.5f) - (MeasureText(text->text, text->size)*0.5f),
+                  base_screen_height*0.70};
+    text->bob  = 0.0f;
+};
+
 void TutorialInit(Tutorial_Entities *entities) {
     entities->enemy.texture[0]      = LoadTexture("../assets/sprites/demon.png");
     entities->enemy.max_frames      = (f32)entities->enemy.texture[0].width/SPRITE_WIDTH;
@@ -350,12 +358,6 @@ void TutorialInit(Tutorial_Entities *entities) {
                                        (f32)entities->fire.texture[0].height};
     entities->fire.current_frame    = 0;
     entities->fire.looping          = true;
-
-    entities->text                  = "Press Spacebar";
-    entities->font_size             = 7;
-    entities->text_pos = {(base_screen_width*0.5f) - (MeasureText(entities->text, entities->font_size)*0.5f),
-                          base_screen_height*0.70};
-    entities->bob                   = 0.0f;
 }
 
 Enemy *FindEnemyInList(Enemy *sentinel, u32 index)
@@ -1033,6 +1035,11 @@ void DrawGame(Tilemap *map, Game_Manager *manager, Player *player, Wobble_Shader
     }
 }
 
+void UpdateSpacebarBob(Spacebar_Text *text, f32 delta_t) {
+    text->pos.y += 0.1f*sinf(8.0f*text->bob);
+    text->bob   += delta_t;
+}
+
 int main() {
     // -------------------------------------
     // Initialisation
@@ -1256,8 +1263,11 @@ int main() {
     title_press.count     = 2;
     title_press.active    = false;
 
-
+    // TODO: Should this live in the game manager?
     Fade_Object white_screen = {};
+
+    Spacebar_Text spacebar_text;
+    SpacebarTextInit(&spacebar_text);
 
     Memory_Arena arena;
     size_t arena_size = 1024*1024;
@@ -1701,11 +1711,11 @@ int main() {
 
             Event event = win_text_sequence.events[1];
             DrawTextTripleEffect(message, text_pos, font_size, event.fadeable.alpha); 
-            const char *spacebar = "Press Spacebar";
-            u32 spacebar_font_size = 7;
-            Vector2 spacebar_pos = {(base_screen_width*0.5f) - MeasureText(spacebar, spacebar_font_size)*0.5f, 
-                                    text_pos.y + (font_size + 50)};
-            DrawTextTripleEffect(spacebar, spacebar_pos, spacebar_font_size, 
+
+            UpdateSpacebarBob(&spacebar_text, delta_t);
+            //Vector2 spacebar_pos = {(base_screen_width*0.5f) - MeasureText(spacebar, spacebar_font_size)*0.5f, 
+            //                        text_pos.y + (font_size + 50)};
+            DrawTextTripleEffect(spacebar_text.text, spacebar_text.pos, spacebar_text.size, 
                                  win_text_sequence.events[3].fadeable.alpha); 
 
             if (IsKeyPressed(KEY_SPACE)) {
@@ -1751,7 +1761,7 @@ int main() {
             const char *sacred_fire  = "Clear all of the fire to complete the ritual";
             const char *powerup      = "Collect powerups to clear the fire";
             const char *demon        = "Sacrifice demons by trapping them in fire";
-            u32 font_size = tutorial_entities.font_size;
+            u32 font_size            = 7;
             f32 icon_padding         = 10.0f;
             f32 text_pos_x           = (base_screen_width*0.5f) - ((MeasureText(sacred_fire, font_size) - 
                                        (SPRITE_WIDTH + icon_padding))*0.5f);
@@ -1762,9 +1772,8 @@ int main() {
             DrawTextTripleEffect(powerup,     powerup_text_pos, font_size, tutorial.events[1].fadeable.alpha);
             DrawTextTripleEffect(sacred_fire, fire_text_pos,    font_size, tutorial.events[2].fadeable.alpha);
 
-            tutorial_entities.text_pos.y += 0.1f*sinf(8.0f*tutorial_entities.bob);
-            tutorial_entities.bob        += delta_t;
-            DrawTextTripleEffect(tutorial_entities.text, tutorial_entities.text_pos, font_size, 
+            UpdateSpacebarBob(&spacebar_text, delta_t);
+            DrawTextTripleEffect(spacebar_text.text, spacebar_text.pos, font_size, 
                                  tutorial.events[4].fadeable.alpha);
             Vector2 demon_pos   = {(f32)demon_text_pos.x - tutorial_entities.enemy.frame_rec.width - icon_padding, 
                                    (f32)demon_text_pos.y - (tutorial_entities.enemy.frame_rec.height*0.5f)-font_size};
