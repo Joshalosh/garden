@@ -1713,8 +1713,6 @@ int main() {
             DrawTextTripleEffect(message, text_pos, font_size, event.fadeable.alpha); 
 
             UpdateSpacebarBob(&spacebar_text, delta_t);
-            //Vector2 spacebar_pos = {(base_screen_width*0.5f) - MeasureText(spacebar, spacebar_font_size)*0.5f, 
-            //                        text_pos.y + (font_size + 50)};
             DrawTextTripleEffect(spacebar_text.text, spacebar_text.pos, spacebar_text.size, 
                                  win_text_sequence.events[3].fadeable.alpha); 
 
