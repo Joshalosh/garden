@@ -91,6 +91,14 @@ enum Event_Type {
     EventType_state_change,
 };
 
+enum Event_Sequence {
+    Sequence_win,
+    Sequence_tutorial,
+    Sequence_begin,
+
+    Sequence_count,
+};
+
 enum End_Layers {
     EndLayer_sky,
     EndLayer_trees,
@@ -269,6 +277,11 @@ struct Event_Queue {
     u32   index;
     f32   timer;
     bool  active;
+};
+
+struct Event_Manager {
+    Event_Queue sequences[Sequence_count];
+    Event_Queue original_sequences[Sequence_count];
 };
 
 struct Gui {
