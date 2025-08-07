@@ -14,6 +14,13 @@ void TilemapInit(Tilemap *tilemap) {
     tilemap->width       = TILEMAP_WIDTH;
     tilemap->height      = TILEMAP_HEIGHT;
     tilemap->tile_size   = TILE_SIZE;
+    tilemap->fire_animation.texture[0] = LoadTexture("../assets/sprites/fire.png");
+    tilemap->fire_animation.max_frames = (f32)tilemap->fire_animation.texture[0].width/SPRITE_WIDTH;
+    tilemap->fire_animation.frame_rec      = {0.0f, 0.0f,
+                                    (f32)tilemap->fire_animation.texture[0].width/tilemap->fire_animation.max_frames,
+                                    (f32)tilemap->fire_animation.texture[0].height};
+    tilemap->fire_animation.current_frame  = 0;
+    tilemap->fire_animation.looping        = true;
 }
 
 void StackInit(StackU32 *stack) {
@@ -53,19 +60,6 @@ void TileSeedInit(Tile *tile) {
     }
 }
 
-void TileInit(Tilemap *tilemap, Animation fire_animator) {
-    for (u32 y = 0; y < tilemap->height; y++) {
-        for (u32 x = 0; x < tilemap->width; x++) {
-            u32 index      = TilemapIndex(x, y, tilemap->width);
-            Tile *tile     = &tilemap->tiles[index];
-            tile->type     = (Tile_Type)tilemap->original_map[index];
-            tile->flags    = 0;
-            tile->animator = fire_animator;
-            TileSeedInit(tile);
-        }
-    }
-}
-
 void TileInit(Tilemap *tilemap) {
     for (u32 y = 0; y < tilemap->height; y++) {
         for (u32 x = 0; x < tilemap->width; x++) {
@@ -73,6 +67,7 @@ void TileInit(Tilemap *tilemap) {
             Tile *tile     = &tilemap->tiles[index];
             tile->type     = (Tile_Type)tilemap->original_map[index];
             tile->flags    = 0;
+            tile->animator = tilemap->fire_animation;
             TileSeedInit(tile);
         }
     }
@@ -1095,13 +1090,14 @@ int main() {
     // Initialisation
     // -------------------------------------
 
-    const int window_width  = 1280;
-    const int window_height = 1280; //720;
-    const int extra_height  = 100; //720;
-    InitWindow(window_width, window_height, "Garden");
-
+    InitWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "Anunnaki");
     InitAudioDevice();
 
+    // TODO: I don't really know how I feel about this living here. At least if it's 
+    // here I can initialise it how I want it straight away. If I put it into the 
+    // game manager struct then it's more annoying to initialise this array. I'd 
+    // probably have to loop over the array... so I guess for now it can live here 
+    // until I can come up with a clearly better solution.
     Font font = LoadFont("../assets/fonts/Ammaine-Standard.ttf");
     const char *hype_text[HYPE_WORD_COUNT] = {"WOW",      "YEAH",   "AMAZING",      "SANCTIFY", 
                                               "HOLY COW", "DIVINE", "UNBELIEVABLE", "WOAH",
@@ -1109,27 +1105,6 @@ int main() {
 
     Tilemap map;
     TilemapInit(&map);
-#if 0
-    u32 tilemap[TILEMAP_HEIGHT][TILEMAP_WIDTH] = {
-        { 4, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 1, },
-        { 1, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 4, },
-        { 4, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 1, },
-        { 1, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 4, },
-        { 4, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 1, },
-        { 1, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 4, },
-        { 4, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 1, },
-        { 1, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 4, },
-        { 4, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 1, },
-        { 1, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 4, },
-        { 4, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 1, },
-        { 1, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 4, },
-        { 4, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 1, },
-        { 1, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 4, },
-        { 4, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 1, },
-        { 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, },
-
-    };
-#else 
     u32 tilemap[TILEMAP_HEIGHT][TILEMAP_WIDTH] = {
         { 4, 1, 0, 0, 0, 0, 4, 0, 0, 1, 0, 0, 0, 0, 4, 1, },
         { 1, 4, 1, 4, 1, 4, 1, 0, 0, 4, 1, 4, 1, 4, 1, 4, },
@@ -1149,22 +1124,17 @@ int main() {
         { 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, },
 
     };
-#endif
     Tile tiles[TILEMAP_HEIGHT][TILEMAP_WIDTH];
 
-    Animation fire_animator;
-    fire_animator.texture[0]     = LoadTexture("../assets/sprites/fire.png");
-    fire_animator.max_frames     = (f32)fire_animator.texture[0].width/SPRITE_WIDTH;
-    fire_animator.frame_rec      = {0.0f, 0.0f,
-                                    (f32)fire_animator.texture[0].width/fire_animator.max_frames,
-                                    (f32)fire_animator.texture[0].height};
-    fire_animator.current_frame  = 0;
-    fire_animator.looping        = true;
+    // TODO: I should make this live in the tilemap struct because tiles 
+    // get all their information from the tilemap it seems, and then the 
+    // tile init function is cleaner as well because I will only need to 
+    // pass in the tilemap as the only argument.
 
     map.original_map = (u32 *)&tilemap;
     map.tiles        = (Tile *)&tiles;
 
-    TileInit(&map, fire_animator);
+    TileInit(&map);
 
     Player player = {};
     PlayerInit(&player);
@@ -1938,26 +1908,16 @@ int main() {
         BeginDrawing();
         ClearBackground(DARKGRAY);
 
-        float scale_x = (float)window_width  / base_screen_width;
-        float scale_y = (float)(window_height ) / base_screen_height;
+        float scale_x = (float)WINDOW_WIDTH  / base_screen_width;
+        float scale_y = (float)WINDOW_HEIGHT / base_screen_height;
         Vector2 shake_offset = GetScreenShakeOffset(&manager.screen_shake);
 
-#if 0
         Rectangle dest_rect = {
-            ((window_width - (base_screen_width * scale_x)) * 0.5f) + shake_offset.x,
-            ((window_height - (base_screen_height * scale_y)) * 0.5f) + extra_height + shake_offset.y,
+            ((WINDOW_WIDTH - (base_screen_width * scale_x)) * 0.5f) + shake_offset.x,
+            ((WINDOW_HEIGHT - (base_screen_height * scale_y)) * 0.5f) + shake_offset.y,
             base_screen_width * scale_x,
             base_screen_height * scale_y,
         };
-
-#else
-            Rectangle dest_rect = {
-                ((window_width - (base_screen_width * scale_x)) * 0.5f) + shake_offset.x,
-                ((window_height - (base_screen_height * scale_y)) * 0.5f) + shake_offset.y,
-                base_screen_width * scale_x,
-                base_screen_height * scale_y,
-            };
-#endif
 
         Rectangle rect = {0.0f, 0.0f, (float)target.texture.width, -(float)target.texture.height}; 
         Vector2 zero_vec = {0, 0};
@@ -1980,22 +1940,17 @@ int main() {
                 const char *combo = manager.score_multiplier > 1 ? 
                                     TextFormat("%d Combo", manager.score_multiplier) :
                                     ("0 Combo");
-                DrawText(combo, window_width - ((text_base_x + shadow_offset) + MeasureText(combo, font_size)) + shake_offset.x, 
+                DrawText(combo, WINDOW_WIDTH - ((text_base_x + shadow_offset) + MeasureText(combo, font_size)) + shake_offset.x, 
                          (text_base_y + shadow_offset) + shake_offset.y, font_size, BLACK);
-                DrawText(combo, window_width - (text_base_x + MeasureText(combo, font_size)) + shake_offset.x, 
+                DrawText(combo, WINDOW_WIDTH - (text_base_x + MeasureText(combo, font_size)) + shake_offset.x, 
                              text_base_y + shake_offset.y, font_size, WHITE);
             }
         };
 
         if (fire_cleared && player.powered_up) {
-            //DrawText("WIN", window_width*0.5, window_height*0.5, 69, WHITE);
-            if (manager.state != GameState_win && manager.state != GameState_epilogue && 
-                manager.state != GameState_win_text) {
+            if (manager.state == GameState_play) {
                 manager.state = GameState_win;
             }
-        }
-
-        if (manager.state == GameState_play) {
         }
 
         EndDrawing();

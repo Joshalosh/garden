@@ -1,4 +1,6 @@
 
+#define WINDOW_WIDTH  1280
+#define WINDOW_HEIGHT 1280
 #define TILEMAP_WIDTH  16
 #define TILEMAP_HEIGHT 16
 #define TILE_SIZE 20
@@ -135,20 +137,21 @@ struct Animation {
 };
 
 struct Tile {
-    Tile_Type  type;
-    u32        flags;
-    u32        seed;
-    Vector2    pos;
-    Animation  animator;
+    Tile_Type type;
+    u32       flags;
+    u32       seed;
+    Vector2   pos;
+    Animation animator;
 };
 
 struct Tilemap {
-    u32   width;
-    u32   height;
-    u32   tile_size;
+    u32        width;
+    u32        height;
+    u32        tile_size;
+    Animation  fire_animation;
 
-    u32  *original_map;
-    Tile *tiles;
+    u32       *original_map;
+    Tile      *tiles;
 };
 
 struct Input_Buffer {
