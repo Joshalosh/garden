@@ -280,8 +280,8 @@ struct Event_Queue {
 };
 
 struct Event_Manager {
-    Event_Queue sequences[Sequence_count];
-    Event_Queue original_sequences[Sequence_count];
+    Event_Queue sequence[Sequence_count];
+    Event_Queue original_sequence[Sequence_count];
 };
 
 struct Gui {

@@ -360,6 +360,56 @@ void TutorialInit(Tutorial_Entities *entities) {
     entities->fire.looping          = true;
 }
 
+void ResetEvents(Event_Manager *manager) {
+    manager->sequence[Sequence_win]      = manager->original_sequence[Sequence_win];
+    manager->sequence[Sequence_tutorial] = manager->original_sequence[Sequence_tutorial];
+    manager->sequence[Sequence_begin]    = manager->original_sequence[Sequence_begin];
+};
+
+void SetupEventSequences(Event_Manager *manager) {
+
+    // Setup the winning event sequence.
+    manager->original_sequence[Sequence_win].events[1].type = EventType_fade_in;
+    manager->original_sequence[Sequence_win].events[1].duration = 1.0f;
+    manager->original_sequence[Sequence_win].events[1].fadeable = {};
+    manager->original_sequence[Sequence_win].events[2] = {EventType_wait, 2.0f, 0, 0, 0};
+    manager->original_sequence[Sequence_win].events[2].fadeable.alpha = 1.0f;
+    manager->original_sequence[Sequence_win].events[3].type = EventType_fade_in;
+    manager->original_sequence[Sequence_win].events[3].duration = 2.0f;
+    manager->original_sequence[Sequence_win].events[3].fadeable = {};
+    manager->original_sequence[Sequence_win].count  = 4;
+    manager->original_sequence[Sequence_win].active = false;
+
+    // The tutorial screen sequence.
+    manager->original_sequence[Sequence_tutorial].events[0].type = EventType_fade_in;
+    manager->original_sequence[Sequence_tutorial].events[0].duration = 2.0f;
+    manager->original_sequence[Sequence_tutorial].events[0].fadeable = {};
+    manager->original_sequence[Sequence_tutorial].events[1].type = EventType_fade_in;
+    manager->original_sequence[Sequence_tutorial].events[1].duration = 2.5f;
+    manager->original_sequence[Sequence_tutorial].events[1].fadeable = {};
+    manager->original_sequence[Sequence_tutorial].events[2].type = EventType_fade_in;
+    manager->original_sequence[Sequence_tutorial].events[2].duration = 2.5f;
+    manager->original_sequence[Sequence_tutorial].events[2].fadeable = {};
+    manager->original_sequence[Sequence_tutorial].events[3] = {EventType_wait, 2.5f, 0, 0, 0};
+    manager->original_sequence[Sequence_tutorial].events[4].type     = EventType_fade_in;
+    manager->original_sequence[Sequence_tutorial].events[4].duration = 2.0f;
+    manager->original_sequence[Sequence_tutorial].events[4].fadeable = {};
+    manager->original_sequence[Sequence_tutorial].count = 5;
+    manager->original_sequence[Sequence_tutorial].active = false;
+
+    // The sequence when the spacebar is pressed at the title screen 
+    // to begin the game.
+    manager->original_sequence[Sequence_begin].events[0] = {EventType_wait, 1.0f};
+    manager->original_sequence[Sequence_begin].events[1] = {EventType_state_change, 0, GameState_tutorial};
+    manager->original_sequence[Sequence_begin].count     = 2;
+    manager->original_sequence[Sequence_begin].active    = false;
+
+    // I need to call this function here to make sure that the 
+    // actual event sequences that get used are set to the base 
+    // values that have just been set up above.
+    ResetEvents(manager);
+}
+
 Enemy *FindEnemyInList(Enemy *sentinel, u32 index)
 {
     Enemy *enemy_to_find = sentinel->next;
@@ -1220,48 +1270,16 @@ int main() {
 
     // TODO: I need to initialise an event in the queue, and then in the future 
     // make this a list of queues to be able to hold multiple event queue sequences
-    Event_Queue win_text_sequence;
-    win_text_sequence.events[0] = {EventType_wait, 1.5f};
-    win_text_sequence.events[1].type = EventType_fade_in;
-    win_text_sequence.events[1].duration = 1.0f;
-    win_text_sequence.events[1].fadeable = {};
-    win_text_sequence.events[2] = {EventType_wait, 2.0f, 0, 0, 0};
-    win_text_sequence.events[2].fadeable.alpha = 1.0f;
-    //win_text_sequence.events[3].type = EventType_fade_out;
-    //win_text_sequence.events[3].duration = 2.0f;
-    //win_text_sequence.events[3].fadeable.alpha = 1.0f;
-    //win_text_sequence.events[4] = {EventType_wait, 2.0f};
-    win_text_sequence.events[3].type = EventType_fade_in;
-    win_text_sequence.events[3].duration = 2.0f;
-    win_text_sequence.events[3].fadeable = {};
-    win_text_sequence.count = 4;
-    win_text_sequence.active = false;
+
+    Event_Manager event_manager;
+    SetupEventSequences(&event_manager);
+
+    Event_Queue *win_sequence      = &event_manager.sequence[Sequence_win];
+    Event_Queue *tutorial          = &event_manager.sequence[Sequence_tutorial];
+    Event_Queue *title_press       = &event_manager.sequence[Sequence_begin];
 
     Tutorial_Entities tutorial_entities;
     TutorialInit(&tutorial_entities);
-
-    Event_Queue tutorial;
-    tutorial.events[0].type = EventType_fade_in;
-    tutorial.events[0].duration = 2.0f;
-    tutorial.events[0].fadeable = {};
-    tutorial.events[1].type = EventType_fade_in;
-    tutorial.events[1].duration = 2.5f;
-    tutorial.events[1].fadeable = {};
-    tutorial.events[2].type = EventType_fade_in;
-    tutorial.events[2].duration = 2.5f;
-    tutorial.events[2].fadeable = {};
-    tutorial.events[3] = {EventType_wait, 2.5f, 0, 0, 0};
-    tutorial.events[4].type     = EventType_fade_in;
-    tutorial.events[4].duration = 2.0f;
-    tutorial.events[4].fadeable = {};
-    tutorial.count = 5;
-    tutorial.active = false;
-
-    Event_Queue title_press;
-    title_press.events[0] = {EventType_wait, 1.0f};
-    title_press.events[1] = {EventType_state_change, 0, GameState_tutorial};
-    title_press.count     = 2;
-    title_press.active    = false;
 
     // TODO: Should this live in the game manager?
     Fade_Object white_screen = {};
@@ -1607,9 +1625,9 @@ int main() {
 
         } else if (manager.state == GameState_win) {
             // Draw tiles in background.
-            if (IsMusicStreamPlaying(song_main))  StopMusicStream(song_main);
+            if (IsMusicStreamPlaying(song_main))   StopMusicStream(song_main);
             if (IsMusicStreamPlaying(song_muted))  StopMusicStream(song_muted);
-            if (!IsMusicStreamPlaying(song_win))  PlayMusicStream(song_win);
+            if (!IsMusicStreamPlaying(song_win))   PlayMusicStream(song_win);
 
             DrawGame(&map, &manager, &player, &fire_wobble, delta_t, &fire_cleared);
 
@@ -1641,14 +1659,16 @@ int main() {
             DrawScreenFadeCol(&white_screen, base_screen_width, base_screen_height, WHITE);
             DrawGodFace(&manager, delta_t);
 
+#if 0
             if (IsKeyPressed(KEY_SPACE)) {
                 GameOver(&player, &map, &manager);
             }
+#endif
 
         } else if (manager.state == GameState_win_text) {
             // TODO: this whole state is a bit of a messy bessy and I need to clean 
             // dat ass up.
-            UpdateEventQueue(&win_text_sequence, &manager, delta_t);
+            UpdateEventQueue(win_sequence, &manager, delta_t);
 
             DrawScreenFadeCol(&white_screen, base_screen_width, base_screen_height, WHITE);
 
@@ -1707,17 +1727,18 @@ int main() {
                            manager.gui.animators[face_type].frame_rec, current_pos, WHITE);
 #endif
 
-            if (!win_text_sequence.active) StartEventSequence(&win_text_sequence);
+            if (!win_sequence->active) StartEventSequence(win_sequence);
 
-            Event event = win_text_sequence.events[1];
+            Event event = win_sequence->events[1];
             DrawTextTripleEffect(message, text_pos, font_size, event.fadeable.alpha); 
 
             UpdateSpacebarBob(&spacebar_text, delta_t);
             DrawTextTripleEffect(spacebar_text.text, spacebar_text.pos, spacebar_text.size, 
-                                 win_text_sequence.events[3].fadeable.alpha); 
+                                 win_sequence->events[3].fadeable.alpha); 
 
             if (IsKeyPressed(KEY_SPACE)) {
-                win_text_sequence.active = false;
+                win_sequence->active = false;
+                ResetEvents(&event_manager);
                 if (face_type != GodAnimator_happy) manager.state = GameState_title;
                 else                                manager.state = GameState_epilogue;
             }
@@ -1745,6 +1766,7 @@ int main() {
 
             DrawScreenFadeCol(&white_screen, base_screen_width, base_screen_height, WHITE);
             if (IsKeyPressed(KEY_SPACE)) {
+                ResetEvents(&event_manager);
                 manager.state = GameState_title;
             }
 
@@ -1752,9 +1774,9 @@ int main() {
             if (IsMusicStreamPlaying(song_intro))     StopMusicStream(song_intro);
             if (!IsMusicStreamPlaying(song_tutorial)) PlayMusicStream(song_tutorial);
 
-            UpdateEventQueue(&tutorial, &manager, delta_t);
+            UpdateEventQueue(tutorial, &manager, delta_t);
             DrawRectangle(0, 0, base_screen_width, base_screen_height, BLACK);
-            if (!tutorial.active) StartEventSequence(&tutorial);
+            if (!tutorial->active) StartEventSequence(tutorial);
 
             const char *sacred_fire  = "Clear all of the fire to complete the ritual";
             const char *powerup      = "Collect powerups to clear the fire";
@@ -1766,13 +1788,13 @@ int main() {
             Vector2 powerup_text_pos = {text_pos_x, (base_screen_height*0.5f) - font_size};
             Vector2 demon_text_pos   = {text_pos_x, powerup_text_pos.y - font_size*4};
             Vector2 fire_text_pos    = {text_pos_x, powerup_text_pos.y + font_size*4};
-            DrawTextTripleEffect(demon,       demon_text_pos,   font_size, tutorial.events[0].fadeable.alpha);
-            DrawTextTripleEffect(powerup,     powerup_text_pos, font_size, tutorial.events[1].fadeable.alpha);
-            DrawTextTripleEffect(sacred_fire, fire_text_pos,    font_size, tutorial.events[2].fadeable.alpha);
+            DrawTextTripleEffect(demon,       demon_text_pos,   font_size, tutorial->events[0].fadeable.alpha);
+            DrawTextTripleEffect(powerup,     powerup_text_pos, font_size, tutorial->events[1].fadeable.alpha);
+            DrawTextTripleEffect(sacred_fire, fire_text_pos,    font_size, tutorial->events[2].fadeable.alpha);
 
             UpdateSpacebarBob(&spacebar_text, delta_t);
             DrawTextTripleEffect(spacebar_text.text, spacebar_text.pos, font_size, 
-                                 tutorial.events[4].fadeable.alpha);
+                                 tutorial->events[4].fadeable.alpha);
             Vector2 demon_pos   = {(f32)demon_text_pos.x - tutorial_entities.enemy.frame_rec.width - icon_padding, 
                                    (f32)demon_text_pos.y - (tutorial_entities.enemy.frame_rec.height*0.5f)-font_size};
             Vector2 powerup_pos = {(f32)powerup_text_pos.x - tutorial_entities.powerup.frame_rec.width - icon_padding, 
@@ -1783,30 +1805,37 @@ int main() {
             Animate(&tutorial_entities.powerup, manager.frame_counter);
             Animate(&tutorial_entities.fire, manager.frame_counter);
             DrawTextureRec(tutorial_entities.enemy.texture[0], tutorial_entities.enemy.frame_rec, 
-                           demon_pos, Fade(WHITE, tutorial.events[0].fadeable.alpha)); 
+                           demon_pos, Fade(WHITE, tutorial->events[0].fadeable.alpha)); 
             DrawTextureRec(tutorial_entities.powerup.texture[0], tutorial_entities.powerup.frame_rec, 
-                           powerup_pos, Fade(WHITE, tutorial.events[1].fadeable.alpha)); 
+                           powerup_pos, Fade(WHITE, tutorial->events[1].fadeable.alpha)); 
             BeginShaderMode(fire_wobble.shader);
             DrawTextureRec(tutorial_entities.fire.texture[0], tutorial_entities.fire.frame_rec, 
-                           fire_pos, Fade(WHITE, tutorial.events[2].fadeable.alpha)); 
+                           fire_pos, Fade(WHITE, tutorial->events[2].fadeable.alpha)); 
             EndShaderMode();
 
             if (IsKeyPressed(KEY_SPACE)) {
-                tutorial.active = false;
+                tutorial->active = false;
                 GameOver(&player, &map, &manager);
             }
 
         } else if (manager.state == GameState_title) {
+            
+            // TODO: this is temporarily here to reset the white screen and 
+            // other things that need to be reset for multiple continuous 
+            // playthroughs. I'm going to need a cleaner way to reset these 
+            // things.
+            white_screen.alpha = 0.0f;
+            manager.gui.step = 0.0f;
 
             if (IsMusicStreamPlaying(song_main))      StopMusicStream(song_main);
             if (IsMusicStreamPlaying(song_muted))     StopMusicStream(song_muted);
             if (IsMusicStreamPlaying(song_win))       StopMusicStream(song_win);
 
-            UpdateEventQueue(&title_press, &manager, delta_t);
+            UpdateEventQueue(title_press, &manager, delta_t);
             Game_Title *title = &title_screen_manager.title;
             UpdateTitleBob(title, delta_t);
 
-            if (!IsMusicStreamPlaying(song_intro) && !title_press.active)  
+            if (!IsMusicStreamPlaying(song_intro) && !title_press->active)  
             {
                 PlayMusicStream(song_intro);
                 TriggerTitleBob(title, 5.0f);
@@ -1882,7 +1911,7 @@ int main() {
             DrawTextTripleEffect(play_text->text, play_text->pos, play_text->font_size);
             
             if (IsKeyPressed(KEY_SPACE)) {
-                if (!title_press.active) StartEventSequence(&title_press);
+                if (!title_press->active) StartEventSequence(title_press);
                 if (IsMusicStreamPlaying(song_intro)) StopMusicStream(song_intro);
                 if (!IsSoundPlaying(manager.sounds[SoundEffect_spacebar])) {
                     PlaySound(manager.sounds[SoundEffect_spacebar]);
@@ -1890,7 +1919,7 @@ int main() {
                 //GameOver(&player, &map, &manager);
             }
 
-            if (title_press.active) {
+            if (title_press->active) {
                 f32 pulse = (sinf(GetTime() * 48.0f) * 0.5f + 0.5f);
                 u32 alpha = (u32)(pulse * 255);
                 Color flash_col = {255, 255, 255, (u8)alpha};
