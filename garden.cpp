@@ -1171,6 +1171,7 @@ int main() {
 
     Player player = {};
     PlayerInit(&player);
+    PlayerAnimationInit(&player);
 
     // Initialise the basic player body animator
     Vector2 input_axis       = {0, 0};
