@@ -1098,10 +1098,13 @@ int main() {
     // game manager struct then it's more annoying to initialise this array. I'd 
     // probably have to loop over the array... so I guess for now it can live here 
     // until I can come up with a clearly better solution.
-    Font font = LoadFont("../assets/fonts/Ammaine-Standard.ttf");
     const char *hype_text[HYPE_WORD_COUNT] = {"WOW",      "YEAH",   "AMAZING",      "SANCTIFY", 
                                               "HOLY COW", "DIVINE", "UNBELIEVABLE", "WOAH",
                                               "AWESOME",  "COSMIC", "RITUALISTIC",  "LEGENDARY"};
+    // TODO: This font is only being used in the draw text burst function to get it's font size 
+    // but it's not even the font that is being drawn, this is a little weird, i'm going to 
+    // have to change this to be cleaner and make more immediate sense
+    Font font = LoadFont("../assets/fonts/Ammaine-Standard.ttf");
 
     Tilemap map;
     TilemapInit(&map);
@@ -1125,11 +1128,6 @@ int main() {
 
     };
     Tile tiles[TILEMAP_HEIGHT][TILEMAP_WIDTH];
-
-    // TODO: I should make this live in the tilemap struct because tiles 
-    // get all their information from the tilemap it seems, and then the 
-    // tile init function is cleaner as well because I will only need to 
-    // pass in the tilemap as the only argument.
 
     map.original_map = (u32 *)&tilemap;
     map.tiles        = (Tile *)&tiles;
