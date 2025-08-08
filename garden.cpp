@@ -91,8 +91,43 @@ void PlayerInit(Player *player) {
     }
     player->input_buffer.start = 0;
     player->input_buffer.end   = 0;
-
 }
+
+void PlayerAnimationInit(Player *player) {
+    // TODO: Do I really need to have multiple textures for an animator and 
+    // also multiple animators? That seems a little bit overkill. Having 
+    // each animator just have a single texture might make the player animation 
+    // init larger but would make every other animator shorter, simpler and cleaner.
+    player->animators[PlayerAnimator_body].texture[DirectionFacing_down]  = 
+        LoadTexture("../assets/sprites/hat_down.png");
+    player->animators[PlayerAnimator_body].texture[DirectionFacing_up]    = 
+        LoadTexture("../assets/sprites/hat_up.png");
+    player->animators[PlayerAnimator_body].texture[DirectionFacing_left]  = 
+        LoadTexture("../assets/sprites/hat_right.png");
+    player->animators[PlayerAnimator_body].texture[DirectionFacing_right] = 
+        LoadTexture("../assets/sprites/hat_right.png");
+    player->animators[PlayerAnimator_body].texture[DirectionFacing_celebration] = 
+        LoadTexture("../assets/sprites/celebration.png");
+    player->animators[PlayerAnimator_body].frame_rec = 
+        {0.0f, 0.0f, 
+        (f32)player->animators[PlayerAnimator_body].texture[DirectionFacing_down].width/4,
+        (f32)player->animators[PlayerAnimator_body].texture[DirectionFacing_down].height}; 
+    player->animators[PlayerAnimator_body].current_frame = 0;
+    player->animators[PlayerAnimator_body].looping       = true;
+
+    // Initialise the powerup animator
+    player->animators[PlayerAnimator_water].texture[0] = LoadTexture("../assets/sprites/water_down.png");
+    player->animators[PlayerAnimator_water].max_frames = 
+        (f32)player->animators[PlayerAnimator_water].texture[0].width/SPRITE_WIDTH;
+    player->animators[PlayerAnimator_water].frame_rec  = 
+        {0.0f, 0.0f, 
+        (f32)player->animators[PlayerAnimator_water].texture[0].width /
+             player->animators[PlayerAnimator_water].max_frames,
+        (f32)player->animators[PlayerAnimator_water].texture[0].height};
+    player->animators[PlayerAnimator_water].current_frame = 0;
+    player->animators[PlayerAnimator_water].looping       = true;
+}
+
 
 void GameManagerInit(Game_Manager *manager) {
     manager->score                  = 0;
@@ -1129,8 +1164,8 @@ int main() {
     };
     Tile tiles[TILEMAP_HEIGHT][TILEMAP_WIDTH];
 
-    map.original_map = (u32 *)&tilemap;
-    map.tiles        = (Tile *)&tiles;
+    map.original_map = &tilemap[0][0];
+    map.tiles        = &tiles[0][0];
 
     TileInit(&map);
 
@@ -1138,35 +1173,6 @@ int main() {
     PlayerInit(&player);
 
     // Initialise the basic player body animator
-    player.animators[PlayerAnimator_body].texture[DirectionFacing_down]  = 
-        LoadTexture("../assets/sprites/hat_down.png");
-    player.animators[PlayerAnimator_body].texture[DirectionFacing_up]    = 
-        LoadTexture("../assets/sprites/hat_up.png");
-    player.animators[PlayerAnimator_body].texture[DirectionFacing_left]  = 
-        LoadTexture("../assets/sprites/hat_right.png");
-    player.animators[PlayerAnimator_body].texture[DirectionFacing_right] = 
-        LoadTexture("../assets/sprites/hat_right.png");
-    player.animators[PlayerAnimator_body].texture[DirectionFacing_celebration] = 
-        LoadTexture("../assets/sprites/celebration.png");
-    player.animators[PlayerAnimator_body].frame_rec = 
-        {0.0f, 0.0f, 
-        (f32)player.animators[PlayerAnimator_body].texture[DirectionFacing_down].width/4,
-        (f32)player.animators[PlayerAnimator_body].texture[DirectionFacing_down].height}; 
-    player.animators[PlayerAnimator_body].current_frame = 0;
-    player.animators[PlayerAnimator_body].looping       = true;
-
-    // Initialise the powerup animator
-    player.animators[PlayerAnimator_water].texture[0] = LoadTexture("../assets/sprites/water_down.png");
-    player.animators[PlayerAnimator_water].max_frames = 
-        (f32)player.animators[PlayerAnimator_water].texture[0].width/SPRITE_WIDTH;
-    player.animators[PlayerAnimator_water].frame_rec  = 
-        {0.0f, 0.0f, 
-        (f32)player.animators[PlayerAnimator_water].texture[0].width /
-             player.animators[PlayerAnimator_water].max_frames,
-        (f32)player.animators[PlayerAnimator_water].texture[0].height};
-    player.animators[PlayerAnimator_water].current_frame = 0;
-    player.animators[PlayerAnimator_water].looping       = true;
-
     Vector2 input_axis       = {0, 0};
 
     Game_Manager manager;
