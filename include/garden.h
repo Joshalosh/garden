@@ -61,7 +61,11 @@ enum Direction_Facing {
 };
 
 enum Player_Animator {
-    PlayerAnimator_body,
+    PlayerAnimator_down,
+    PlayerAnimator_up,
+    PlayerAnimator_left,
+    PlayerAnimator_right,
+    PlayerAnimator_celebration,
     PlayerAnimator_water,
     PlayerAnimator_count,
 };
@@ -129,7 +133,7 @@ struct Fade_Object {
 };
 
 struct Animation {
-    Texture2D texture[10];
+    Texture2D texture;
     u32       max_frames;
     u32       current_frame;
     Rectangle frame_rec;

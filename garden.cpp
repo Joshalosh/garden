@@ -10,17 +10,22 @@
 
 #include "shader.cpp"
 
+void AnimatorInit(Animation *animator, const char *path, u32 sprite_width, b32 looping) {
+    animator->texture       = LoadTexture(path);
+    animator->max_frames    = (f32)animator->texture.width / sprite_width;
+    animator->frame_rec     = {0.0f, 0.0f,
+                               (f32)animator->texture.width / animator->max_frames,
+                               (f32)animator->texture.height};
+    animator->current_frame = 0;
+    animator->looping       = looping;
+}
+
 void TilemapInit(Tilemap *tilemap) {
     tilemap->width       = TILEMAP_WIDTH;
     tilemap->height      = TILEMAP_HEIGHT;
     tilemap->tile_size   = TILE_SIZE;
-    tilemap->fire_animation.texture[0] = LoadTexture("../assets/sprites/fire.png");
-    tilemap->fire_animation.max_frames = (f32)tilemap->fire_animation.texture[0].width/SPRITE_WIDTH;
-    tilemap->fire_animation.frame_rec      = {0.0f, 0.0f,
-                                    (f32)tilemap->fire_animation.texture[0].width/tilemap->fire_animation.max_frames,
-                                    (f32)tilemap->fire_animation.texture[0].height};
-    tilemap->fire_animation.current_frame  = 0;
-    tilemap->fire_animation.looping        = true;
+    b32 animation_looping = true;
+    AnimatorInit(&tilemap->fire_animation, "../assets/sprites/fire.png", SPRITE_WIDTH, animation_looping); 
 }
 
 void StackInit(StackU32 *stack) {
@@ -85,7 +90,6 @@ void PlayerInit(Player *player) {
     player->time_between_blinks = 0;
     player->col_bool            = false;
     player->facing              = DirectionFacing_down;
-    //player->queued_facing = DirectionFacing_none;
     for(u32 index = 0; index < INPUT_MAX; index++) {
         player->input_buffer.inputs[index] = DirectionFacing_down;
     }
@@ -93,39 +97,22 @@ void PlayerInit(Player *player) {
     player->input_buffer.end   = 0;
 }
 
-void PlayerAnimationInit(Player *player) {
-    // TODO: Do I really need to have multiple textures for an animator and 
-    // also multiple animators? That seems a little bit overkill. Having 
-    // each animator just have a single texture might make the player animation 
-    // init larger but would make every other animator shorter, simpler and cleaner.
-    player->animators[PlayerAnimator_body].texture[DirectionFacing_down]  = 
-        LoadTexture("../assets/sprites/hat_down.png");
-    player->animators[PlayerAnimator_body].texture[DirectionFacing_up]    = 
-        LoadTexture("../assets/sprites/hat_up.png");
-    player->animators[PlayerAnimator_body].texture[DirectionFacing_left]  = 
-        LoadTexture("../assets/sprites/hat_right.png");
-    player->animators[PlayerAnimator_body].texture[DirectionFacing_right] = 
-        LoadTexture("../assets/sprites/hat_right.png");
-    player->animators[PlayerAnimator_body].texture[DirectionFacing_celebration] = 
-        LoadTexture("../assets/sprites/celebration.png");
-    player->animators[PlayerAnimator_body].frame_rec = 
-        {0.0f, 0.0f, 
-        (f32)player->animators[PlayerAnimator_body].texture[DirectionFacing_down].width/4,
-        (f32)player->animators[PlayerAnimator_body].texture[DirectionFacing_down].height}; 
-    player->animators[PlayerAnimator_body].current_frame = 0;
-    player->animators[PlayerAnimator_body].looping       = true;
-
-    // Initialise the powerup animator
-    player->animators[PlayerAnimator_water].texture[0] = LoadTexture("../assets/sprites/water_down.png");
-    player->animators[PlayerAnimator_water].max_frames = 
-        (f32)player->animators[PlayerAnimator_water].texture[0].width/SPRITE_WIDTH;
-    player->animators[PlayerAnimator_water].frame_rec  = 
-        {0.0f, 0.0f, 
-        (f32)player->animators[PlayerAnimator_water].texture[0].width /
-             player->animators[PlayerAnimator_water].max_frames,
-        (f32)player->animators[PlayerAnimator_water].texture[0].height};
-    player->animators[PlayerAnimator_water].current_frame = 0;
-    player->animators[PlayerAnimator_water].looping       = true;
+void PlayerAnimatorInit(Player *player) {
+    b32 looping = true;
+    AnimatorInit(&player->animators[PlayerAnimator_down], "../assets/sprites/hat_down.png", 
+                 SPRITE_WIDTH, looping); 
+    AnimatorInit(&player->animators[PlayerAnimator_up], "../assets/sprites/hat_up.png", 
+                 SPRITE_WIDTH, looping); 
+    // The left animation uses the same texture as the right animation 
+    // and then it just gets flipped along the x axis.
+    AnimatorInit(&player->animators[PlayerAnimator_left], "../assets/sprites/hat_right.png", 
+                 SPRITE_WIDTH, looping); 
+    AnimatorInit(&player->animators[PlayerAnimator_right], "../assets/sprites/hat_right.png", 
+                 SPRITE_WIDTH, looping); 
+    AnimatorInit(&player->animators[PlayerAnimator_celebration], "../assets/sprites/celebration.png", 
+                 SPRITE_WIDTH, looping); 
+    AnimatorInit(&player->animators[PlayerAnimator_water], "../assets/sprites/water_down.png", 
+                 SPRITE_WIDTH, looping); 
 }
 
 
@@ -143,34 +130,16 @@ void GameManagerInit(Game_Manager *manager) {
     manager->gui.anim_duration      = 4.0f;
     manager->gui.step               = 0.0f;
 
-    manager->gui.animators[GodAnimator_angry].texture[0]    = LoadTexture("../assets/sprites/angry.png");
-    manager->gui.animators[GodAnimator_angry].max_frames    = (f32)manager->gui.animators[GodAnimator_angry].texture[0].width/40;
-    manager->gui.animators[GodAnimator_angry].current_frame = 0;
-    manager->gui.animators[GodAnimator_angry].looping       = false;
-    manager->gui.animators[GodAnimator_angry].frame_rec     = {0, 0, 
-                                                          (f32)manager->gui.animators[GodAnimator_angry].texture[0].width /
-                                                               manager->gui.animators[GodAnimator_angry].max_frames,
-                                                          (f32)manager->gui.animators[GodAnimator_angry].texture[0].height};
+    u32 gui_face_size               = SPRITE_WIDTH * 2;
+    b32 animation_looping           = false;
+    AnimatorInit(&manager->gui.animators[GodAnimator_angry], "../assets/sprites/angry.png", 
+                 gui_face_size, animation_looping);
+    AnimatorInit(&manager->gui.animators[GodAnimator_satisfied], "../assets/sprites/meh.png",
+                 gui_face_size, animation_looping);
+    AnimatorInit(&manager->gui.animators[GodAnimator_happy], "../assets/sprites/happy.png", 
+                 gui_face_size, animation_looping);
 
-    manager->gui.animators[GodAnimator_satisfied].texture[0]    = LoadTexture("../assets/sprites/meh.png");
-    manager->gui.animators[GodAnimator_satisfied].max_frames    = (f32)manager->gui.animators[GodAnimator_satisfied].texture[0].width/40;
-    manager->gui.animators[GodAnimator_satisfied].current_frame = 0;
-    manager->gui.animators[GodAnimator_satisfied].looping       = false;
-    manager->gui.animators[GodAnimator_satisfied].frame_rec     = {0, 0, 
-                                                          (f32)manager->gui.animators[GodAnimator_satisfied].texture[0].width /
-                                                               manager->gui.animators[GodAnimator_satisfied].max_frames,
-                                                          (f32)manager->gui.animators[GodAnimator_satisfied].texture[0].height};
-
-    manager->gui.animators[GodAnimator_happy].texture[0]    = LoadTexture("../assets/sprites/happy.png");
-    manager->gui.animators[GodAnimator_happy].max_frames    = (f32)manager->gui.animators[GodAnimator_happy].texture[0].width/40;
-    manager->gui.animators[GodAnimator_happy].current_frame = 0;
-    manager->gui.animators[GodAnimator_happy].looping       = false;
-    manager->gui.animators[GodAnimator_happy].frame_rec     = {0, 0, 
-                                                          (f32)manager->gui.animators[GodAnimator_happy].texture[0].width /
-                                                               manager->gui.animators[GodAnimator_happy].max_frames,
-                                                          (f32)manager->gui.animators[GodAnimator_happy].texture[0].height};
-
-    manager->state                  = GameState_title; //GameState_play;
+    manager->state                  = GameState_title;
 
     manager->enemy_spawn_duration   = 500.0f;
     manager->spawn_timer            = manager->enemy_spawn_duration;
@@ -206,7 +175,6 @@ void TitleScreenManagerInit(Title_Screen_Manager *manager) {
     manager->title = title;
 
     Title_Screen_Background bg;
-    // TODO: Put this into a loop to load these textures with less lines
     bg.texture[0]    = LoadTexture("../assets/tiles/layer_1.png");
     bg.texture[1]    = LoadTexture("../assets/tiles/layer_2.png");
     bg.texture[2]    = LoadTexture("../assets/tiles/layer_3.png");
@@ -235,13 +203,18 @@ void EndScreenInit(End_Screen *screen) {
     screen->textures[EndLayer_sky]   = LoadTexture("../assets/sprites/win_sky.png"); 
     screen->textures[EndLayer_trees] = LoadTexture("../assets/sprites/win_trees.png"); 
 
-    screen->animator.texture[0]      = LoadTexture("../assets/sprites/win_blink.png"); 
-    screen->animator.max_frames      = (f32)screen->animator.texture[0].width/base_screen_width;
+    u32 texture_width = base_screen_width;
+    b32 animation_looping = false;
+    AnimatorInit(&screen->animator, "../assets/sprites/win_blink.png", texture_width, animation_looping);
+#if 0
+    screen->animator.texture      = LoadTexture("../assets/sprites/win_blink.png"); 
+    screen->animator.max_frames      = (f32)screen->animator.texture.width/base_screen_width;
     screen->animator.frame_rec       = {0.0f, 0.0f,
-                                        (f32)screen->animator.texture[0].width/screen->animator.max_frames,
-                                        (f32)screen->animator.texture[0].height};
+                                        (f32)screen->animator.texture.width/screen->animator.max_frames,
+                                        (f32)screen->animator.texture.height};
     screen->animator.current_frame   = 0;
     screen->animator.looping         = false;
+#endif
 
     screen->timer                    = 0;
     screen->blink_duration           = 3.0f;
@@ -317,13 +290,13 @@ void StopAllSoundBuffers(Game_Manager *manager) {
 
 void PowerupInit(Powerup *powerup, Powerup *sentinel, Tile *tile) {
     powerup->tile                   = tile;
-    powerup->animator.texture[0]    = LoadTexture("../assets/sprites/bowl.png");
-    powerup->animator.max_frames    = (f32)powerup->animator.texture[0].width/20;
+    powerup->animator.texture    = LoadTexture("../assets/sprites/bowl.png");
+    powerup->animator.max_frames    = (f32)powerup->animator.texture.width/20;
     powerup->animator.current_frame = 0;
     powerup->animator.looping       = true;
     powerup->animator.frame_rec     = {0, 0,
-                                       (f32)powerup->animator.texture[0].width/powerup->animator.max_frames,
-                                       (f32)powerup->animator.texture[0].height};
+                                       (f32)powerup->animator.texture.width/powerup->animator.max_frames,
+                                       (f32)powerup->animator.texture.height};
 
     powerup->next       = sentinel->next;
     powerup->prev       = sentinel;
@@ -333,23 +306,23 @@ void PowerupInit(Powerup *powerup, Powerup *sentinel, Tile *tile) {
 
 void EnemyInit(Enemy *enemy, Enemy *sentinel, u32 tile_index) {
     enemy->tile_index             = tile_index;
-    enemy->animators[EnemyAnimator_idle].texture[0]    = LoadTexture("../assets/sprites/demon.png");
-    enemy->animators[EnemyAnimator_idle].max_frames    = (f32)enemy->animators[EnemyAnimator_idle].texture[0].width/20;
+    enemy->animators[EnemyAnimator_idle].texture    = LoadTexture("../assets/sprites/demon.png");
+    enemy->animators[EnemyAnimator_idle].max_frames    = (f32)enemy->animators[EnemyAnimator_idle].texture.width/20;
     enemy->animators[EnemyAnimator_idle].current_frame = 0;
     enemy->animators[EnemyAnimator_idle].looping       = true;
     enemy->animators[EnemyAnimator_idle].frame_rec     = {0, 0, 
-                                                          (f32)enemy->animators[EnemyAnimator_idle].texture[0].width /
+                                                          (f32)enemy->animators[EnemyAnimator_idle].texture.width /
                                                                enemy->animators[EnemyAnimator_idle].max_frames,
-                                                          (f32)enemy->animators[EnemyAnimator_idle].texture[0].height};
+                                                          (f32)enemy->animators[EnemyAnimator_idle].texture.height};
 
-    enemy->animators[EnemyAnimator_destroy].texture[0]    = LoadTexture("../assets/sprites/disappear.png");
-    enemy->animators[EnemyAnimator_destroy].max_frames    = (f32)enemy->animators[EnemyAnimator_destroy].texture[0].width/20;
+    enemy->animators[EnemyAnimator_destroy].texture    = LoadTexture("../assets/sprites/disappear.png");
+    enemy->animators[EnemyAnimator_destroy].max_frames    = (f32)enemy->animators[EnemyAnimator_destroy].texture.width/20;
     enemy->animators[EnemyAnimator_destroy].current_frame = 0;
     enemy->animators[EnemyAnimator_destroy].looping       = false;
     enemy->animators[EnemyAnimator_destroy].frame_rec     = {0, 0, 
-                                                          (f32)enemy->animators[EnemyAnimator_destroy].texture[0].width /
+                                                          (f32)enemy->animators[EnemyAnimator_destroy].texture.width /
                                                                enemy->animators[EnemyAnimator_destroy].max_frames,
-                                                          (f32)enemy->animators[EnemyAnimator_destroy].texture[0].height};
+                                                          (f32)enemy->animators[EnemyAnimator_destroy].texture.height};
 
     enemy->next       = sentinel->next;
     enemy->prev       = sentinel;
@@ -366,26 +339,26 @@ void SpacebarTextInit(Spacebar_Text *text) {
 };
 
 void TutorialInit(Tutorial_Entities *entities) {
-    entities->enemy.texture[0]      = LoadTexture("../assets/sprites/demon.png");
-    entities->enemy.max_frames      = (f32)entities->enemy.texture[0].width/SPRITE_WIDTH;
+    entities->enemy.texture      = LoadTexture("../assets/sprites/demon.png");
+    entities->enemy.max_frames      = (f32)entities->enemy.texture.width/SPRITE_WIDTH;
     entities->enemy.current_frame   = 0;
     entities->enemy.looping         = true;
-    entities->enemy.frame_rec       = {0, 0, (f32)entities->enemy.texture[0].width / entities->enemy.max_frames,
-                                       (f32)entities->enemy.texture[0].height};
+    entities->enemy.frame_rec       = {0, 0, (f32)entities->enemy.texture.width / entities->enemy.max_frames,
+                                       (f32)entities->enemy.texture.height};
 
-    entities->powerup.texture[0]    = LoadTexture("../assets/sprites/bowl.png");
-    entities->powerup.max_frames    = (f32)entities->powerup.texture[0].width/SPRITE_WIDTH;
+    entities->powerup.texture    = LoadTexture("../assets/sprites/bowl.png");
+    entities->powerup.max_frames    = (f32)entities->powerup.texture.width/SPRITE_WIDTH;
     entities->powerup.current_frame = 0;
     entities->powerup.looping       = true;
     entities->powerup.frame_rec     = {0, 0,
-                                       (f32)entities->powerup.texture[0].width/entities->powerup.max_frames,
-                                       (f32)entities->powerup.texture[0].height};
+                                       (f32)entities->powerup.texture.width/entities->powerup.max_frames,
+                                       (f32)entities->powerup.texture.height};
 
-    entities->fire.texture[0]       = LoadTexture("../assets/sprites/fire.png");
-    entities->fire.max_frames       = (f32)entities->fire.texture[0].width/SPRITE_WIDTH;
+    entities->fire.texture       = LoadTexture("../assets/sprites/fire.png");
+    entities->fire.max_frames       = (f32)entities->fire.texture.width/SPRITE_WIDTH;
     entities->fire.frame_rec        = {0.0f, 0.0f,
-                                       (f32)entities->fire.texture[0].width / entities->fire.max_frames,
-                                       (f32)entities->fire.texture[0].height};
+                                       (f32)entities->fire.texture.width / entities->fire.max_frames,
+                                       (f32)entities->fire.texture.height};
     entities->fire.current_frame    = 0;
     entities->fire.looping          = true;
 }
@@ -785,7 +758,7 @@ Rectangle SetAtlasFrameRec(Tile_Type type, u32 seed) {
 
 // TODO: need to clean up this facing argument call
 // TODO: Maybe it would be cleaner to draw the texture as well as animate?
-void Animate(Animation *animator, u32 frame_counter, u32 facing = 0) {
+void Animate(Animation *animator, u32 frame_counter) {
     if (frame_counter % (60/FRAME_SPEED) == 0) {
         animator->current_frame++;
     }
@@ -799,7 +772,7 @@ void Animate(Animation *animator, u32 frame_counter, u32 facing = 0) {
     }
 
     animator->frame_rec.x = (f32)animator->current_frame *
-                           ((f32)animator->texture[facing].width /
+                           ((f32)animator->texture.width /
                            animator->max_frames);
 }
 
@@ -1029,7 +1002,7 @@ void DrawGodFace(Game_Manager *manager, f32 delta_t) {
         manager->gui.animators[face_type].current_frame = 0;
     }
     Animate(&manager->gui.animators[face_type], manager->frame_counter);
-    DrawTextureRec(manager->gui.animators[face_type].texture[0], 
+    DrawTextureRec(manager->gui.animators[face_type].texture, 
                    manager->gui.animators[face_type].frame_rec, face_pos, WHITE);
 }
 
@@ -1085,7 +1058,7 @@ void DrawGame(Tilemap *map, Game_Manager *manager, Player *player, Wobble_Shader
                 *fire_cleared = false;
                 Animate(&tile->animator, manager->frame_counter);
                 BeginShaderMode(fire_wobble->shader);
-                DrawTextureRec(tile->animator.texture[0], 
+                DrawTextureRec(tile->animator.texture, 
                                tile->animator.frame_rec, tile->pos, tile_col);
                 EndShaderMode();
             }
@@ -1093,7 +1066,7 @@ void DrawGame(Tilemap *map, Game_Manager *manager, Player *player, Wobble_Shader
                 Powerup *found_powerup = FindPowerupInList(&manager->powerup_sentinel, tile);
                 if (found_powerup) {
                     Animate(&found_powerup->animator, manager->frame_counter);
-                    DrawTextureRec(found_powerup->animator.texture[0], 
+                    DrawTextureRec(found_powerup->animator.texture, 
                                    found_powerup->animator.frame_rec, tile->pos, WHITE);
                 }
                 //DrawTextureV(powerup_texture, tile->pos, WHITE);
@@ -1103,7 +1076,7 @@ void DrawGame(Tilemap *map, Game_Manager *manager, Player *player, Wobble_Shader
                 if (found_enemy) {
                     Animate(&found_enemy->animators[EnemyAnimator_idle], manager->frame_counter);
                     Vector2 draw_pos = {tile->pos.x, tile->pos.y - 20.f};
-                    DrawTextureRec(found_enemy->animators[EnemyAnimator_idle].texture[0],
+                    DrawTextureRec(found_enemy->animators[EnemyAnimator_idle].texture,
                                    found_enemy->animators[EnemyAnimator_idle].frame_rec, 
                                    draw_pos, WHITE);
                 }
@@ -1143,6 +1116,8 @@ int main() {
 
     Tilemap map;
     TilemapInit(&map);
+    // TODO: I should simplify things to just have a single wall 
+    // and a single ground tile.
     u32 tilemap[TILEMAP_HEIGHT][TILEMAP_WIDTH] = {
         { 4, 1, 0, 0, 0, 0, 4, 0, 0, 1, 0, 0, 0, 0, 4, 1, },
         { 1, 4, 1, 4, 1, 4, 1, 0, 0, 4, 1, 4, 1, 4, 1, 4, },
@@ -1171,7 +1146,7 @@ int main() {
 
     Player player = {};
     PlayerInit(&player);
-    PlayerAnimationInit(&player);
+    PlayerAnimatorInit(&player);
 
     // Initialise the basic player body animator
     Vector2 input_axis       = {0, 0};
@@ -1295,9 +1270,9 @@ int main() {
 
         // The max frames for the body need to be set up here during the main loop 
         // because they are dependant on whichever direction the player is facing
-        player.animators[PlayerAnimator_body].max_frames = 
-            (f32)player.animators[PlayerAnimator_body].texture[player.facing].width/20;
-        Animate(&player.animators[PlayerAnimator_body], manager.frame_counter, player.facing);
+        player.animators[player.facing].max_frames = 
+            (f32)player.animators[player.facing].texture.width/SPRITE_WIDTH;
+        Animate(&player.animators[player.facing], manager.frame_counter);
 
         // TODO: these probably only need to be updated in the states they are used 
         // rather than above everything like this.
@@ -1503,7 +1478,7 @@ int main() {
                 }
 
                 Animate(&player.animators[PlayerAnimator_water], water_frame_counter);
-                DrawTextureRec(player.animators[PlayerAnimator_water].texture[0], 
+                DrawTextureRec(player.animators[PlayerAnimator_water].texture, 
                                player.animators[PlayerAnimator_water].frame_rec, player.target_pos, WHITE);
 
                 if (player.col_bool) {
@@ -1571,21 +1546,21 @@ int main() {
                 manager.enemy_move_timer = manager.enemy_move_duration;
             }
 
-            Rectangle src = player.animators[PlayerAnimator_body].frame_rec;
+            Rectangle src = player.animators[player.facing].frame_rec;
 
             if (player.facing == DirectionFacing_left) {
                 src.x     += src.width;
                 src.width  = -src.width;
             }
             
-            f32 frame_width  = (f32)player.animators[PlayerAnimator_body].frame_rec.width;
-            f32 frame_height = (f32)player.animators[PlayerAnimator_body].texture[player.facing].height;
+            f32 frame_width  = (f32)player.animators[player.facing].frame_rec.width;
+            f32 frame_height = (f32)player.animators[player.facing].texture.height;
 
             Rectangle dest_rect = {player.pos.x, player.pos.y, 
                                    frame_width, frame_height}; 
 
             Vector2 texture_offset = {0.0f, 20.0f};
-            DrawTexturePro(player.animators[PlayerAnimator_body].texture[player.facing], src,
+            DrawTexturePro(player.animators[player.facing].texture, src,
                            dest_rect, texture_offset, 0.0f, player.col);
             for(int index = 0; index < MAX_BURSTS; index++) {
                 UpdateTextBurst(&manager.bursts[index], delta_t);
@@ -1612,19 +1587,19 @@ int main() {
         
             // TODO: Probably should make the player draw it's own function because I use this code 
             // multiple times I think.
-            Rectangle src = player.animators[PlayerAnimator_body].frame_rec;
-
             player.facing = DirectionFacing_celebration;
+            Rectangle src = player.animators[PlayerAnimator_celebration].frame_rec;
+
             BeginScreenShake(&manager.screen_shake, 4.0f, 5.0f, 10.0f);
 
-            f32 frame_width  = (f32)player.animators[PlayerAnimator_body].frame_rec.width;
-            f32 frame_height = (f32)player.animators[PlayerAnimator_body].texture[player.facing].height;
+            f32 frame_width  = (f32)player.animators[PlayerAnimator_celebration].frame_rec.width;
+            f32 frame_height = (f32)player.animators[PlayerAnimator_celebration].texture.height;
 
             Rectangle dest_rect = {player.pos.x, player.pos.y, 
                                    frame_width, frame_height}; 
 
             Vector2 texture_offset = {0.0f, 20.0f};
-            DrawTexturePro(player.animators[PlayerAnimator_body].texture[player.facing], src,
+            DrawTexturePro(player.animators[PlayerAnimator_celebration].texture, src,
                            dest_rect, texture_offset, 0.0f, player.col);
             if (white_screen.alpha == 0.0f) {
                 AlphaFadeIn(&manager, &white_screen, 5.0f);
@@ -1680,7 +1655,7 @@ int main() {
             }
 
             f32 frame_width  = (f32)manager.gui.animators[face_type].frame_rec.width;
-            f32 frame_height = (f32)manager.gui.animators[face_type].texture[0].height;
+            f32 frame_height = (f32)manager.gui.animators[face_type].texture.height;
 
             Vector2 text_pos = {(base_screen_width*0.5f) - (MeasureText(message, font_size)*0.5f), 
                                 base_screen_height*0.5f};
@@ -1695,7 +1670,7 @@ int main() {
 
             Animate(&manager.gui.animators[face_type], manager.frame_counter);
 #if 1
-            DrawTexturePro(manager.gui.animators[face_type].texture[0], src,
+            DrawTexturePro(manager.gui.animators[face_type].texture, src,
                            dest_rect, {0, 0}, 0.0f, WHITE);//Fade(WHITE, win_text_sequence.events[3].fadeable.alpha));
 #else
             DrawTextureRec(manager.gui.animators[face_type].texture[0], 
@@ -1731,7 +1706,7 @@ int main() {
             DrawTextureV(end_screen.textures[EndLayer_trees], {-30.0f, 0}, WHITE);
             EndShaderMode();
             Animate(&end_screen.animator, manager.frame_counter);
-            DrawTextureRec(end_screen.animator.texture[0], 
+            DrawTextureRec(end_screen.animator.texture, 
                            end_screen.animator.frame_rec, {0, 0}, WHITE);
             if (end_screen.timer > end_screen.blink_duration) {
                 end_screen.animator.current_frame = 0;
@@ -1779,12 +1754,12 @@ int main() {
             Animate(&tutorial_entities.enemy, manager.frame_counter);
             Animate(&tutorial_entities.powerup, manager.frame_counter);
             Animate(&tutorial_entities.fire, manager.frame_counter);
-            DrawTextureRec(tutorial_entities.enemy.texture[0], tutorial_entities.enemy.frame_rec, 
+            DrawTextureRec(tutorial_entities.enemy.texture, tutorial_entities.enemy.frame_rec, 
                            demon_pos, Fade(WHITE, tutorial->events[0].fadeable.alpha)); 
-            DrawTextureRec(tutorial_entities.powerup.texture[0], tutorial_entities.powerup.frame_rec, 
+            DrawTextureRec(tutorial_entities.powerup.texture, tutorial_entities.powerup.frame_rec, 
                            powerup_pos, Fade(WHITE, tutorial->events[1].fadeable.alpha)); 
             BeginShaderMode(fire_wobble.shader);
-            DrawTextureRec(tutorial_entities.fire.texture[0], tutorial_entities.fire.frame_rec, 
+            DrawTextureRec(tutorial_entities.fire.texture, tutorial_entities.fire.frame_rec, 
                            fire_pos, Fade(WHITE, tutorial->events[2].fadeable.alpha)); 
             EndShaderMode();
 
