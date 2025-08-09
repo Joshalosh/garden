@@ -25,12 +25,8 @@ const int base_screen_height = 320; //180;
 enum Tile_Type {
     TileType_none        = 0,
     TileType_wall        = 1,
-    TileType_grass       = 2,
-    TileType_dirt        = 3,
-    TileType_wall2       = 4,
-    TileType_fire        = 5,
-    TileType_temp_grass  = 6,
-    TileType_temp_dirt   = 7,
+    TileType_floor       = 2,
+    TileType_fire        = 3,
 };
 
 enum Tile_Flags {
@@ -305,11 +301,11 @@ struct Game_Manager {
     u32          satisfied_score;
     u32          score_multiplier;
 
-    Game_State   state;
     u32          frame_counter;
+    b32          fire_cleared;
+    Game_State   state;
 
     Texture2D    atlas[Atlas_count];
-
     Gui          gui;
 
     // Enemy controller

@@ -54,13 +54,9 @@ u32 TilemapIndex(u32 x, u32 y, u32 width) {
 }
 
 void TileSeedInit(Tile *tile) {
-    // TODO: Need to consolidate tiletype_grass/dirt and tiletype_wall/wall2 
-    // and any other tile types I doubled up for grid based drawing
     switch (tile->type) {
-        case TileType_dirt:
-        case TileType_grass: tile->seed = GetRandomValue(0, TILE_ATLAS_COUNT - 1); break;
-        case TileType_wall:
-        case TileType_wall2: tile->seed = GetRandomValue(0, WALL_ATLAS_COUNT - 1); break;
+        case TileType_floor: tile->seed = GetRandomValue(0, TILE_ATLAS_COUNT - 1); break;
+        case TileType_wall:  tile->seed = GetRandomValue(0, WALL_ATLAS_COUNT - 1); break;
         default:             tile->seed = 0;                                       break;
     }
 }
@@ -116,55 +112,6 @@ void PlayerAnimatorInit(Player *player) {
 }
 
 
-void GameManagerInit(Game_Manager *manager) {
-    manager->score                  = 0;
-    manager->happy_score            = 2500;
-    manager->satisfied_score        = 500;
-    manager->score_multiplier       = 1;
-    manager->frame_counter          = 0;
-
-    manager->atlas[Atlas_tile]      = LoadTexture("../assets/tiles/tile_row.png");
-    manager->atlas[Atlas_wall]      = LoadTexture("../assets/tiles/wall_tiles.png");
-    manager->gui.bar                = LoadTexture("../assets/tiles/bar.png");
-    manager->gui.anim_timer         = 0;
-    manager->gui.anim_duration      = 4.0f;
-    manager->gui.step               = 0.0f;
-
-    u32 gui_face_size               = SPRITE_WIDTH * 2;
-    b32 animation_looping           = false;
-    AnimatorInit(&manager->gui.animators[GodAnimator_angry], "../assets/sprites/angry.png", 
-                 gui_face_size, animation_looping);
-    AnimatorInit(&manager->gui.animators[GodAnimator_satisfied], "../assets/sprites/meh.png",
-                 gui_face_size, animation_looping);
-    AnimatorInit(&manager->gui.animators[GodAnimator_happy], "../assets/sprites/happy.png", 
-                 gui_face_size, animation_looping);
-
-    manager->state                  = GameState_title;
-
-    manager->enemy_spawn_duration   = 500.0f;
-    manager->spawn_timer            = manager->enemy_spawn_duration;
-    manager->enemy_move_duration    = 250.0f;
-    manager->enemy_move_timer       = manager->enemy_move_duration;
-
-    manager->hype_sound_timer       = 0.0f;
-    manager->hype_prev_index        = 0;
-
-    manager->enemy_sentinel         = {};
-    manager->enemy_sentinel.next    = &manager->enemy_sentinel;
-    manager->enemy_sentinel.prev    = &manager->enemy_sentinel;
-
-    // The head of the powerup linked list
-    manager->powerup_sentinel       = {};
-    manager->powerup_sentinel.next  = &manager->powerup_sentinel;
-    manager->powerup_sentinel.prev  = &manager->powerup_sentinel;
-
-    manager->screen_shake.intensity = 0;
-    manager->screen_shake.duration  = 0;
-    manager->screen_shake.decay     = 0;
-
-    manager->fade_count             = 0;
-}
-
 void TitleScreenManagerInit(Title_Screen_Manager *manager) {
     Game_Title title;
     title.texture  = LoadTexture("../assets/titles/anunnaki.png");
@@ -206,15 +153,6 @@ void EndScreenInit(End_Screen *screen) {
     u32 texture_width = base_screen_width;
     b32 animation_looping = false;
     AnimatorInit(&screen->animator, "../assets/sprites/win_blink.png", texture_width, animation_looping);
-#if 0
-    screen->animator.texture      = LoadTexture("../assets/sprites/win_blink.png"); 
-    screen->animator.max_frames      = (f32)screen->animator.texture.width/base_screen_width;
-    screen->animator.frame_rec       = {0.0f, 0.0f,
-                                        (f32)screen->animator.texture.width/screen->animator.max_frames,
-                                        (f32)screen->animator.texture.height};
-    screen->animator.current_frame   = 0;
-    screen->animator.looping         = false;
-#endif
 
     screen->timer                    = 0;
     screen->blink_duration           = 3.0f;
@@ -248,27 +186,27 @@ void EndScreenInit(End_Screen *screen) {
                    &screen->shaders[EndLayer_trees].speed, SHADER_UNIFORM_FLOAT);
 }
 
-void LoadSoundBuffer(Sound *sounds) {
-    sounds[SoundEffect_powerup]         = LoadSound("../assets/sounds/powerup.wav");
-    sounds[SoundEffect_powerup_end]     = LoadSound("../assets/sounds/powerup_end.wav");
-    sounds[SoundEffect_powerup_collect] = LoadSound("../assets/sounds/powerup_collect.wav");
-    sounds[SoundEffect_powerup_appear]  = LoadSound("../assets/sounds/powerup_appear.wav");
-    sounds[SoundEffect_spacebar]        = LoadSound("../assets/sounds/start.wav");
+void LoadSoundBuffer(Sound *sound) {
+    sound[SoundEffect_powerup]         = LoadSound("../assets/sounds/powerup.wav");
+    sound[SoundEffect_powerup_end]     = LoadSound("../assets/sounds/powerup_end.wav");
+    sound[SoundEffect_powerup_collect] = LoadSound("../assets/sounds/powerup_collect.wav");
+    sound[SoundEffect_powerup_appear]  = LoadSound("../assets/sounds/powerup_appear.wav");
+    sound[SoundEffect_spacebar]        = LoadSound("../assets/sounds/start.wav");
 }
 
-void LoadHypeSoundBuffer(Sound *sounds) {
-    sounds[0]  = LoadSound("../assets/sounds/hype_1.wav");
-    sounds[1]  = LoadSound("../assets/sounds/hype_2.wav");
-    sounds[2]  = LoadSound("../assets/sounds/hype_3.wav");
-    sounds[3]  = LoadSound("../assets/sounds/hype_4.wav");
-    sounds[4]  = LoadSound("../assets/sounds/hype_5.wav");
-    sounds[5]  = LoadSound("../assets/sounds/hype_6.wav");
-    sounds[6]  = LoadSound("../assets/sounds/hype_7.wav");
-    sounds[7]  = LoadSound("../assets/sounds/hype_8.wav");
-    sounds[8]  = LoadSound("../assets/sounds/hype_9.wav");
-    sounds[9]  = LoadSound("../assets/sounds/hype_10.wav");
-    sounds[10] = LoadSound("../assets/sounds/hype_11.wav");
-    sounds[11] = LoadSound("../assets/sounds/hype_12.wav");
+void LoadHypeSoundBuffer(Sound *sound) {
+    sound[0]  = LoadSound("../assets/sounds/hype_1.wav");
+    sound[1]  = LoadSound("../assets/sounds/hype_2.wav");
+    sound[2]  = LoadSound("../assets/sounds/hype_3.wav");
+    sound[3]  = LoadSound("../assets/sounds/hype_4.wav");
+    sound[4]  = LoadSound("../assets/sounds/hype_5.wav");
+    sound[5]  = LoadSound("../assets/sounds/hype_6.wav");
+    sound[6]  = LoadSound("../assets/sounds/hype_7.wav");
+    sound[7]  = LoadSound("../assets/sounds/hype_8.wav");
+    sound[8]  = LoadSound("../assets/sounds/hype_9.wav");
+    sound[9]  = LoadSound("../assets/sounds/hype_10.wav");
+    sound[10] = LoadSound("../assets/sounds/hype_11.wav");
+    sound[11] = LoadSound("../assets/sounds/hype_12.wav");
 }
 
 void StopSoundBuffer(Sound *sounds) {
@@ -288,46 +226,84 @@ void StopAllSoundBuffers(Game_Manager *manager) {
     StopHypeSoundBuffer(manager->hype_sounds);
 }
 
-void PowerupInit(Powerup *powerup, Powerup *sentinel, Tile *tile) {
-    powerup->tile                   = tile;
-    powerup->animator.texture    = LoadTexture("../assets/sprites/bowl.png");
-    powerup->animator.max_frames    = (f32)powerup->animator.texture.width/20;
-    powerup->animator.current_frame = 0;
-    powerup->animator.looping       = true;
-    powerup->animator.frame_rec     = {0, 0,
-                                       (f32)powerup->animator.texture.width/powerup->animator.max_frames,
-                                       (f32)powerup->animator.texture.height};
+void UnloadAllSoundBuffers(Game_Manager *manager) {
+    u32 max_count = HYPE_WORD_COUNT >= SoundEffect_count ? HYPE_WORD_COUNT : SoundEffect_count;
+    for (u32 index = 0; index < max_count; index++) {
+        if (index < SoundEffect_count) UnloadSound(manager->sounds[index]);
+        if (index < HYPE_WORD_COUNT)   UnloadSound(manager->hype_sounds[index]);
+    }
+}
 
+void GameManagerInit(Game_Manager *manager) {
+    manager->score                  = 0;
+    manager->happy_score            = 2500;
+    manager->satisfied_score        = 500;
+    manager->score_multiplier       = 1;
+    manager->frame_counter          = 0;
+    manager->fire_cleared           = false;
+
+    manager->atlas[Atlas_tile]      = LoadTexture("../assets/tiles/tile_row.png");
+    manager->atlas[Atlas_wall]      = LoadTexture("../assets/tiles/wall_tiles.png");
+    manager->gui.bar                = LoadTexture("../assets/tiles/bar.png");
+    manager->gui.anim_timer         = 0;
+    manager->gui.anim_duration      = 4.0f;
+    manager->gui.step               = 0.0f;
+
+    u32 gui_face_size               = SPRITE_WIDTH * 2;
+    b32 animation_looping           = false;
+    AnimatorInit(&manager->gui.animators[GodAnimator_angry], "../assets/sprites/angry.png", 
+                 gui_face_size, animation_looping);
+    AnimatorInit(&manager->gui.animators[GodAnimator_satisfied], "../assets/sprites/meh.png",
+                 gui_face_size, animation_looping);
+    AnimatorInit(&manager->gui.animators[GodAnimator_happy], "../assets/sprites/happy.png", 
+                 gui_face_size, animation_looping);
+
+    manager->state                  = GameState_title;
+
+    manager->enemy_spawn_duration   = 500.0f;
+    manager->spawn_timer            = manager->enemy_spawn_duration;
+    manager->enemy_move_duration    = 250.0f;
+    manager->enemy_move_timer       = manager->enemy_move_duration;
+
+    manager->hype_sound_timer       = 0.0f;
+    manager->hype_prev_index        = 0;
+
+    manager->enemy_sentinel         = {};
+    manager->enemy_sentinel.next    = &manager->enemy_sentinel;
+    manager->enemy_sentinel.prev    = &manager->enemy_sentinel;
+
+    // The head of the powerup linked list
+    manager->powerup_sentinel       = {};
+    manager->powerup_sentinel.next  = &manager->powerup_sentinel;
+    manager->powerup_sentinel.prev  = &manager->powerup_sentinel;
+
+    manager->screen_shake.intensity = 0;
+    manager->screen_shake.duration  = 0;
+    manager->screen_shake.decay     = 0;
+
+    manager->fade_count             = 0;
+
+    LoadSoundBuffer(manager->sounds);
+    LoadHypeSoundBuffer(manager->hype_sounds);
+}
+
+void PowerupInit(Powerup *powerup, Powerup *sentinel, Tile *tile) {
+    powerup->tile       = tile;
     powerup->next       = sentinel->next;
     powerup->prev       = sentinel;
     powerup->next->prev = powerup;
     powerup->prev->next = powerup;
+    AnimatorInit(&powerup->animator, "../assets/sprites/bowl.png", SPRITE_WIDTH, true);
 }
 
 void EnemyInit(Enemy *enemy, Enemy *sentinel, u32 tile_index) {
-    enemy->tile_index             = tile_index;
-    enemy->animators[EnemyAnimator_idle].texture    = LoadTexture("../assets/sprites/demon.png");
-    enemy->animators[EnemyAnimator_idle].max_frames    = (f32)enemy->animators[EnemyAnimator_idle].texture.width/20;
-    enemy->animators[EnemyAnimator_idle].current_frame = 0;
-    enemy->animators[EnemyAnimator_idle].looping       = true;
-    enemy->animators[EnemyAnimator_idle].frame_rec     = {0, 0, 
-                                                          (f32)enemy->animators[EnemyAnimator_idle].texture.width /
-                                                               enemy->animators[EnemyAnimator_idle].max_frames,
-                                                          (f32)enemy->animators[EnemyAnimator_idle].texture.height};
-
-    enemy->animators[EnemyAnimator_destroy].texture    = LoadTexture("../assets/sprites/disappear.png");
-    enemy->animators[EnemyAnimator_destroy].max_frames    = (f32)enemy->animators[EnemyAnimator_destroy].texture.width/20;
-    enemy->animators[EnemyAnimator_destroy].current_frame = 0;
-    enemy->animators[EnemyAnimator_destroy].looping       = false;
-    enemy->animators[EnemyAnimator_destroy].frame_rec     = {0, 0, 
-                                                          (f32)enemy->animators[EnemyAnimator_destroy].texture.width /
-                                                               enemy->animators[EnemyAnimator_destroy].max_frames,
-                                                          (f32)enemy->animators[EnemyAnimator_destroy].texture.height};
-
+    enemy->tile_index = tile_index;
     enemy->next       = sentinel->next;
     enemy->prev       = sentinel;
     enemy->next->prev = enemy;
     enemy->prev->next = enemy;
+    AnimatorInit(&enemy->animators[EnemyAnimator_idle], "../assets/sprites/demon.png", SPRITE_WIDTH, true);
+    AnimatorInit(&enemy->animators[EnemyAnimator_destroy], "../assets/sprites/disappear.png", SPRITE_WIDTH, false);
 }
 
 void SpacebarTextInit(Spacebar_Text *text) {
@@ -338,29 +314,10 @@ void SpacebarTextInit(Spacebar_Text *text) {
     text->bob  = 0.0f;
 };
 
-void TutorialInit(Tutorial_Entities *entities) {
-    entities->enemy.texture      = LoadTexture("../assets/sprites/demon.png");
-    entities->enemy.max_frames      = (f32)entities->enemy.texture.width/SPRITE_WIDTH;
-    entities->enemy.current_frame   = 0;
-    entities->enemy.looping         = true;
-    entities->enemy.frame_rec       = {0, 0, (f32)entities->enemy.texture.width / entities->enemy.max_frames,
-                                       (f32)entities->enemy.texture.height};
-
-    entities->powerup.texture    = LoadTexture("../assets/sprites/bowl.png");
-    entities->powerup.max_frames    = (f32)entities->powerup.texture.width/SPRITE_WIDTH;
-    entities->powerup.current_frame = 0;
-    entities->powerup.looping       = true;
-    entities->powerup.frame_rec     = {0, 0,
-                                       (f32)entities->powerup.texture.width/entities->powerup.max_frames,
-                                       (f32)entities->powerup.texture.height};
-
-    entities->fire.texture       = LoadTexture("../assets/sprites/fire.png");
-    entities->fire.max_frames       = (f32)entities->fire.texture.width/SPRITE_WIDTH;
-    entities->fire.frame_rec        = {0.0f, 0.0f,
-                                       (f32)entities->fire.texture.width / entities->fire.max_frames,
-                                       (f32)entities->fire.texture.height};
-    entities->fire.current_frame    = 0;
-    entities->fire.looping          = true;
+void TutorialAnimationInit(Tutorial_Entities *entities) {
+    AnimatorInit(&entities->enemy,   "../assets/sprites/demon.png", SPRITE_WIDTH, true);
+    AnimatorInit(&entities->powerup, "../assets/sprites/bowl.png",  SPRITE_WIDTH, true);
+    AnimatorInit(&entities->fire,    "../assets/sprites/fire.png",  SPRITE_WIDTH, true);
 }
 
 void ResetEvents(Event_Manager *manager) {
@@ -370,35 +327,40 @@ void ResetEvents(Event_Manager *manager) {
 };
 
 void SetupEventSequences(Event_Manager *manager) {
-
+    // All of this initialisation is for the original base sequences 
+    // so that the actual sequence copies that will ultimately have their  
+    // values changed can reset back to these defaults at the end. 
+    // The final ResetEvent() call at the end of this sets the actual 
+    // events to their base value at the end of this initialisation.
+    
     // Setup the winning event sequence.
-    manager->original_sequence[Sequence_win].events[1].type = EventType_fade_in;
-    manager->original_sequence[Sequence_win].events[1].duration = 1.0f;
-    manager->original_sequence[Sequence_win].events[1].fadeable = {};
-    manager->original_sequence[Sequence_win].events[2] = {EventType_wait, 2.0f, 0, 0, 0};
+    manager->original_sequence[Sequence_win].events[1].type           = EventType_fade_in;
+    manager->original_sequence[Sequence_win].events[1].duration       = 1.0f;
+    manager->original_sequence[Sequence_win].events[1].fadeable       = {};
+    manager->original_sequence[Sequence_win].events[2]                = {EventType_wait, 2.0f, 0, 0, 0};
     manager->original_sequence[Sequence_win].events[2].fadeable.alpha = 1.0f;
-    manager->original_sequence[Sequence_win].events[3].type = EventType_fade_in;
-    manager->original_sequence[Sequence_win].events[3].duration = 2.0f;
-    manager->original_sequence[Sequence_win].events[3].fadeable = {};
-    manager->original_sequence[Sequence_win].count  = 4;
-    manager->original_sequence[Sequence_win].active = false;
+    manager->original_sequence[Sequence_win].events[3].type           = EventType_fade_in;
+    manager->original_sequence[Sequence_win].events[3].duration       = 2.0f;
+    manager->original_sequence[Sequence_win].events[3].fadeable       = {};
+    manager->original_sequence[Sequence_win].count                    = 4;
+    manager->original_sequence[Sequence_win].active                   = false;
 
     // The tutorial screen sequence.
-    manager->original_sequence[Sequence_tutorial].events[0].type = EventType_fade_in;
+    manager->original_sequence[Sequence_tutorial].events[0].type     = EventType_fade_in;
     manager->original_sequence[Sequence_tutorial].events[0].duration = 2.0f;
     manager->original_sequence[Sequence_tutorial].events[0].fadeable = {};
-    manager->original_sequence[Sequence_tutorial].events[1].type = EventType_fade_in;
+    manager->original_sequence[Sequence_tutorial].events[1].type     = EventType_fade_in;
     manager->original_sequence[Sequence_tutorial].events[1].duration = 2.5f;
     manager->original_sequence[Sequence_tutorial].events[1].fadeable = {};
-    manager->original_sequence[Sequence_tutorial].events[2].type = EventType_fade_in;
+    manager->original_sequence[Sequence_tutorial].events[2].type     = EventType_fade_in;
     manager->original_sequence[Sequence_tutorial].events[2].duration = 2.5f;
     manager->original_sequence[Sequence_tutorial].events[2].fadeable = {};
-    manager->original_sequence[Sequence_tutorial].events[3] = {EventType_wait, 2.5f, 0, 0, 0};
+    manager->original_sequence[Sequence_tutorial].events[3]          = {EventType_wait, 2.5f, 0, 0, 0};
     manager->original_sequence[Sequence_tutorial].events[4].type     = EventType_fade_in;
     manager->original_sequence[Sequence_tutorial].events[4].duration = 2.0f;
     manager->original_sequence[Sequence_tutorial].events[4].fadeable = {};
-    manager->original_sequence[Sequence_tutorial].count = 5;
-    manager->original_sequence[Sequence_tutorial].active = false;
+    manager->original_sequence[Sequence_tutorial].count              = 5;
+    manager->original_sequence[Sequence_tutorial].active             = false;
 
     // The sequence when the spacebar is pressed at the title screen 
     // to begin the game.
@@ -489,10 +451,10 @@ void UpdateScreenShake(Screen_Shake *shake, f32 delta_t)
 {
     if (shake->duration > 0.0f)
     {
-        shake->duration -= delta_t;
+        shake->duration  -= delta_t;
         shake->intensity -= shake->decay * delta_t;
         if (shake->duration < 0.0f) {
-            shake->duration = 0.0f;
+            shake->duration  = 0.0f;
             shake->intensity = 0.0f;
         }
         if (shake->intensity < 0.0f) shake->intensity = 0.0f;
@@ -522,19 +484,14 @@ void TriggerTitleBob(Game_Title *title, f32 impulse) {
 }
 
 void UpdateTitleBob(Game_Title *title, f32 delta_t) {
-    f32 damping = 0.85f;
+    f32 damping     = 0.85f;
     float stiffness = 100.0f;
 
-    title->bob_velocity -= stiffness * title->bob          * delta_t;
+    title->bob_velocity -= stiffness * title->bob * delta_t;
     title->bob_velocity *= damping;
-
-    title->bob += title->bob_velocity * delta_t;
+    title->bob          += title->bob_velocity * delta_t;
 }
 
-// TODO: Need to set make sure the audio completely stops here perhaps put all the sounds into a sound 
-// buffer and loop through and stop all sounds... or close the audio device and re-init... but then I 
-// will have to load in all the sounds again.
-// TODO: Need to make sure the event sequencer goes back to the first index
 void GameOver(Player *player, Tilemap *tilemap,  Game_Manager *manager) {
     PlayerInit(player);
     manager->state            = GameState_play;
@@ -579,9 +536,9 @@ void FloodFillFromPlayerPosition(Tilemap *tilemap, u32 start_x, u32 start_y) {
         u32 index = TilemapIndex(x, y, tilemap->width);
         Tile *tile = &tilemap->tiles[index];
 
-        if (IsFlagSet(tile, TileFlag_visited))                           continue;
-        if (tile->type != TileType_grass && tile->type != TileType_dirt) continue;
-        if (IsFlagSet(tile, TileFlag_fire))                              continue;
+        if (IsFlagSet(tile, TileFlag_visited)) continue;
+        if (tile->type != TileType_floor)      continue;
+        if (IsFlagSet(tile, TileFlag_fire))    continue;
         //if (x == start_x && y == start_y) continue;
 
         AddFlag(tile, TileFlag_visited);
@@ -664,7 +621,7 @@ u32 FindEligibleTileIndexForEnemyMove(Tilemap *tilemap, u32 index) {
     for (int adjacent_index = 0; adjacent_index < ARRAY_COUNT(adjacent_tile_indexes); adjacent_index++) {
         Tile *tile = &tilemap->tiles[adjacent_tile_indexes[adjacent_index]];
 
-        if(tile->type == TileType_grass || tile->type == TileType_dirt) {
+        if(tile->type == TileType_floor) {
             if (!IsFlagSet(tile, TileFlag_fire) && !IsFlagSet(tile, TileFlag_powerup) && 
                 !IsFlagSet(tile, TileFlag_enemy)) {
                 eligible_tiles[eligible_count] = adjacent_tile_indexes[adjacent_index];
@@ -689,13 +646,13 @@ void CheckEnclosedAreas(Memory_Arena *arena, Tilemap *tilemap, Player *player, G
 
     bool has_flood_fill_happened = false;
     u32 enemy_slain              = 0;
-    // Any grass or dirt tiles not marked are enclosed
+    // Any floor or dirt tiles not marked are enclosed
     for (u32 y = 0; y < (u32)tilemap->height; y++) {
         for (u32 x = 0; x < (u32)tilemap->width; x++) {
             u32 index = TilemapIndex(x, y, tilemap->width);
             Tile *tile  = &tilemap->tiles[index];
 
-            if ((tile->type == TileType_grass || tile->type == TileType_dirt) && !IsFlagSet(tile, TileFlag_fire)) {
+            if ((tile->type == TileType_floor) && !IsFlagSet(tile, TileFlag_fire)) {
                 if (!IsFlagSet(tile, TileFlag_visited)) {
                     AddFlag(tile, TileFlag_fire);
                     //tile->type = TileType_fire;
@@ -743,9 +700,7 @@ Rectangle SetAtlasFrameRec(Tile_Type type, u32 seed) {
 
     switch (type) {
         case TileType_wall:
-        case TileType_wall2:
-        case TileType_grass:
-        case TileType_dirt: {
+        case TileType_floor: {
             frame_rec.x = seed * TILE_SIZE;
             frame_rec.y = 0;
         } break;
@@ -756,8 +711,9 @@ Rectangle SetAtlasFrameRec(Tile_Type type, u32 seed) {
     return frame_rec;
 }
 
-// TODO: need to clean up this facing argument call
 // TODO: Maybe it would be cleaner to draw the texture as well as animate?
+// but that would mean I would have to pass the texture, position and a lot 
+// of other things. Perhaps it's simpler to keep the separated
 void Animate(Animation *animator, u32 frame_counter) {
     if (frame_counter % (60/FRAME_SPEED) == 0) {
         animator->current_frame++;
@@ -978,8 +934,6 @@ void StartEventSequence(Event_Queue *queue) {
     queue->active = true;
 }
 
-// TODO: might need to make this function work with taking in a custom alpha value 
-// for text that wants to fade
 void DrawTextTripleEffect (const char *text, Vector2 pos, u32 size, f32 alpha = 1.0f) {
 
     DrawText(text, (u32)pos.x+2.0f, (u32)pos.y+2.0f, size, Fade(BLACK,  alpha));
@@ -1007,7 +961,7 @@ void DrawGodFace(Game_Manager *manager, f32 delta_t) {
 }
 
 void DrawGame(Tilemap *map, Game_Manager *manager, Player *player, Wobble_Shader *fire_wobble, 
-              f32 delta_t, b32 *fire_cleared)
+              f32 delta_t)
 {
     DrawTextureV(manager->gui.bar, {0, 0}, WHITE);
     DrawGodFace(manager, delta_t);
@@ -1023,14 +977,9 @@ void DrawGame(Tilemap *map, Game_Manager *manager, Player *player, Wobble_Shader
             switch (tile->type) {
                 case TileType_none:       tile_col = BLACK;                break;
                 case TileType_wall:       tile_col = PURPLE;               break;
-                case TileType_wall2:      tile_col = {140, 20, 140, 255};  break;
-                case TileType_grass:      tile_col = {68, 68, 68, 255};    break;
-                case TileType_dirt:       tile_col = {168, 168, 168, 255}; break;
+                case TileType_floor:      tile_col = {68, 68, 68, 255};    break;
                 case TileType_fire:       tile_col = {168, 0, 0, 255};     break;
-                case TileType_temp_grass: tile_col = {68, 68, 68, 255};    break;
-                case TileType_temp_dirt:  tile_col = {168, 168, 168, 255}; break;
             }
-            
 
             Vector2 tile_size = {(f32)map->tile_size, (f32)map->tile_size};
 
@@ -1039,9 +988,9 @@ void DrawGame(Tilemap *map, Game_Manager *manager, Player *player, Wobble_Shader
             
             Rectangle atlas_frame_rec = SetAtlasFrameRec(tile->type, tile->seed);
 
-            if (tile->type == TileType_grass || tile->type == TileType_dirt) {
+            if (tile->type == TileType_floor) {
                 DrawTextureRec(manager->atlas[Atlas_tile], atlas_frame_rec, tile->pos, WHITE);
-            } else if (tile->type == TileType_wall || tile->type == TileType_wall2) {  
+            } else if (tile->type == TileType_wall) {  
                 if (player->powered_up) {
                     BeginShaderMode(fire_wobble->shader);
                     DrawTextureRec(manager->atlas[Atlas_wall], atlas_frame_rec, tile->pos, WHITE);
@@ -1055,7 +1004,7 @@ void DrawGame(Tilemap *map, Game_Manager *manager, Player *player, Wobble_Shader
             }
             if (IsFlagSet(tile, TileFlag_fire)) {
                 tile_col = player->powered_up ? PURPLE : WHITE;
-                *fire_cleared = false;
+                manager->fire_cleared = false;
                 Animate(&tile->animator, manager->frame_counter);
                 BeginShaderMode(fire_wobble->shader);
                 DrawTextureRec(tile->animator.texture, 
@@ -1119,42 +1068,40 @@ int main() {
     // TODO: I should simplify things to just have a single wall 
     // and a single ground tile.
     u32 tilemap[TILEMAP_HEIGHT][TILEMAP_WIDTH] = {
-        { 4, 1, 0, 0, 0, 0, 4, 0, 0, 1, 0, 0, 0, 0, 4, 1, },
-        { 1, 4, 1, 4, 1, 4, 1, 0, 0, 4, 1, 4, 1, 4, 1, 4, },
-        { 4, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 1, },
-        { 1, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 4, },
-        { 4, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 1, },
-        { 1, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 4, },
-        { 4, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 1, },
-        { 1, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 4, },
-        { 4, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 1, },
-        { 1, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 4, },
-        { 4, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 1, },
-        { 1, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 4, },
-        { 4, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 1, },
-        { 1, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 4, },
-        { 4, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 1, },
-        { 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, },
+        { 1, 1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1, 1, },
+        { 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, },
+        { 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, },
+        { 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, },
+        { 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, },
+        { 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, },
+        { 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, },
+        { 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, },
+        { 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, },
+        { 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, },
+        { 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, },
+        { 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, },
+        { 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, },
+        { 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, },
+        { 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, },
+        { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, },
 
     };
     Tile tiles[TILEMAP_HEIGHT][TILEMAP_WIDTH];
 
     map.original_map = &tilemap[0][0];
     map.tiles        = &tiles[0][0];
-
     TileInit(&map);
 
-    Player player = {};
+    Player player;
     PlayerInit(&player);
+    // I'm seperating initialising the player animators from 
+    // the rest of the initialisation because I re-init the player
+    // on a game over to set the player back to default values. I 
+    // do not need to re-init the player animators at game over though.
     PlayerAnimatorInit(&player);
-
-    // Initialise the basic player body animator
-    Vector2 input_axis       = {0, 0};
 
     Game_Manager manager;
     GameManagerInit(&manager);
-    LoadSoundBuffer(manager.sounds);
-    LoadHypeSoundBuffer(manager.hype_sounds);
 
     // Music Init
     // TODO: Should the music be coupled inside of it's own struct to keep thier volume values together?
@@ -1178,8 +1125,6 @@ int main() {
     song_win.looping = true;
 
     
-    b32 fire_cleared; // NOTE: Perhaps this should live in the Game_Manager struct???
-
     Texture2D powerup_texture = LoadTexture("../assets/sprites/powerup.png");
 
     // Title screen initialisation
@@ -1229,7 +1174,7 @@ int main() {
     Event_Queue *title_press       = &event_manager.sequence[Sequence_begin];
 
     Tutorial_Entities tutorial_entities;
-    TutorialInit(&tutorial_entities);
+    TutorialAnimationInit(&tutorial_entities);
 
     // TODO: Should this live in the game manager?
     Fade_Object white_screen = {};
@@ -1301,15 +1246,14 @@ int main() {
             if (!IsMusicStreamPlaying(song_main))  PlayMusicStream(song_main);
             if (!IsMusicStreamPlaying(song_muted)) PlayMusicStream(song_muted);
 
-            fire_cleared = true;
+            manager.fire_cleared = true;
 
             // TODO: I need to put a bunch of these arguments into the game manager 
             // to simplify things and make shiz a bit cleaner
-            DrawGame(&map, &manager, &player, &fire_wobble, delta_t, &fire_cleared);
+            DrawGame(&map, &manager, &player, &fire_wobble, delta_t);
 
             GatherInput(&player);
 
-            // - New player movement
             if (!player.is_moving) {
                 Direction_Facing dir = InputBufferPop(&player);
                 if (dir == DirectionFacing_none) dir = player.facing;
@@ -1340,7 +1284,6 @@ int main() {
                         target_tile_y > 0 && target_tile_y < map.height-1) {
 
                         if (target_tile->type != TileType_wall  && 
-                            target_tile->type != TileType_wall2 && 
                             target_tile->type != TileType_none  &&
                             target_tile->type != TileType_fire) {
                             
@@ -1579,9 +1522,7 @@ int main() {
             if (IsMusicStreamPlaying(song_muted))  StopMusicStream(song_muted);
             if (!IsMusicStreamPlaying(song_win))   PlayMusicStream(song_win);
 
-            DrawGame(&map, &manager, &player, &fire_wobble, delta_t, &fire_cleared);
-
-            input_axis = {0, 0};
+            DrawGame(&map, &manager, &player, &fire_wobble, delta_t);
 
             StopSoundBuffer(manager.sounds);
         
@@ -1927,7 +1868,7 @@ int main() {
             }
         };
 
-        if (fire_cleared && player.powered_up) {
+        if (manager.fire_cleared && player.powered_up) {
             if (manager.state == GameState_play) {
                 manager.state = GameState_win;
             }
@@ -1940,6 +1881,7 @@ int main() {
     // De-Initialisation
     // -------------------------------------
     // TODO: Unload the sounds in the Game_Manager
+    UnloadAllSoundBuffers(&manager);
     CloseAudioDevice();
     CloseWindow();
     // -------------------------------------
