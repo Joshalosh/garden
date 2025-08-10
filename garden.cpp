@@ -260,13 +260,28 @@ void GameManagerInit(Game_Manager *manager) {
 
     manager->state                  = GameState_title;
 
-    manager->enemy_spawn_duration   = 500.0f;
-    manager->spawn_timer            = manager->enemy_spawn_duration;
+    manager->enemy_spawn_duration   = 510.0f;
     manager->enemy_move_duration    = 250.0f;
+    manager->spawn_timer            = manager->enemy_spawn_duration;
     manager->enemy_move_timer       = manager->enemy_move_duration;
 
     manager->hype_sound_timer       = 0.0f;
     manager->hype_prev_index        = 0;
+
+    manager->song[Song_play]        = LoadMusicStream("../assets/sounds/music.wav");
+    manager->song[Song_play_muted]  = LoadMusicStream("../assets/sounds/music_muted.wav");
+    manager->song[Song_tutorial]    = LoadMusicStream("../assets/sounds/tutorial_track.wav");
+    manager->song[Song_intro]       = LoadMusicStream("../assets/sounds/intro_music.wav");
+    manager->song[Song_win]         = LoadMusicStream("../assets/sounds/win_track.wav");
+    manager->play_song_volume       = 1.0f;
+    manager->play_muted_song_volume = 0.0f;
+    SetMusicVolume(manager->song[Song_play], manager->play_song_volume);
+    SetMusicVolume(manager->song[Song_play_muted], manager->play_muted_song_volume);
+    // Set all the songs in the song buffer to loop
+    for (u32 index = 0; index < Song_count; index++) {
+        ASSERT(IsMusicReady(manager->song[index]));
+        manager->song[index].looping = true;
+    }
 
     manager->enemy_sentinel         = {};
     manager->enemy_sentinel.next    = &manager->enemy_sentinel;
@@ -280,7 +295,6 @@ void GameManagerInit(Game_Manager *manager) {
     manager->screen_shake.intensity = 0;
     manager->screen_shake.duration  = 0;
     manager->screen_shake.decay     = 0;
-
     manager->fade_count             = 0;
 
     LoadSoundBuffer(manager->sounds);
@@ -1103,28 +1117,6 @@ int main() {
     Game_Manager manager;
     GameManagerInit(&manager);
 
-    // Music Init
-    // TODO: Should the music be coupled inside of it's own struct to keep thier volume values together?
-    Music song_main  = LoadMusicStream("../assets/sounds/music.wav");
-    Music song_muted = LoadMusicStream("../assets/sounds/music_muted.wav");
-
-    Music song_tutorial = LoadMusicStream("../assets/sounds/tutorial_track.wav");
-    Music song_intro    = LoadMusicStream("../assets/sounds/intro_music.wav");
-
-    Music song_win      = LoadMusicStream("../assets/sounds/win_track.wav");
-
-    f32 song_volume  = 1.0f;
-    f32 muted_volume = 0.0f;
-
-    SetMusicVolume(song_main,  song_volume);
-    SetMusicVolume(song_muted, muted_volume);
-    song_main.looping  = true;
-    song_muted.looping = true;
-    song_intro.looping = true;
-    song_tutorial.looping = true;
-    song_win.looping = true;
-
-    
     Texture2D powerup_texture = LoadTexture("../assets/sprites/powerup.png");
 
     // Title screen initialisation
@@ -1221,11 +1213,11 @@ int main() {
 
         // TODO: these probably only need to be updated in the states they are used 
         // rather than above everything like this.
-        UpdateMusicStream(song_main);
-        UpdateMusicStream(song_muted);
-        UpdateMusicStream(song_intro);
-        UpdateMusicStream(song_tutorial);
-        UpdateMusicStream(song_win);
+        UpdateMusicStream(manager.song[Song_play]);
+        UpdateMusicStream(manager.song[Song_play_muted]);
+        UpdateMusicStream(manager.song[Song_intro]);
+        UpdateMusicStream(manager.song[Song_tutorial]);
+        UpdateMusicStream(manager.song[Song_win]);
 
         // Set Shader variables
         SetShaderValue(bg_wobble.shader,   bg_wobble.time_location,   &current_time, SHADER_UNIFORM_FLOAT);
@@ -1241,10 +1233,10 @@ int main() {
             
         if (manager.state == GameState_play) {
 
-            if (IsMusicStreamPlaying(song_intro))  StopMusicStream(song_intro);
-            if (IsMusicStreamPlaying(song_tutorial))  StopMusicStream(song_tutorial);
-            if (!IsMusicStreamPlaying(song_main))  PlayMusicStream(song_main);
-            if (!IsMusicStreamPlaying(song_muted)) PlayMusicStream(song_muted);
+            if (IsMusicStreamPlaying(manager.song[Song_intro])) StopMusicStream(manager.song[Song_intro]);
+            if (IsMusicStreamPlaying(manager.song[Song_tutorial])) StopMusicStream(manager.song[Song_tutorial]);
+            if (!IsMusicStreamPlaying(manager.song[Song_play])) PlayMusicStream(manager.song[Song_play]);
+            if (!IsMusicStreamPlaying(manager.song[Song_play_muted])) PlayMusicStream(manager.song[Song_play_muted]);
 
             manager.fire_cleared = true;
 
@@ -1381,8 +1373,8 @@ int main() {
                 f32 end_duration_signal  = 3.0f;
                 u32 water_frame_counter  = manager.frame_counter;
 
-                song_volume  -= 0.02f;
-                muted_volume += 0.02f;
+                manager.play_song_volume       -= 0.02f;
+                manager.play_muted_song_volume += 0.02f;
 
                 Sound powerup_effect     = manager.sounds[SoundEffect_powerup];
                 Sound powerup_end_effect = manager.sounds[SoundEffect_powerup_end];
@@ -1430,15 +1422,15 @@ int main() {
                     player.col = WHITE;
                 }
             } else {
-                song_volume  += 0.02f;
-                muted_volume -= 0.02f;
+                manager.play_song_volume       += 0.02f;
+                manager.play_muted_song_volume -= 0.02f;
             }
 
-            song_volume  = CLAMP(song_volume,  0.0f, 1.0f);
-            muted_volume = CLAMP(muted_volume, 0.0f, 1.0f);
+            manager.play_song_volume       = CLAMP(manager.play_song_volume,  0.0f, 1.0f);
+            manager.play_muted_song_volume = CLAMP(manager.play_muted_song_volume, 0.0f, 1.0f);
 
-            SetMusicVolume(song_main,  song_volume);
-            SetMusicVolume(song_muted, muted_volume);
+            SetMusicVolume(manager.song[Song_play],       manager.play_song_volume);
+            SetMusicVolume(manager.song[Song_play_muted], manager.play_muted_song_volume);
 
             // Enemy spawning
             if (manager.spawn_timer > 0) {
@@ -1518,9 +1510,9 @@ int main() {
 
         } else if (manager.state == GameState_win) {
             // Draw tiles in background.
-            if (IsMusicStreamPlaying(song_main))   StopMusicStream(song_main);
-            if (IsMusicStreamPlaying(song_muted))  StopMusicStream(song_muted);
-            if (!IsMusicStreamPlaying(song_win))   PlayMusicStream(song_win);
+            if (IsMusicStreamPlaying(manager.song[Song_play]))       StopMusicStream(manager.song[Song_play]);
+            if (IsMusicStreamPlaying(manager.song[Song_play_muted])) StopMusicStream(manager.song[Song_play_muted]);
+            if (!IsMusicStreamPlaying(manager.song[Song_win]))       PlayMusicStream(manager.song[Song_win]);
 
             DrawGame(&map, &manager, &player, &fire_wobble, delta_t);
 
@@ -1662,8 +1654,8 @@ int main() {
             }
 
         } else if (manager.state == GameState_tutorial) {
-            if (IsMusicStreamPlaying(song_intro))     StopMusicStream(song_intro);
-            if (!IsMusicStreamPlaying(song_tutorial)) PlayMusicStream(song_tutorial);
+            if ( IsMusicStreamPlaying(manager.song[Song_intro]))    StopMusicStream(manager.song[Song_intro]);
+            if (!IsMusicStreamPlaying(manager.song[Song_tutorial])) PlayMusicStream(manager.song[Song_tutorial]);
 
             UpdateEventQueue(tutorial, &manager, delta_t);
             DrawRectangle(0, 0, base_screen_width, base_screen_height, BLACK);
@@ -1718,17 +1710,17 @@ int main() {
             white_screen.alpha = 0.0f;
             manager.gui.step = 0.0f;
 
-            if (IsMusicStreamPlaying(song_main))      StopMusicStream(song_main);
-            if (IsMusicStreamPlaying(song_muted))     StopMusicStream(song_muted);
-            if (IsMusicStreamPlaying(song_win))       StopMusicStream(song_win);
+            if (IsMusicStreamPlaying(manager.song[Song_play]))       StopMusicStream(manager.song[Song_play]);
+            if (IsMusicStreamPlaying(manager.song[Song_play_muted])) StopMusicStream(manager.song[Song_play_muted]);
+            if (IsMusicStreamPlaying(manager.song[Song_win]))        StopMusicStream(manager.song[Song_win]);
 
             UpdateEventQueue(title_press, &manager, delta_t);
             Game_Title *title = &title_screen_manager.title;
             UpdateTitleBob(title, delta_t);
 
-            if (!IsMusicStreamPlaying(song_intro) && !title_press->active)  
+            if (!IsMusicStreamPlaying(manager.song[Song_intro]) && !title_press->active)  
             {
-                PlayMusicStream(song_intro);
+                PlayMusicStream(manager.song[Song_intro]);
                 TriggerTitleBob(title, 5.0f);
             }
 
@@ -1802,12 +1794,15 @@ int main() {
             DrawTextTripleEffect(play_text->text, play_text->pos, play_text->font_size);
             
             if (IsKeyPressed(KEY_SPACE)) {
-                if (!title_press->active) StartEventSequence(title_press);
-                if (IsMusicStreamPlaying(song_intro)) StopMusicStream(song_intro);
+                if (!title_press->active) {
+                    StartEventSequence(title_press);
+                }
+                if (IsMusicStreamPlaying(manager.song[Song_intro])) { 
+                    StopMusicStream(manager.song[Song_intro]);
+                }
                 if (!IsSoundPlaying(manager.sounds[SoundEffect_spacebar])) {
                     PlaySound(manager.sounds[SoundEffect_spacebar]);
                 }
-                //GameOver(&player, &map, &manager);
             }
 
             if (title_press->active) {

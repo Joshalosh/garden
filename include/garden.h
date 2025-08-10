@@ -113,6 +113,15 @@ enum Atlas_Type {
     Atlas_count,
 };
 
+enum Song_Type {
+    Song_play,
+    Song_play_muted,
+    Song_tutorial,
+    Song_intro, 
+    Song_win,
+    Song_count,
+};
+
 
 struct Play_Text {
     const char *text;
@@ -325,6 +334,10 @@ struct Game_Manager {
 
     Sound        sounds[SoundEffect_count];
     Text_Burst   bursts[MAX_BURSTS];
+
+    Music        song[Song_count];
+    f32          play_song_volume;
+    f32          play_muted_song_volume;
 
     Screen_Shake screen_shake;
 
