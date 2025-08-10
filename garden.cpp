@@ -26,6 +26,12 @@ void TilemapInit(Tilemap *tilemap) {
     tilemap->tile_size   = TILE_SIZE;
     b32 animation_looping = true;
     AnimatorInit(&tilemap->fire_animation, "../assets/sprites/fire.png", SPRITE_WIDTH, animation_looping); 
+
+    f32 amplitude = 0.015, frequency = 15.0f, speed = 32.0f;
+    WobbleShaderInit(&tilemap->wobble, amplitude, frequency, speed); 
+    SetShaderValue(tilemap->wobble.shader, tilemap->wobble.amplitude_location, &tilemap->wobble.amplitude, SHADER_UNIFORM_FLOAT);
+    SetShaderValue(tilemap->wobble.shader, tilemap->wobble.frequency_location, &tilemap->wobble.frequency, SHADER_UNIFORM_FLOAT);
+    SetShaderValue(tilemap->wobble.shader, tilemap->wobble.speed_location,     &tilemap->wobble.speed,     SHADER_UNIFORM_FLOAT);
 }
 
 void StackInit(StackU32 *stack) {
@@ -113,37 +119,43 @@ void PlayerAnimatorInit(Player *player) {
 
 
 void TitleScreenManagerInit(Title_Screen_Manager *manager) {
-    Game_Title title;
-    title.texture  = LoadTexture("../assets/titles/anunnaki.png");
-    title.scale    = 2;
-    title.pos.x    = (base_screen_width * 0.5) - ((title.texture.width * title.scale) * 0.5);
-    title.pos.y    = base_screen_height * 0.25;
-    title.bob      = 0.0f;
-    manager->title = title;
+    // TODO: Clean this up so that everything initialises into 
+    // their direct destination and not into a temporary variable 
+    // that is then coppied across.
+    manager->title.texture  = LoadTexture("../assets/titles/anunnaki.png");
+    manager->title.scale    = 2;
+    manager->title.pos.x    = (base_screen_width * 0.5) - 
+                              ((manager->title.texture.width * manager->title.scale) * 0.5);
+    manager->title.pos.y    = base_screen_height * 0.25;
+    manager->title.bob      = 0.0f;
 
-    Title_Screen_Background bg;
-    bg.texture[0]    = LoadTexture("../assets/tiles/layer_1.png");
-    bg.texture[1]    = LoadTexture("../assets/tiles/layer_2.png");
-    bg.texture[2]    = LoadTexture("../assets/tiles/layer_3.png");
-    bg.texture[3]    = LoadTexture("../assets/tiles/layer_4.png");
-    bg.texture[4]    = LoadTexture("../assets/tiles/layer_5.png");
-    bg.texture[5]    = LoadTexture("../assets/tiles/layer_6.png");
-    bg.texture[6]    = LoadTexture("../assets/tiles/layer_7.png");
-    bg.texture[7]    = LoadTexture("../assets/tiles/layer_8.png");
-    bg.scroll_speed  = 50.0f;
-    bg.pos_right_1   = {0.0f, 0.0f};
-    bg.pos_left_1    = {0.0f, 0.0f};
-    bg.pos_right_2   = {base_screen_width, 0.0f};
-    bg.pos_left_2    = {base_screen_width, 0.0f};
-    manager->bg = bg;
+    manager->bg.texture[0]    = LoadTexture("../assets/tiles/layer_1.png");
+    manager->bg.texture[1]    = LoadTexture("../assets/tiles/layer_2.png");
+    manager->bg.texture[2]    = LoadTexture("../assets/tiles/layer_3.png");
+    manager->bg.texture[3]    = LoadTexture("../assets/tiles/layer_4.png");
+    manager->bg.texture[4]    = LoadTexture("../assets/tiles/layer_5.png");
+    manager->bg.texture[5]    = LoadTexture("../assets/tiles/layer_6.png");
+    manager->bg.texture[6]    = LoadTexture("../assets/tiles/layer_7.png");
+    manager->bg.texture[7]    = LoadTexture("../assets/tiles/layer_8.png");
+    manager->bg.scroll_speed  = 50.0f;
+    manager->bg.pos_right_1   = {0.0f, 0.0f};
+    manager->bg.pos_left_1    = {0.0f, 0.0f};
+    manager->bg.pos_right_2   = {base_screen_width, 0.0f};
+    manager->bg.pos_left_2    = {base_screen_width, 0.0f};
 
-    Play_Text play_text;
-    play_text.text      = "Spacebar Begins Ritual";
-    play_text.font_size = 14;
-    play_text.bob       = 0.0f;
-    play_text.pos       = {(base_screen_width*0.5f) - (MeasureText(play_text.text, play_text.font_size)*0.5f), 
-                           0.0f};
-    manager->play_text = play_text;
+    f32 amplitude = 0.06f, frequency = 1.25f, speed = 2.0f;
+    WobbleShaderInit(&manager->bg.wobble, amplitude, frequency, speed); 
+
+    SetShaderValue(manager->bg.wobble.shader, manager->bg.wobble.amplitude_location, &manager->bg.wobble.amplitude, SHADER_UNIFORM_FLOAT);
+    SetShaderValue(manager->bg.wobble.shader, manager->bg.wobble.frequency_location, &manager->bg.wobble.frequency, SHADER_UNIFORM_FLOAT);
+    SetShaderValue(manager->bg.wobble.shader, manager->bg.wobble.speed_location,     &manager->bg.wobble.speed,     SHADER_UNIFORM_FLOAT);
+
+    manager->play_text.text      = "Spacebar Begins Ritual";
+    manager->play_text.font_size = 14;
+    manager->play_text.bob       = 0.0f;
+    manager->play_text.pos       = {(base_screen_width*0.5f) - 
+                                    (MeasureText(manager->play_text.text, manager->play_text.font_size)*0.5f), 
+                                    0.0f};
 }
 
 void EndScreenInit(End_Screen *screen) {
@@ -974,8 +986,7 @@ void DrawGodFace(Game_Manager *manager, f32 delta_t) {
                    manager->gui.animators[face_type].frame_rec, face_pos, WHITE);
 }
 
-void DrawGame(Tilemap *map, Game_Manager *manager, Player *player, Wobble_Shader *fire_wobble, 
-              f32 delta_t)
+void DrawGame(Tilemap *map, Game_Manager *manager, Player *player, f32 delta_t)
 {
     DrawTextureV(manager->gui.bar, {0, 0}, WHITE);
     DrawGodFace(manager, delta_t);
@@ -1006,7 +1017,7 @@ void DrawGame(Tilemap *map, Game_Manager *manager, Player *player, Wobble_Shader
                 DrawTextureRec(manager->atlas[Atlas_tile], atlas_frame_rec, tile->pos, WHITE);
             } else if (tile->type == TileType_wall) {  
                 if (player->powered_up) {
-                    BeginShaderMode(fire_wobble->shader);
+                    BeginShaderMode(map->wobble.shader);
                     DrawTextureRec(manager->atlas[Atlas_wall], atlas_frame_rec, tile->pos, WHITE);
                     EndShaderMode();
                 } else {
@@ -1020,7 +1031,7 @@ void DrawGame(Tilemap *map, Game_Manager *manager, Player *player, Wobble_Shader
                 tile_col = player->powered_up ? PURPLE : WHITE;
                 manager->fire_cleared = false;
                 Animate(&tile->animator, manager->frame_counter);
-                BeginShaderMode(fire_wobble->shader);
+                BeginShaderMode(map->wobble.shader);
                 DrawTextureRec(tile->animator.texture, 
                                tile->animator.frame_rec, tile->pos, tile_col);
                 EndShaderMode();
@@ -1032,7 +1043,6 @@ void DrawGame(Tilemap *map, Game_Manager *manager, Player *player, Wobble_Shader
                     DrawTextureRec(found_powerup->animator.texture, 
                                    found_powerup->animator.frame_rec, tile->pos, WHITE);
                 }
-                //DrawTextureV(powerup_texture, tile->pos, WHITE);
             }
             if (IsFlagSet(tile, TileFlag_enemy)) {
                 Enemy *found_enemy = FindEnemyInList(&manager->enemy_sentinel, index);
@@ -1117,50 +1127,17 @@ int main() {
     Game_Manager manager;
     GameManagerInit(&manager);
 
-    Texture2D powerup_texture = LoadTexture("../assets/sprites/powerup.png");
-
-    // Title screen initialisation
     Title_Screen_Manager title_screen_manager;
     TitleScreenManagerInit(&title_screen_manager);
-
-
-    Wobble_Shader bg_wobble;
-    // Putting these variables inside of a scope to make them temporary 
-    // purely for the init shader function
-    // TODO: Need to figure out a better way to get these variables into the setup of 
-    // these shaders without being super jank.
-    {
-        f32 amplitude = 0.06f;
-        f32 frequency = 1.25f;
-        f32 speed     = 2.0f;
-        WobbleShaderInit(&bg_wobble, amplitude, frequency, speed); 
-    }
-
-    SetShaderValue(bg_wobble.shader, bg_wobble.amplitude_location, &bg_wobble.amplitude, SHADER_UNIFORM_FLOAT);
-    SetShaderValue(bg_wobble.shader, bg_wobble.frequency_location, &bg_wobble.frequency, SHADER_UNIFORM_FLOAT);
-    SetShaderValue(bg_wobble.shader, bg_wobble.speed_location,     &bg_wobble.speed,     SHADER_UNIFORM_FLOAT);
-
-    Wobble_Shader fire_wobble;
-    {
-        f32 amplitude = 0.015;
-        f32 frequency = 15.0f;
-        f32 speed     = 32.0f;
-        WobbleShaderInit(&fire_wobble, amplitude, frequency, speed); 
-    }
-    
-    SetShaderValue(fire_wobble.shader, fire_wobble.amplitude_location, &fire_wobble.amplitude, SHADER_UNIFORM_FLOAT);
-    SetShaderValue(fire_wobble.shader, fire_wobble.frequency_location, &fire_wobble.frequency, SHADER_UNIFORM_FLOAT);
-    SetShaderValue(fire_wobble.shader, fire_wobble.speed_location,     &fire_wobble.speed,     SHADER_UNIFORM_FLOAT);
 
     End_Screen end_screen;
     EndScreenInit(&end_screen);
 
-    // TODO: I need to initialise an event in the queue, and then in the future 
-    // make this a list of queues to be able to hold multiple event queue sequences
-
     Event_Manager event_manager;
     SetupEventSequences(&event_manager);
 
+    // TODO: I could set these up in their respective game states 
+    // because they are only used in their individual states and never called anywhere else.
     Event_Queue *win_sequence      = &event_manager.sequence[Sequence_win];
     Event_Queue *tutorial          = &event_manager.sequence[Sequence_tutorial];
     Event_Queue *title_press       = &event_manager.sequence[Sequence_begin];
@@ -1171,6 +1148,7 @@ int main() {
     // TODO: Should this live in the game manager?
     Fade_Object white_screen = {};
 
+    // TODO: This should probably live in the game manager.
     Spacebar_Text spacebar_text;
     SpacebarTextInit(&spacebar_text);
 
@@ -1220,8 +1198,9 @@ int main() {
         UpdateMusicStream(manager.song[Song_win]);
 
         // Set Shader variables
-        SetShaderValue(bg_wobble.shader,   bg_wobble.time_location,   &current_time, SHADER_UNIFORM_FLOAT);
-        SetShaderValue(fire_wobble.shader, fire_wobble.time_location, &current_time, SHADER_UNIFORM_FLOAT);
+        SetShaderValue(title_screen_manager.bg.wobble.shader, title_screen_manager.bg.wobble.time_location,
+                       &current_time, SHADER_UNIFORM_FLOAT);
+        SetShaderValue(map.wobble.shader, map.wobble.time_location, &current_time, SHADER_UNIFORM_FLOAT);
         SetShaderValue(end_screen.shaders[EndLayer_sky].shader, end_screen.shaders[EndLayer_sky].time_location,  
                        &current_time, SHADER_UNIFORM_FLOAT);
         SetShaderValue(end_screen.shaders[EndLayer_trees].shader, end_screen.shaders[EndLayer_trees].time_location, 
@@ -1242,7 +1221,7 @@ int main() {
 
             // TODO: I need to put a bunch of these arguments into the game manager 
             // to simplify things and make shiz a bit cleaner
-            DrawGame(&map, &manager, &player, &fire_wobble, delta_t);
+            DrawGame(&map, &manager, &player, delta_t);
 
             GatherInput(&player);
 
@@ -1514,7 +1493,7 @@ int main() {
             if (IsMusicStreamPlaying(manager.song[Song_play_muted])) StopMusicStream(manager.song[Song_play_muted]);
             if (!IsMusicStreamPlaying(manager.song[Song_win]))       PlayMusicStream(manager.song[Song_win]);
 
-            DrawGame(&map, &manager, &player, &fire_wobble, delta_t);
+            DrawGame(&map, &manager, &player, delta_t);
 
             StopSoundBuffer(manager.sounds);
         
@@ -1691,7 +1670,7 @@ int main() {
                            demon_pos, Fade(WHITE, tutorial->events[0].fadeable.alpha)); 
             DrawTextureRec(tutorial_entities.powerup.texture, tutorial_entities.powerup.frame_rec, 
                            powerup_pos, Fade(WHITE, tutorial->events[1].fadeable.alpha)); 
-            BeginShaderMode(fire_wobble.shader);
+            BeginShaderMode(map.wobble.shader);
             DrawTextureRec(tutorial_entities.fire.texture, tutorial_entities.fire.frame_rec, 
                            fire_pos, Fade(WHITE, tutorial->events[2].fadeable.alpha)); 
             EndShaderMode();
@@ -1761,7 +1740,7 @@ int main() {
                                                 bg->pos_right_2.y + bg->texture[index].height*index};
                     // I prefer the look when only half the layers have the wobble shader attached 
                     // that's why the right moving ones wobble and the left moving ones don't.
-                    BeginShaderMode(bg_wobble.shader);
+                    BeginShaderMode(bg->wobble.shader);
                     DrawTextureV(bg->texture[index], draw_pos_right_1, WHITE);
                     DrawTextureV(bg->texture[index], draw_pos_right_2, WHITE);
                     EndShaderMode();
@@ -1875,7 +1854,7 @@ int main() {
     // -------------------------------------
     // De-Initialisation
     // -------------------------------------
-    // TODO: Unload the sounds in the Game_Manager
+    // TODO: Need to make sure I unload the music and probably the textures.
     UnloadAllSoundBuffers(&manager);
     CloseAudioDevice();
     CloseWindow();

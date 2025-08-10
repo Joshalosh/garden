@@ -154,13 +154,14 @@ struct Tile {
 };
 
 struct Tilemap {
-    u32        width;
-    u32        height;
-    u32        tile_size;
-    Animation  fire_animation;
+    u32           width;
+    u32           height;
+    u32           tile_size;
+    Animation     fire_animation;
+    Wobble_Shader wobble;
 
-    u32       *original_map;
-    Tile      *tiles;
+    u32          *original_map;
+    Tile         *tiles;
 };
 
 struct Input_Buffer {
@@ -249,11 +250,12 @@ struct Game_Title {
 
 struct Title_Screen_Background {
     Texture2D texture[BG_LAYERS];
-    f32       scroll_speed;
-    Vector2   pos_left_1;
-    Vector2   pos_left_2;
-    Vector2   pos_right_1;
-    Vector2   pos_right_2;
+    f32           scroll_speed;
+    Vector2       pos_left_1;
+    Vector2       pos_left_2;
+    Vector2       pos_right_1;
+    Vector2       pos_right_2;
+    Wobble_Shader wobble;
 };
 
 struct Title_Screen_Manager {
