@@ -278,23 +278,24 @@ void GameManagerInit(Game_Manager *manager) {
     AnimatorInit(&manager->gui.animators[GodAnimator_happy], "../assets/sprites/happy.png", 
                  gui_face_size, animation_looping);
 
-    manager->state                  = GameState_title;
+    manager->state                   = GameState_title;
 
-    manager->enemy_spawn_duration   = 510.0f;
-    manager->enemy_move_duration    = 250.0f;
-    manager->spawn_timer            = manager->enemy_spawn_duration;
-    manager->enemy_move_timer       = manager->enemy_move_duration;
+    manager->enemy_spawn_duration    = 510.0f;
+    manager->enemy_move_duration     = 250.0f;
+    manager->spawn_timer             = manager->enemy_spawn_duration;
+    manager->enemy_move_timer        = manager->enemy_move_duration;
 
-    manager->hype_sound_timer       = 0.0f;
-    manager->hype_prev_index        = 0;
+    manager->hype_sound_timer        = 0.0f;
+    manager->hype_prev_index         = 0;
 
-    manager->song[Song_play]        = LoadMusicStream("../assets/sounds/music.wav");
-    manager->song[Song_play_muted]  = LoadMusicStream("../assets/sounds/music_muted.wav");
-    manager->song[Song_tutorial]    = LoadMusicStream("../assets/sounds/tutorial_track.wav");
-    manager->song[Song_intro]       = LoadMusicStream("../assets/sounds/intro_music.wav");
-    manager->song[Song_win]         = LoadMusicStream("../assets/sounds/win_track.wav");
-    manager->play_song_volume       = 1.0f;
-    manager->play_muted_song_volume = 0.0f;
+    manager->song[Song_play]         = LoadMusicStream("../assets/sounds/music.wav");
+    manager->song[Song_play_muted]   = LoadMusicStream("../assets/sounds/music_muted.wav");
+    manager->song[Song_tutorial]     = LoadMusicStream("../assets/sounds/tutorial_track.wav");
+    manager->song[Song_intro]        = LoadMusicStream("../assets/sounds/intro_music.wav");
+    manager->song[Song_win]          = LoadMusicStream("../assets/sounds/win_track.wav");
+    manager->play_song_volume        = 1.0f;
+    manager->play_muted_song_volume  = 0.0f;
+    manager->should_title_music_play = false;
     SetMusicVolume(manager->song[Song_play], manager->play_song_volume);
     SetMusicVolume(manager->song[Song_play_muted], manager->play_muted_song_volume);
     // Set all the songs in the song buffer to loop
@@ -303,24 +304,24 @@ void GameManagerInit(Game_Manager *manager) {
         manager->song[index].looping = true;
     }
 
-    manager->enemy_sentinel         = {};
-    manager->enemy_sentinel.next    = &manager->enemy_sentinel;
-    manager->enemy_sentinel.prev    = &manager->enemy_sentinel;
+    manager->enemy_sentinel          = {};
+    manager->enemy_sentinel.next     = &manager->enemy_sentinel;
+    manager->enemy_sentinel.prev     = &manager->enemy_sentinel;
 
     // The head of the powerup linked list
-    manager->powerup_sentinel       = {};
-    manager->powerup_sentinel.next  = &manager->powerup_sentinel;
-    manager->powerup_sentinel.prev  = &manager->powerup_sentinel;
+    manager->powerup_sentinel        = {};
+    manager->powerup_sentinel.next   = &manager->powerup_sentinel;
+    manager->powerup_sentinel.prev   = &manager->powerup_sentinel;
 
-    manager->screen_shake.intensity = 0;
-    manager->screen_shake.duration  = 0;
-    manager->screen_shake.decay     = 0;
+    manager->screen_shake.intensity  = 0;
+    manager->screen_shake.duration   = 0;
+    manager->screen_shake.decay      = 0;
 
-    manager->white_screen.alpha     = 0;
-    manager->white_screen.duration  = 0;
-    manager->white_screen.timer     = 0;
-    manager->white_screen.fade_type = FadeType_none;
-    manager->fade_count             = 0;
+    manager->white_screen.alpha      = 0;
+    manager->white_screen.duration   = 0;
+    manager->white_screen.timer      = 0;
+    manager->white_screen.fade_type  = FadeType_none;
+    manager->fade_count              = 0;
 
     LoadSoundBuffer(manager->sounds);
     LoadHypeSoundBuffer(manager->hype_sounds);
@@ -1074,76 +1075,44 @@ void UpdateSpacebarBob(Spacebar_Text *text, f32 delta_t) {
     text->bob   += delta_t;
 }
 
+u32 SongBit(u32 SongId) {
+    return 1u << SongId;
+}
+
 void PlayMusicForState(Game_Manager *manager) {
+    u32 wanted_track = 0;
     switch (manager->state) {
         case GameState_play: {
-            for (u32 index = 0; index < Song_count; index++) {
-                if (index != Song_play && index != Song_play_muted) {
-                    Music *song = &manager->song[index];
-                    if (IsMusicStreamPlaying(*song)) {
-                        StopMusicStream(*song);
-                    }
-                }
-            }
-            if (!IsMusicStreamPlaying(manager->song[Song_play])) {
-                PlayMusicStream(manager->song[Song_play]);
-            } else {
-                UpdateMusicStream(manager->song[Song_play]);
-            }
-            if (!IsMusicStreamPlaying(manager->song[Song_play_muted])) {
-                PlayMusicStream(manager->song[Song_play_muted]);
-            } else {
-                UpdateMusicStream(manager->song[Song_play_muted]);
-            }
+            wanted_track = SongBit(Song_play) | SongBit(Song_play_muted);
         } break;
         case GameState_tutorial: {
-            for (u32 index = 0; index < Song_count; index++) {
-                if (index != Song_tutorial) {
-                    Music *song = &manager->song[index];
-                    if (IsMusicStreamPlaying(*song)) {
-                        StopMusicStream(*song);
-                    }
-                }
-            }
-            if (!IsMusicStreamPlaying(manager->song[Song_tutorial])) {
-                PlayMusicStream(manager->song[Song_tutorial]);
-            } else {
-                UpdateMusicStream(manager->song[Song_tutorial]);
-            }
+            wanted_track = SongBit(Song_tutorial);
         } break;
         case GameState_title: {
-            for (u32 index = 0; index < Song_count; index++) {
-                if (index != Song_intro) {
-                    Music *song = &manager->song[index];
-                    if (IsMusicStreamPlaying(*song)) {
-                        StopMusicStream(*song);
-                    }
-                }
-            }
-            // I'm not going to play the title track here because 
-            // there are some special cases around when the music needs to 
-            // stop depending on the title event - when the begin button 
-            // is pressed. So i'll handle the stoping of other tracks here 
-            // but I will play and update the actual track within the title state. 
-            // I don't love this though, it feels icky.
+            wanted_track = manager->should_title_music_play ? SongBit(Song_intro) : 0u;
         } break;
         case GameState_epilogue:
         case GameState_win_text:
         case GameState_win: {
-            for (u32 index = 0; index < Song_count; index++) {
-                if (index != Song_win) {
-                    Music *song = &manager->song[index];
-                    if (IsMusicStreamPlaying(*song)) {
-                        StopMusicStream(*song);
-                    }
-                }
-            }
-            if (!IsMusicStreamPlaying(manager->song[Song_win])) {
-                PlayMusicStream(manager->song[Song_win]);
-            } else {
-                UpdateMusicStream(manager->song[Song_win]);
-            }
+            wanted_track = SongBit(Song_win);
         } break;
+    }
+
+    for (u32 index = 0; index < Song_count; index++) {
+        b32 should_play = (wanted_track & SongBit(index)) != 0;
+        b32 is_playing = IsMusicStreamPlaying(manager->song[index]);
+
+        if (should_play && !is_playing) {
+            PlayMusicStream(manager->song[index]);
+        } else if (!should_play && is_playing) {
+            StopMusicStream(manager->song[index]);
+        }
+    }
+
+    for (u32 index = 0; index < Song_count; index++) {
+        if (IsMusicStreamPlaying(manager->song[index])) {
+            UpdateMusicStream(manager->song[index]);
+        }
     }
 }
 
@@ -1725,14 +1694,15 @@ int main() {
             if (IsMusicStreamPlaying(manager.song[Song_intro]))      UpdateMusicStream(manager.song[Song_intro]);
 #endif
 
-            Event_Queue *title_press       = &event_manager.sequence[Sequence_begin];
+            Event_Queue *title_press = &event_manager.sequence[Sequence_begin];
             UpdateEventQueue(title_press, &manager, delta_t);
             Game_Title *title = &title_screen_manager.title;
             UpdateTitleBob(title, delta_t);
+            manager.should_title_music_play = !title_press->active;
 
             if (!IsMusicStreamPlaying(manager.song[Song_intro]) && !title_press->active)  
             {
-                PlayMusicStream(manager.song[Song_intro]);
+                //PlayMusicStream(manager.song[Song_intro]);
                 TriggerTitleBob(title, 5.0f);
             } else {
                 UpdateMusicStream(manager.song[Song_intro]);

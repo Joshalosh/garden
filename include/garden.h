@@ -340,6 +340,7 @@ struct Game_Manager {
     Music         song[Song_count];
     f32           play_song_volume;
     f32           play_muted_song_volume;
+    b32           should_title_music_play;
 
     Screen_Shake  screen_shake;
     Fade_Object   white_screen;

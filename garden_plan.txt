@@ -13,11 +13,10 @@
    - Enemy appear?
    - Enemy movement?
    - Fire douse?
-   - Start?
-   - Win?
   
 - Juice
  - Figure our better scoring system.
+ - Make Enemies destroy correctly on game win
 
 - Refactor
  - Fix get tile rect function to not do multiple things.
