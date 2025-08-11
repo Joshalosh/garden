@@ -886,23 +886,23 @@ void AlphaFadeOut(Game_Manager *manager, Fade_Object *object, f32 duration) {
 
 void UpdateAlphaFade(Game_Manager *manager, f32 delta_t) {
     for (u32 index = 0; index < manager->fade_count; index++) {
-        if (manager->fadeables[index]->fade_type) {
-            manager->fadeables[index]->timer += delta_t;
-            if (manager->fadeables[index]->timer >= manager->fadeables[index]->duration) {
-                manager->fadeables[index]->timer = manager->fadeables[index]->duration;
+        Fade_Object *fadeable = manager->fadeables[index];
+        if (fadeable->fade_type) {
+            fadeable->timer += delta_t;
+            if (fadeable->timer > fadeable->duration) {
+                fadeable->timer = fadeable->duration;
             }
-
-            f32 step = manager->fadeables[index]->timer / manager->fadeables[index]->duration;
-
-            if (manager->fadeables[index]->fade_type == FadeType_in) {
-                manager->fadeables[index]->alpha = step;
+            ASSERT(fadeable->duration > 0);
+            f32 step = fadeable->timer / fadeable->duration;
+            if (fadeable->fade_type == FadeType_in) {
+                fadeable->alpha = step;
                 if (step >= 1.0f) {
-                    manager->fadeables[index]->fade_type = FadeType_none;
+                    fadeable->fade_type = FadeType_none;
                 }
-            } else if (manager->fadeables[index]->fade_type == FadeType_out) {
-                manager->fadeables[index]->alpha = 1.0f - step;
+            } else if (fadeable->fade_type == FadeType_out) {
+                fadeable->alpha = 1.0f - step;
                 if (step >= 1.0f) {
-                    manager->fadeables[index]->fade_type = FadeType_none;
+                    fadeable->fade_type = FadeType_none;
                 }
             }
         }
@@ -1097,8 +1097,6 @@ int main() {
 
     Tilemap map;
     TilemapInit(&map);
-    // TODO: I should simplify things to just have a single wall 
-    // and a single ground tile.
     u32 tilemap[TILEMAP_HEIGHT][TILEMAP_WIDTH] = {
         { 1, 1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1, 1, },
         { 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, },
@@ -1174,20 +1172,11 @@ int main() {
 
         manager.frame_counter++;
 
-        // The max frames for the body need to be set up here during the main loop 
-        // because they are dependant on whichever direction the player is facing
-        player.animators[player.facing].max_frames = 
-            (f32)player.animators[player.facing].texture.width/SPRITE_WIDTH;
         Animate(&player.animators[player.facing], manager.frame_counter);
 
-        // TODO: these probably only need to be updated in the states they are used 
-        // rather than above everything like this.
-        UpdateMusicStream(manager.song[Song_play]);
-        UpdateMusicStream(manager.song[Song_play_muted]);
-        UpdateMusicStream(manager.song[Song_intro]);
-        UpdateMusicStream(manager.song[Song_tutorial]);
+        // This track update is up here above the different game states because the 
+        // song is played in multiple states
         UpdateMusicStream(manager.song[Song_win]);
-
         // Set Shader variables
         SetShaderValue(title_screen_manager.bg.wobble.shader, title_screen_manager.bg.wobble.time_location,
                        &current_time, SHADER_UNIFORM_FLOAT);
@@ -1207,6 +1196,8 @@ int main() {
             if (IsMusicStreamPlaying(manager.song[Song_tutorial])) StopMusicStream(manager.song[Song_tutorial]);
             if (!IsMusicStreamPlaying(manager.song[Song_play])) PlayMusicStream(manager.song[Song_play]);
             if (!IsMusicStreamPlaying(manager.song[Song_play_muted])) PlayMusicStream(manager.song[Song_play_muted]);
+            if (IsMusicStreamPlaying(manager.song[Song_play])) UpdateMusicStream(manager.song[Song_play]);
+            if (IsMusicStreamPlaying(manager.song[Song_play_muted])) UpdateMusicStream(manager.song[Song_play_muted]);
 
             manager.fire_cleared = true;
 
@@ -1627,6 +1618,7 @@ int main() {
         } else if (manager.state == GameState_tutorial) {
             if ( IsMusicStreamPlaying(manager.song[Song_intro]))    StopMusicStream(manager.song[Song_intro]);
             if (!IsMusicStreamPlaying(manager.song[Song_tutorial])) PlayMusicStream(manager.song[Song_tutorial]);
+            if ( IsMusicStreamPlaying(manager.song[Song_tutorial])) UpdateMusicStream(manager.song[Song_tutorial]);
 
             Event_Queue *tutorial          = &event_manager.sequence[Sequence_tutorial];
             UpdateEventQueue(tutorial, &manager, delta_t);
@@ -1685,6 +1677,7 @@ int main() {
             if (IsMusicStreamPlaying(manager.song[Song_play]))       StopMusicStream(manager.song[Song_play]);
             if (IsMusicStreamPlaying(manager.song[Song_play_muted])) StopMusicStream(manager.song[Song_play_muted]);
             if (IsMusicStreamPlaying(manager.song[Song_win]))        StopMusicStream(manager.song[Song_win]);
+            if (IsMusicStreamPlaying(manager.song[Song_intro]))      UpdateMusicStream(manager.song[Song_intro]);
 
             Event_Queue *title_press       = &event_manager.sequence[Sequence_begin];
             UpdateEventQueue(title_press, &manager, delta_t);
