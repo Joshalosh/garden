@@ -1074,6 +1074,79 @@ void UpdateSpacebarBob(Spacebar_Text *text, f32 delta_t) {
     text->bob   += delta_t;
 }
 
+void PlayMusicForState(Game_Manager *manager) {
+    switch (manager->state) {
+        case GameState_play: {
+            for (u32 index = 0; index < Song_count; index++) {
+                if (index != Song_play && index != Song_play_muted) {
+                    Music *song = &manager->song[index];
+                    if (IsMusicStreamPlaying(*song)) {
+                        StopMusicStream(*song);
+                    }
+                }
+            }
+            if (!IsMusicStreamPlaying(manager->song[Song_play])) {
+                PlayMusicStream(manager->song[Song_play]);
+            } else {
+                UpdateMusicStream(manager->song[Song_play]);
+            }
+            if (!IsMusicStreamPlaying(manager->song[Song_play_muted])) {
+                PlayMusicStream(manager->song[Song_play_muted]);
+            } else {
+                UpdateMusicStream(manager->song[Song_play_muted]);
+            }
+        } break;
+        case GameState_tutorial: {
+            for (u32 index = 0; index < Song_count; index++) {
+                if (index != Song_tutorial) {
+                    Music *song = &manager->song[index];
+                    if (IsMusicStreamPlaying(*song)) {
+                        StopMusicStream(*song);
+                    }
+                }
+            }
+            if (!IsMusicStreamPlaying(manager->song[Song_tutorial])) {
+                PlayMusicStream(manager->song[Song_tutorial]);
+            } else {
+                UpdateMusicStream(manager->song[Song_tutorial]);
+            }
+        } break;
+        case GameState_title: {
+            for (u32 index = 0; index < Song_count; index++) {
+                if (index != Song_intro) {
+                    Music *song = &manager->song[index];
+                    if (IsMusicStreamPlaying(*song)) {
+                        StopMusicStream(*song);
+                    }
+                }
+            }
+            // I'm not going to play the title track here because 
+            // there are some special cases around when the music needs to 
+            // stop depending on the title event - when the begin button 
+            // is pressed. So i'll handle the stoping of other tracks here 
+            // but I will play and update the actual track within the title state. 
+            // I don't love this though, it feels icky.
+        } break;
+        case GameState_epilogue:
+        case GameState_win_text:
+        case GameState_win: {
+            for (u32 index = 0; index < Song_count; index++) {
+                if (index != Song_win) {
+                    Music *song = &manager->song[index];
+                    if (IsMusicStreamPlaying(*song)) {
+                        StopMusicStream(*song);
+                    }
+                }
+            }
+            if (!IsMusicStreamPlaying(manager->song[Song_win])) {
+                PlayMusicStream(manager->song[Song_win]);
+            } else {
+                UpdateMusicStream(manager->song[Song_win]);
+            }
+        } break;
+    }
+}
+
 int main() {
     // -------------------------------------
     // Initialisation
@@ -1174,9 +1247,13 @@ int main() {
 
         Animate(&player.animators[player.facing], manager.frame_counter);
 
-        // This track update is up here above the different game states because the 
-        // song is played in multiple states
+        // TODO: Make a cleaner function that pays attention to the state, the 
+        // current song playing and then updates the appropriate track. Because 
+        // right now the code is spread out across the entire codebase and it 
+        // feels a little brittle like that.
         UpdateMusicStream(manager.song[Song_win]);
+        PlayMusicForState(&manager);
+
         // Set Shader variables
         SetShaderValue(title_screen_manager.bg.wobble.shader, title_screen_manager.bg.wobble.time_location,
                        &current_time, SHADER_UNIFORM_FLOAT);
@@ -1191,14 +1268,6 @@ int main() {
         ClearBackground(BLACK);
             
         if (manager.state == GameState_play) {
-
-            if (IsMusicStreamPlaying(manager.song[Song_intro])) StopMusicStream(manager.song[Song_intro]);
-            if (IsMusicStreamPlaying(manager.song[Song_tutorial])) StopMusicStream(manager.song[Song_tutorial]);
-            if (!IsMusicStreamPlaying(manager.song[Song_play])) PlayMusicStream(manager.song[Song_play]);
-            if (!IsMusicStreamPlaying(manager.song[Song_play_muted])) PlayMusicStream(manager.song[Song_play_muted]);
-            if (IsMusicStreamPlaying(manager.song[Song_play])) UpdateMusicStream(manager.song[Song_play]);
-            if (IsMusicStreamPlaying(manager.song[Song_play_muted])) UpdateMusicStream(manager.song[Song_play_muted]);
-
             manager.fire_cleared = true;
 
             // TODO: I need to put a bunch of these arguments into the game manager 
@@ -1470,11 +1539,6 @@ int main() {
             }
 
         } else if (manager.state == GameState_win) {
-            // Draw tiles in background.
-            if (IsMusicStreamPlaying(manager.song[Song_play]))       StopMusicStream(manager.song[Song_play]);
-            if (IsMusicStreamPlaying(manager.song[Song_play_muted])) StopMusicStream(manager.song[Song_play_muted]);
-            if (!IsMusicStreamPlaying(manager.song[Song_win]))       PlayMusicStream(manager.song[Song_win]);
-
             DrawGame(&map, &manager, &player, delta_t);
 
             StopSoundBuffer(manager.sounds);
@@ -1503,12 +1567,6 @@ int main() {
             DrawScreenFadeCol(&manager.white_screen, base_screen_width, base_screen_height, WHITE);
             DrawGodFace(&manager, delta_t);
 
-#if 0
-            if (IsKeyPressed(KEY_SPACE)) {
-                GameOver(&player, &map, &manager);
-            }
-#endif
-
         } else if (manager.state == GameState_win_text) {
             // TODO: this whole state is a bit of a messy bessy and I need to clean 
             // dat ass up.
@@ -1533,11 +1591,6 @@ int main() {
             God_Animator face_type = manager.score > manager.happy_score      ? GodAnimator_happy     :
                                      manager.score > manager.satisfied_score  ? GodAnimator_satisfied : 
                                                                                 GodAnimator_angry;
-#if 0
-            if (face_type != GodAnimator_happy) {
-                win_text_sequence.events[4].new_state = GameState_title;
-            }
-#endif
 
             const char *message = manager.score > manager.happy_score     ? "The Gods are Pleased!"     : 
                                   manager.score > manager.satisfied_score ? "The Gods are Satisfied..." : 
@@ -1564,13 +1617,8 @@ int main() {
                                    frame_width*current_scale, frame_height*current_scale}; 
 
             Animate(&manager.gui.animators[face_type], manager.frame_counter);
-#if 1
             DrawTexturePro(manager.gui.animators[face_type].texture, src,
                            dest_rect, {0, 0}, 0.0f, WHITE);//Fade(WHITE, win_text_sequence.events[3].fadeable.alpha));
-#else
-            DrawTextureRec(manager.gui.animators[face_type].texture[0], 
-                           manager.gui.animators[face_type].frame_rec, current_pos, WHITE);
-#endif
 
             if (!win_sequence->active) StartEventSequence(win_sequence);
 
@@ -1616,11 +1664,7 @@ int main() {
             }
 
         } else if (manager.state == GameState_tutorial) {
-            if ( IsMusicStreamPlaying(manager.song[Song_intro]))    StopMusicStream(manager.song[Song_intro]);
-            if (!IsMusicStreamPlaying(manager.song[Song_tutorial])) PlayMusicStream(manager.song[Song_tutorial]);
-            if ( IsMusicStreamPlaying(manager.song[Song_tutorial])) UpdateMusicStream(manager.song[Song_tutorial]);
-
-            Event_Queue *tutorial          = &event_manager.sequence[Sequence_tutorial];
+            Event_Queue *tutorial    = &event_manager.sequence[Sequence_tutorial];
             UpdateEventQueue(tutorial, &manager, delta_t);
             DrawRectangle(0, 0, base_screen_width, base_screen_height, BLACK);
             if (!tutorial->active) StartEventSequence(tutorial);
@@ -1674,10 +1718,12 @@ int main() {
             manager.white_screen.alpha = 0.0f;
             manager.gui.step = 0.0f;
 
+#if 0
             if (IsMusicStreamPlaying(manager.song[Song_play]))       StopMusicStream(manager.song[Song_play]);
             if (IsMusicStreamPlaying(manager.song[Song_play_muted])) StopMusicStream(manager.song[Song_play_muted]);
             if (IsMusicStreamPlaying(manager.song[Song_win]))        StopMusicStream(manager.song[Song_win]);
             if (IsMusicStreamPlaying(manager.song[Song_intro]))      UpdateMusicStream(manager.song[Song_intro]);
+#endif
 
             Event_Queue *title_press       = &event_manager.sequence[Sequence_begin];
             UpdateEventQueue(title_press, &manager, delta_t);
@@ -1688,6 +1734,8 @@ int main() {
             {
                 PlayMusicStream(manager.song[Song_intro]);
                 TriggerTitleBob(title, 5.0f);
+            } else {
+                UpdateMusicStream(manager.song[Song_intro]);
             }
 
             if (IsKeyPressed(KEY_P)) TriggerTitleBob(title, 150.0f);
@@ -1807,12 +1855,11 @@ int main() {
                        dest_rect, zero_vec, 0.0f, WHITE);
         if (manager.state == GameState_play || manager.state == GameState_win || 
             manager.state == GameState_win_text) {
-            u32 font_size = 38;
-            u32 text_base_x = 192;
-            u32 text_base_y = 25;
+            u32 font_size     = 38;
+            u32 text_base_x   = 192;
+            u32 text_base_y   = 25;
             u32 shadow_offset = 2;
 
-            //f32 alpha = win_text_sequence.events[3].fadeable.alpha;
             DrawText(TextFormat("%d", manager.score), (text_base_x + shadow_offset) + shake_offset.x, 
                      (text_base_y + shadow_offset) + shake_offset.y, font_size, BLACK);//Fade(BLACK, alpha));
             DrawText(TextFormat("%d", manager.score), text_base_x + shake_offset.x, 
