@@ -246,6 +246,14 @@ void UnloadAllSoundBuffers(Game_Manager *manager) {
     }
 }
 
+void SpacebarTextInit(Spacebar_Text *text) {
+    text->text = "Press Spacebar";
+    text->size = 7;
+    text->pos  = {(base_screen_width*0.5f) - (MeasureText(text->text, text->size)*0.5f),
+                  base_screen_height*0.70};
+    text->bob  = 0.0f;
+};
+
 void GameManagerInit(Game_Manager *manager) {
     manager->score                  = 0;
     manager->happy_score            = 2500;
@@ -307,10 +315,18 @@ void GameManagerInit(Game_Manager *manager) {
     manager->screen_shake.intensity = 0;
     manager->screen_shake.duration  = 0;
     manager->screen_shake.decay     = 0;
+
+    manager->white_screen.alpha     = 0;
+    manager->white_screen.duration  = 0;
+    manager->white_screen.timer     = 0;
+    manager->white_screen.fade_type = FadeType_none;
     manager->fade_count             = 0;
 
     LoadSoundBuffer(manager->sounds);
     LoadHypeSoundBuffer(manager->hype_sounds);
+
+    manager->spacebar_text;
+    SpacebarTextInit(&manager->spacebar_text);
 }
 
 void PowerupInit(Powerup *powerup, Powerup *sentinel, Tile *tile) {
@@ -331,14 +347,6 @@ void EnemyInit(Enemy *enemy, Enemy *sentinel, u32 tile_index) {
     AnimatorInit(&enemy->animators[EnemyAnimator_idle], "../assets/sprites/demon.png", SPRITE_WIDTH, true);
     AnimatorInit(&enemy->animators[EnemyAnimator_destroy], "../assets/sprites/disappear.png", SPRITE_WIDTH, false);
 }
-
-void SpacebarTextInit(Spacebar_Text *text) {
-    text->text = "Press Spacebar";
-    text->size = 7;
-    text->pos  = {(base_screen_width*0.5f) - (MeasureText(text->text, text->size)*0.5f),
-                  base_screen_height*0.70};
-    text->bob  = 0.0f;
-};
 
 void TutorialAnimationInit(Tutorial_Entities *entities) {
     AnimatorInit(&entities->enemy,   "../assets/sprites/demon.png", SPRITE_WIDTH, true);
@@ -1136,21 +1144,8 @@ int main() {
     Event_Manager event_manager;
     SetupEventSequences(&event_manager);
 
-    // TODO: I could set these up in their respective game states 
-    // because they are only used in their individual states and never called anywhere else.
-    Event_Queue *win_sequence      = &event_manager.sequence[Sequence_win];
-    Event_Queue *tutorial          = &event_manager.sequence[Sequence_tutorial];
-    Event_Queue *title_press       = &event_manager.sequence[Sequence_begin];
-
     Tutorial_Entities tutorial_entities;
     TutorialAnimationInit(&tutorial_entities);
-
-    // TODO: Should this live in the game manager?
-    Fade_Object white_screen = {};
-
-    // TODO: This should probably live in the game manager.
-    Spacebar_Text spacebar_text;
-    SpacebarTextInit(&spacebar_text);
 
     Memory_Arena arena;
     size_t arena_size = 1024*1024;
@@ -1165,14 +1160,10 @@ int main() {
         // Update
         // -----------------------------------
         
-        // TODO: Need to figure out a better way to stop everything when a win has occured
         f32 delta_t      = GetFrameTime();
         f32 current_time = GetTime();
 
         UpdateScreenShake(&manager.screen_shake, delta_t);
-        // TODO: figure out a way to make this work for multiple fade objects
-        // perahps I should create an array of objects to fade and this will go through the list 
-        // fading them all.
         UpdateAlphaFade(&manager, delta_t);
 
         // NOTE: reset the counter back to zero after everything to not mess up 
@@ -1513,12 +1504,12 @@ int main() {
             Vector2 texture_offset = {0.0f, 20.0f};
             DrawTexturePro(player.animators[PlayerAnimator_celebration].texture, src,
                            dest_rect, texture_offset, 0.0f, player.col);
-            if (white_screen.alpha == 0.0f) {
-                AlphaFadeIn(&manager, &white_screen, 5.0f);
-            } else if (white_screen.alpha == 1.0f) {
+            if (manager.white_screen.alpha == 0.0f) {
+                AlphaFadeIn(&manager, &manager.white_screen, 5.0f);
+            } else if (manager.white_screen.alpha == 1.0f) {
                 manager.state = GameState_win_text;
             }
-            DrawScreenFadeCol(&white_screen, base_screen_width, base_screen_height, WHITE);
+            DrawScreenFadeCol(&manager.white_screen, base_screen_width, base_screen_height, WHITE);
             DrawGodFace(&manager, delta_t);
 
 #if 0
@@ -1530,9 +1521,10 @@ int main() {
         } else if (manager.state == GameState_win_text) {
             // TODO: this whole state is a bit of a messy bessy and I need to clean 
             // dat ass up.
+            Event_Queue *win_sequence      = &event_manager.sequence[Sequence_win];
             UpdateEventQueue(win_sequence, &manager, delta_t);
 
-            DrawScreenFadeCol(&white_screen, base_screen_width, base_screen_height, WHITE);
+            DrawScreenFadeCol(&manager.white_screen, base_screen_width, base_screen_height, WHITE);
 
             manager.gui.anim_timer += delta_t;
             f32 translation_duration = 3.0f;
@@ -1594,8 +1586,8 @@ int main() {
             Event event = win_sequence->events[1];
             DrawTextTripleEffect(message, text_pos, font_size, event.fadeable.alpha); 
 
-            UpdateSpacebarBob(&spacebar_text, delta_t);
-            DrawTextTripleEffect(spacebar_text.text, spacebar_text.pos, spacebar_text.size, 
+            UpdateSpacebarBob(&manager.spacebar_text, delta_t);
+            DrawTextTripleEffect(manager.spacebar_text.text, manager.spacebar_text.pos, manager.spacebar_text.size, 
                                  win_sequence->events[3].fadeable.alpha); 
 
             if (IsKeyPressed(KEY_SPACE)) {
@@ -1606,9 +1598,9 @@ int main() {
             }
 
         } else if (manager.state == GameState_epilogue) {
-            if (white_screen.alpha == 1.0f)
+            if (manager.white_screen.alpha == 1.0f)
             {
-                AlphaFadeOut(&manager, &white_screen, 5.0f);
+                AlphaFadeOut(&manager, &manager.white_screen, 5.0f);
             }
             end_screen.timer += delta_t;
             BeginShaderMode(end_screen.shaders[EndLayer_sky].shader);
@@ -1626,7 +1618,7 @@ int main() {
                 end_screen.blink_duration = GetRandomValue(0.5f, 3.0f);
             }
 
-            DrawScreenFadeCol(&white_screen, base_screen_width, base_screen_height, WHITE);
+            DrawScreenFadeCol(&manager.white_screen, base_screen_width, base_screen_height, WHITE);
             if (IsKeyPressed(KEY_SPACE)) {
                 ResetEvents(&event_manager);
                 manager.state = GameState_title;
@@ -1636,6 +1628,7 @@ int main() {
             if ( IsMusicStreamPlaying(manager.song[Song_intro]))    StopMusicStream(manager.song[Song_intro]);
             if (!IsMusicStreamPlaying(manager.song[Song_tutorial])) PlayMusicStream(manager.song[Song_tutorial]);
 
+            Event_Queue *tutorial          = &event_manager.sequence[Sequence_tutorial];
             UpdateEventQueue(tutorial, &manager, delta_t);
             DrawRectangle(0, 0, base_screen_width, base_screen_height, BLACK);
             if (!tutorial->active) StartEventSequence(tutorial);
@@ -1654,8 +1647,8 @@ int main() {
             DrawTextTripleEffect(powerup,     powerup_text_pos, font_size, tutorial->events[1].fadeable.alpha);
             DrawTextTripleEffect(sacred_fire, fire_text_pos,    font_size, tutorial->events[2].fadeable.alpha);
 
-            UpdateSpacebarBob(&spacebar_text, delta_t);
-            DrawTextTripleEffect(spacebar_text.text, spacebar_text.pos, font_size, 
+            UpdateSpacebarBob(&manager.spacebar_text, delta_t);
+            DrawTextTripleEffect(manager.spacebar_text.text, manager.spacebar_text.pos, font_size, 
                                  tutorial->events[4].fadeable.alpha);
             Vector2 demon_pos   = {(f32)demon_text_pos.x - tutorial_entities.enemy.frame_rec.width - icon_padding, 
                                    (f32)demon_text_pos.y - (tutorial_entities.enemy.frame_rec.height*0.5f)-font_size};
@@ -1686,13 +1679,14 @@ int main() {
             // other things that need to be reset for multiple continuous 
             // playthroughs. I'm going to need a cleaner way to reset these 
             // things.
-            white_screen.alpha = 0.0f;
+            manager.white_screen.alpha = 0.0f;
             manager.gui.step = 0.0f;
 
             if (IsMusicStreamPlaying(manager.song[Song_play]))       StopMusicStream(manager.song[Song_play]);
             if (IsMusicStreamPlaying(manager.song[Song_play_muted])) StopMusicStream(manager.song[Song_play_muted]);
             if (IsMusicStreamPlaying(manager.song[Song_win]))        StopMusicStream(manager.song[Song_win]);
 
+            Event_Queue *title_press       = &event_manager.sequence[Sequence_begin];
             UpdateEventQueue(title_press, &manager, delta_t);
             Game_Title *title = &title_screen_manager.title;
             UpdateTitleBob(title, delta_t);

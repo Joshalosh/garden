@@ -307,46 +307,50 @@ struct Gui {
 };
 
 struct Game_Manager {
-    u32          score;
-    u32          happy_score;
-    u32          satisfied_score;
-    u32          score_multiplier;
+    u32           score;
+    u32           happy_score;
+    u32           satisfied_score;
+    u32           score_multiplier;
 
-    u32          frame_counter;
-    b32          fire_cleared;
-    Game_State   state;
+    u32           frame_counter;
+    b32           fire_cleared;
+    Game_State    state;
 
-    Texture2D    atlas[Atlas_count];
-    Gui          gui;
+    Texture2D     atlas[Atlas_count];
+    Gui           gui;
 
     // Enemy controller
-    f32          enemy_spawn_duration;
-    f32          spawn_timer;
-    f32          enemy_move_duration;
-    f32          enemy_move_timer;
+    f32           enemy_spawn_duration;
+    f32           spawn_timer;
+    f32           enemy_move_duration;
+    f32           enemy_move_timer;
 
     // Linked list sentinels
-    Enemy        enemy_sentinel;
-    Powerup      powerup_sentinel;
+    Enemy         enemy_sentinel;
+    Powerup       powerup_sentinel;
 
     // Hype Sound
-    f32          hype_sound_timer;
-    u32          hype_prev_index;
-    Sound        hype_sounds[HYPE_WORD_COUNT];
+    f32           hype_sound_timer;
+    u32           hype_prev_index;
+    Sound         hype_sounds[HYPE_WORD_COUNT];
 
-    Sound        sounds[SoundEffect_count];
-    Text_Burst   bursts[MAX_BURSTS];
+    Sound         sounds[SoundEffect_count];
+    Text_Burst    bursts[MAX_BURSTS];
 
-    Music        song[Song_count];
-    f32          play_song_volume;
-    f32          play_muted_song_volume;
+    Music         song[Song_count];
+    f32           play_song_volume;
+    f32           play_muted_song_volume;
 
-    Screen_Shake screen_shake;
+    Screen_Shake  screen_shake;
+    Fade_Object   white_screen;
 
-    // For fadeable objects
-    Fade_Object  *fadeables[MAX_FADEABLES];
-    u32          fade_count;
+    // Store a list of pointers to fadeable objects
+    // to easily access them and iterate over them to 
+    // fade their alpha values.
+    Fade_Object   *fadeables[MAX_FADEABLES];
+    u32           fade_count;
 
+    Spacebar_Text spacebar_text;
 };
 
 struct StackU32 {
