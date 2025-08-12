@@ -1123,6 +1123,10 @@ void PlayAllMusicForGameCorrectly(Game_Manager *manager) {
     }
 }
 
+void SetTimeValueForWobbleShader(Wobble_Shader *shader, f32 time) {
+    SetShaderValue(shader->shader, shader->time_location, &time, SHADER_UNIFORM_FLOAT);
+}
+
 int main() {
     // -------------------------------------
     // Initialisation
@@ -1220,15 +1224,6 @@ int main() {
         }
         manager.frame_counter++;
 
-        // Set Shader variables
-        SetShaderValue(title_screen_manager.bg.wobble.shader, title_screen_manager.bg.wobble.time_location,
-                       &current_time, SHADER_UNIFORM_FLOAT);
-        SetShaderValue(map.wobble.shader, map.wobble.time_location, &current_time, SHADER_UNIFORM_FLOAT);
-        SetShaderValue(end_screen.shaders[EndLayer_sky].shader, end_screen.shaders[EndLayer_sky].time_location,  
-                       &current_time, SHADER_UNIFORM_FLOAT);
-        SetShaderValue(end_screen.shaders[EndLayer_trees].shader, end_screen.shaders[EndLayer_trees].time_location, 
-                       &current_time, SHADER_UNIFORM_FLOAT);
-
         // Draw to render texture
         BeginTextureMode(target);
         ClearBackground(BLACK);
@@ -1236,10 +1231,8 @@ int main() {
         if (manager.state == GameState_play) {
             manager.fire_cleared = true;
 
-            // TODO: I need to put a bunch of these arguments into the game manager 
-            // to simplify things and make shiz a bit cleaner
+            SetTimeValueForWobbleShader(&map.wobble, current_time);
             DrawGame(&map, &manager, &player, delta_t);
-
             GatherInput(&player);
 
             if (!player.is_moving) {
@@ -1506,6 +1499,7 @@ int main() {
             }
 
         } else if (manager.state == GameState_win) {
+            SetTimeValueForWobbleShader(&map.wobble, current_time);
             DrawGame(&map, &manager, &player, delta_t);
 
             StopSoundBuffer(manager.sounds);
@@ -1611,8 +1605,10 @@ int main() {
             }
             end_screen.timer += delta_t;
             BeginShaderMode(end_screen.shaders[EndLayer_sky].shader);
+            SetTimeValueForWobbleShader(&end_screen.shaders[EndLayer_sky], current_time);
             DrawTextureV(end_screen.textures[EndLayer_sky], {0, 0}, WHITE);
             EndShaderMode();
+            SetTimeValueForWobbleShader(&end_screen.shaders[EndLayer_trees], current_time);
             BeginShaderMode(end_screen.shaders[EndLayer_trees].shader);
             DrawTextureV(end_screen.textures[EndLayer_trees], {-30.0f, 0}, WHITE);
             EndShaderMode();
@@ -1744,6 +1740,7 @@ int main() {
                                                 bg->pos_right_2.y + bg->texture[index].height*index};
                     // I prefer the look when only half the layers have the wobble shader attached 
                     // that's why the right moving ones wobble and the left moving ones don't.
+                    SetTimeValueForWobbleShader(&title_screen_manager.bg.wobble, current_time);
                     BeginShaderMode(bg->wobble.shader);
                     DrawTextureV(bg->texture[index], draw_pos_right_1, WHITE);
                     DrawTextureV(bg->texture[index], draw_pos_right_2, WHITE);
