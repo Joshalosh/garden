@@ -26,7 +26,6 @@ enum Tile_Type {
     TileType_none        = 0,
     TileType_wall        = 1,
     TileType_floor       = 2,
-    TileType_fire        = 3,
 };
 
 enum Tile_Flags {

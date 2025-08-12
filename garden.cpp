@@ -691,7 +691,6 @@ void CheckEnclosedAreas(Memory_Arena *arena, Tilemap *tilemap, Player *player, G
             if ((tile->type == TileType_floor) && !IsFlagSet(tile, TileFlag_fire)) {
                 if (!IsFlagSet(tile, TileFlag_visited)) {
                     AddFlag(tile, TileFlag_fire);
-                    //tile->type = TileType_fire;
                     has_flood_fill_happened = true;
                     
                     if (IsFlagSet(tile, TileFlag_powerup)) {
@@ -809,7 +808,7 @@ Direction_Facing KeyToDirection(s32 key) {
     return result;
 }
 
-void GatherInput(Player *player) {
+void StorePlayerDirectionsInBuffer(Player *player) {
     s32 key;
     while ((key = GetKeyPressed()) != 0) {
         Direction_Facing dir = KeyToDirection(key);
@@ -826,10 +825,11 @@ void GatherInput(Player *player) {
     }
 }
 
-Text_Burst CreateTextBurst(const char *text, Vector2 pos) {
+Text_Burst CreateTextBurst(const char *text) {
     Text_Burst burst =  {};
     burst.text       =  text;
-    burst.pos        =  pos;
+    burst.pos        =  {(f32)GetRandomValue(0+TILE_SIZE, base_screen_width-TILE_SIZE), 
+                         (f32)GetRandomValue(0+TILE_SIZE, base_screen_height-TILE_SIZE)};
     burst.alpha      =  0.0f;
     burst.scale      =  0.25f;
     burst.max_scale  =  0.75f + (float)(rand() % 100) / 100.0f;
@@ -1008,21 +1008,7 @@ void DrawGame(Tilemap *map, Game_Manager *manager, Player *player, f32 delta_t)
             Tile *tile = &map->tiles[index];
             tile->pos  = {(float)x * map->tile_size, (float)y * map->tile_size};
 
-            Color tile_col;
-            switch (tile->type) {
-                case TileType_none:       tile_col = BLACK;                break;
-                case TileType_wall:       tile_col = PURPLE;               break;
-                case TileType_floor:      tile_col = {68, 68, 68, 255};    break;
-                case TileType_fire:       tile_col = {168, 0, 0, 255};     break;
-            }
-
-            Vector2 tile_size = {(f32)map->tile_size, (f32)map->tile_size};
-
-            // TODO: I need to make getting the source rec and the random seed for 
-            // the atlas seperate functions
-            
             Rectangle atlas_frame_rec = SetAtlasFrameRec(tile->type, tile->seed);
-
             if (tile->type == TileType_floor) {
                 DrawTextureRec(manager->atlas[Atlas_tile], atlas_frame_rec, tile->pos, WHITE);
             } else if (tile->type == TileType_wall) {  
@@ -1033,12 +1019,9 @@ void DrawGame(Tilemap *map, Game_Manager *manager, Player *player, f32 delta_t)
                 } else {
                     DrawTextureRec(manager->atlas[Atlas_wall], atlas_frame_rec, tile->pos, WHITE);
                 }
-            } else {
-                //DrawRectangleV(tile->pos, tile_size, tile_col);
-                continue;
-            }
+            } 
             if (IsFlagSet(tile, TileFlag_fire)) {
-                tile_col = player->powered_up ? PURPLE : WHITE;
+                Color tile_col = player->powered_up ? PURPLE : WHITE;
                 manager->fire_cleared = false;
                 Animate(&tile->animator, manager->frame_counter);
                 BeginShaderMode(map->wobble.shader);
@@ -1057,6 +1040,8 @@ void DrawGame(Tilemap *map, Game_Manager *manager, Player *player, f32 delta_t)
             if (IsFlagSet(tile, TileFlag_enemy)) {
                 Enemy *found_enemy = FindEnemyInList(&manager->enemy_sentinel, index);
                 if (found_enemy) {
+                    // If the game has been won then change the enemy animation to thier 
+                    // destroyed one.
                     Animation *enemy_animation = (manager->state == GameState_win) ? 
                                                  &found_enemy->animators[EnemyAnimator_destroy] : 
                                                  &found_enemy->animators[EnemyAnimator_idle];
@@ -1233,8 +1218,8 @@ int main() {
 
             SetTimeValueForWobbleShader(&map.wobble, current_time);
             DrawGame(&map, &manager, &player, delta_t);
-            GatherInput(&player);
 
+            StorePlayerDirectionsInBuffer(&player);
             if (!player.is_moving) {
                 Direction_Facing dir = InputBufferPop(&player);
                 if (dir == DirectionFacing_none) dir = player.facing;
@@ -1253,20 +1238,16 @@ int main() {
                     // NOTE: Calculate the next tile position
                     u32 current_tile_x = (u32)player.pos.x / map.tile_size;
                     u32 current_tile_y = (u32)player.pos.y / map.tile_size;
-
-                    u32 target_tile_x = current_tile_x + (u32)input_axis.x;
-                    u32 target_tile_y = current_tile_y + (u32)input_axis.y;
-
+                    u32 target_tile_x  = current_tile_x + (u32)input_axis.x;
+                    u32 target_tile_y  = current_tile_y + (u32)input_axis.y;
                     u32 target_tile_index = TilemapIndex(target_tile_x, target_tile_y, map.width);
-                    Tile *target_tile = &map.tiles[target_tile_index];
+                    Tile *target_tile     = &map.tiles[target_tile_index];
 
-                    // TODO: need to continue the refactor from here
                     if (target_tile_x > 0 && target_tile_x < map.width-1 &&
                         target_tile_y > 0 && target_tile_y < map.height-1) {
 
                         if (target_tile->type != TileType_wall  && 
-                            target_tile->type != TileType_none  &&
-                            target_tile->type != TileType_fire) {
+                            target_tile->type != TileType_none) {
                             
                             // Start moving
                             player.facing     = dir;
@@ -1287,8 +1268,8 @@ int main() {
                     }
 
                     if (IsFlagSet(target_tile, TileFlag_powerup)) {
-                        float powerup_duration     = 10.0f;
-                        player.powerup_timer       = GetTime() + powerup_duration;
+                        f32 powerup_duration       = 10.0f;
+                        player.powerup_timer       = current_time + powerup_duration;
                         player.powered_up          = true;
                         player.blink_speed         = 5.0f;
                         player.time_between_blinks = player.blink_speed;
@@ -1298,7 +1279,6 @@ int main() {
                         }
                         PlaySound(manager.sounds[SoundEffect_powerup_collect]);
                         manager.hype_sound_timer   = 0;
-
                     }
 
                     if (player.powered_up) {
@@ -1312,23 +1292,26 @@ int main() {
                                 if (!manager.bursts[index].active) {
                                     u32 random_index      = GetRandomValue(0, HYPE_WORD_COUNT - 1);
                                     const char *word      = hype_text[random_index];
-                                    manager.bursts[index] = CreateTextBurst(word, target_tile->pos);
+                                    // TODO: Settle on what kind of positioning I want to have the create 
+                                    // text burst appear at.
+                                    manager.bursts[index] = CreateTextBurst(word);
                                     break;
                                 }
                             }
                             // Play the hype sounds
-                            if (manager.hype_sound_timer <= GetTime()) {
+                            if (manager.hype_sound_timer <= current_time) {
                                 u32 index = GetRandomValue(0, HYPE_WORD_COUNT - 1);
                                 while (index == manager.hype_prev_index) {
                                     index = GetRandomValue(0, HYPE_WORD_COUNT -1);
                                 }
+                                ASSERT(index < HYPE_WORD_COUNT);
                                 Sound hype_sound = manager.hype_sounds[index];
                                 f32 sound_boost  = 3.0f;
                                 SetSoundVolume(hype_sound, sound_boost);
                                 PlaySound(hype_sound);
 
                                 manager.hype_prev_index  = index;
-                                f32 sound_duration = GetTime() + 0.90f;
+                                f32 sound_duration       = current_time + 0.90f;
                                 manager.hype_sound_timer = sound_duration;
                             }
                         }
