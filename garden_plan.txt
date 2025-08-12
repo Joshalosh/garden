@@ -16,7 +16,7 @@
   
 - Juice
  - Figure our better scoring system.
- - Make Enemies destroy correctly on game win
+ - Maybe have the win screen background play out behind the tutorial?
 
 - Refactor
  - Fix get tile rect function to not do multiple things.

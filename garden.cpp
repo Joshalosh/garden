@@ -296,6 +296,7 @@ void GameManagerInit(Game_Manager *manager) {
     manager->play_song_volume        = 1.0f;
     manager->play_muted_song_volume  = 0.0f;
     manager->should_title_music_play = false;
+    manager->last_song_bit           = 0xFFFFFFFF;
     SetMusicVolume(manager->song[Song_play], manager->play_song_volume);
     SetMusicVolume(manager->song[Song_play_muted], manager->play_muted_song_volume);
     // Set all the songs in the song buffer to loop
@@ -1056,10 +1057,13 @@ void DrawGame(Tilemap *map, Game_Manager *manager, Player *player, f32 delta_t)
             if (IsFlagSet(tile, TileFlag_enemy)) {
                 Enemy *found_enemy = FindEnemyInList(&manager->enemy_sentinel, index);
                 if (found_enemy) {
-                    Animate(&found_enemy->animators[EnemyAnimator_idle], manager->frame_counter);
+                    Animation *enemy_animation = (manager->state == GameState_win) ? 
+                                                 &found_enemy->animators[EnemyAnimator_destroy] : 
+                                                 &found_enemy->animators[EnemyAnimator_idle];
                     Vector2 draw_pos = {tile->pos.x, tile->pos.y - 20.f};
-                    DrawTextureRec(found_enemy->animators[EnemyAnimator_idle].texture,
-                                   found_enemy->animators[EnemyAnimator_idle].frame_rec, 
+                    Animate(enemy_animation, manager->frame_counter);
+                    DrawTextureRec(enemy_animation->texture,
+                                   enemy_animation->frame_rec, 
                                    draw_pos, WHITE);
                 }
             }
@@ -1079,34 +1083,37 @@ u32 SongBit(u32 SongId) {
     return 1u << SongId;
 }
 
-void PlayMusicForState(Game_Manager *manager) {
-    u32 wanted_track = 0;
+void PlayAllMusicForGameCorrectly(Game_Manager *manager) {
+    u32 wanted_song_bit = 0;
     switch (manager->state) {
         case GameState_play: {
-            wanted_track = SongBit(Song_play) | SongBit(Song_play_muted);
+            wanted_song_bit = SongBit(Song_play) | SongBit(Song_play_muted);
         } break;
         case GameState_tutorial: {
-            wanted_track = SongBit(Song_tutorial);
+            wanted_song_bit = SongBit(Song_tutorial);
         } break;
         case GameState_title: {
-            wanted_track = manager->should_title_music_play ? SongBit(Song_intro) : 0u;
+            wanted_song_bit = manager->should_title_music_play ? SongBit(Song_intro) : 0u;
         } break;
         case GameState_epilogue:
         case GameState_win_text:
         case GameState_win: {
-            wanted_track = SongBit(Song_win);
+            wanted_song_bit = SongBit(Song_win);
         } break;
     }
 
-    for (u32 index = 0; index < Song_count; index++) {
-        b32 should_play = (wanted_track & SongBit(index)) != 0;
-        b32 is_playing = IsMusicStreamPlaying(manager->song[index]);
+    if (wanted_song_bit != manager->last_song_bit) {
+        for (u32 index = 0; index < Song_count; index++) {
+            b32 should_play = (wanted_song_bit & SongBit(index)) != 0;
+            b32 is_playing = IsMusicStreamPlaying(manager->song[index]);
 
-        if (should_play && !is_playing) {
-            PlayMusicStream(manager->song[index]);
-        } else if (!should_play && is_playing) {
-            StopMusicStream(manager->song[index]);
+            if (should_play && !is_playing) {
+                PlayMusicStream(manager->song[index]);
+            } else if (!should_play && is_playing) {
+                StopMusicStream(manager->song[index]);
+            }
         }
+        manager->last_song_bit = wanted_song_bit;
     }
 
     for (u32 index = 0; index < Song_count; index++) {
@@ -1211,17 +1218,7 @@ int main() {
         if (manager.frame_counter >= 60/FRAME_SPEED) {
             manager.frame_counter = 0;
         }
-
         manager.frame_counter++;
-
-        Animate(&player.animators[player.facing], manager.frame_counter);
-
-        // TODO: Make a cleaner function that pays attention to the state, the 
-        // current song playing and then updates the appropriate track. Because 
-        // right now the code is spread out across the entire codebase and it 
-        // feels a little brittle like that.
-        UpdateMusicStream(manager.song[Song_win]);
-        PlayMusicForState(&manager);
 
         // Set Shader variables
         SetShaderValue(title_screen_manager.bg.wobble.shader, title_screen_manager.bg.wobble.time_location,
@@ -1494,6 +1491,7 @@ int main() {
                                    frame_width, frame_height}; 
 
             Vector2 texture_offset = {0.0f, 20.0f};
+            Animate(&player.animators[player.facing], manager.frame_counter);
             DrawTexturePro(player.animators[player.facing].texture, src,
                            dest_rect, texture_offset, 0.0f, player.col);
             for(int index = 0; index < MAX_BURSTS; index++) {
@@ -1526,6 +1524,7 @@ int main() {
                                    frame_width, frame_height}; 
 
             Vector2 texture_offset = {0.0f, 20.0f};
+            Animate(&player.animators[PlayerAnimator_celebration], manager.frame_counter);
             DrawTexturePro(player.animators[PlayerAnimator_celebration].texture, src,
                            dest_rect, texture_offset, 0.0f, player.col);
             if (manager.white_screen.alpha == 0.0f) {
@@ -1798,6 +1797,10 @@ int main() {
             }
         }
 
+        // TODO: Play the music here after the game logic has occured to make 
+        // sure that all the tracks are playing correctly on thier exact frames 
+        // they are supposed to and not a frame behind.
+        PlayAllMusicForGameCorrectly(&manager);
         EndTextureMode();
 
         // -----------------------------------
