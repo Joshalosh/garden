@@ -89,7 +89,7 @@ void PlayerInit(Player *player) {
     player->powered_up          = false;
     player->powerup_timer       = 0;
     player->blink_speed         = 0;
-    player->time_between_blinks = 0;
+    player->blinking_duration   = 0;
     player->col_bool            = false;
     player->facing              = DirectionFacing_down;
     for(u32 index = 0; index < INPUT_MAX; index++) {
@@ -536,8 +536,11 @@ void GameOver(Player *player, Tilemap *tilemap,  Game_Manager *manager) {
 
     StopSoundBuffer(manager->sounds);
 
+    // Delete all enemies and powerups from the enemy/powerup linked lists.
     manager->enemy_sentinel.next = &manager->enemy_sentinel;
     manager->enemy_sentinel.prev = &manager->enemy_sentinel;
+    manager->powerup_sentinel.next = &manager->powerup_sentinel;
+    manager->powerup_sentinel.prev = &manager->powerup_sentinel;
     manager->fade_count = 0;
 
     // Reset the tilemap back to it's original orientation
@@ -557,7 +560,7 @@ b32 IsFlagSet(Tile *tile, u32 flag) {
     return result;
 }
 
-void FloodFillFromPlayerPosition(Tilemap *tilemap, u32 start_x, u32 start_y) {
+void CheckEnclosedAreasFromPlayerPosition(Tilemap *tilemap, u32 start_x, u32 start_y) {
     StackU32 nodes;
     StackInit(&nodes);
 
@@ -587,6 +590,10 @@ void FloodFillFromPlayerPosition(Tilemap *tilemap, u32 start_x, u32 start_y) {
     }
 } 
 
+// TODO: Need to pay attention to this, because this is where the game 
+// crashing bug is happening i'm pretty sure. It actually is probably 
+// more likely happening in the identical function below, that takes in 
+// the players tile_index.
 u32 GetRandomEmptyTileIndex(Tilemap *tilemap) {
     bool found_empty_tile = false;
     u32 index             = 0;
@@ -675,17 +682,17 @@ u32 FindEligibleTileIndexForEnemyMove(Tilemap *tilemap, u32 index) {
     return result;
 }
 
-void CheckEnclosedAreas(Memory_Arena *arena, Tilemap *tilemap, Player *player, Game_Manager *manager, 
-                        u32 current_x, u32 current_y) {
-    // Flood fill from borders to mark reachable areas
-    FloodFillFromPlayerPosition(tilemap, current_x, current_y);
-
+void FillEnclosedAreas(Memory_Arena *arena, Tilemap *tilemap, Player *player, Game_Manager *manager, 
+                       u32 current_x, u32 current_y) {
+    // Mark all reachable areas from the player with a visited flag on the tile. 
+    // All areas not marked are enclosed areas.
+    CheckEnclosedAreasFromPlayerPosition(tilemap, current_x, current_y);
     bool has_flood_fill_happened = false;
     u32 enemy_slain              = 0;
-    // Any floor or dirt tiles not marked are enclosed
+    // Any floor tiles not marked as visited are enclosed
     for (u32 y = 0; y < (u32)tilemap->height; y++) {
         for (u32 x = 0; x < (u32)tilemap->width; x++) {
-            u32 index = TilemapIndex(x, y, tilemap->width);
+            u32 index   = TilemapIndex(x, y, tilemap->width);
             Tile *tile  = &tilemap->tiles[index];
 
             if ((tile->type == TileType_floor) && !IsFlagSet(tile, TileFlag_fire)) {
@@ -701,7 +708,8 @@ void CheckEnclosedAreas(Memory_Arena *arena, Tilemap *tilemap, Player *player, G
                         DeleteEnemyInList(&manager->enemy_sentinel, index);
                         ClearFlag(tile, TileFlag_enemy);
                         enemy_slain++;
-                        player->speed += 10.0f;
+                        f32 speed_increase = 10.0f;
+                        player->speed += speed_increase;
                     }
                 } 
             } 
@@ -732,7 +740,6 @@ void CheckEnclosedAreas(Memory_Arena *arena, Tilemap *tilemap, Player *player, G
 
 Rectangle SetAtlasFrameRec(Tile_Type type, u32 seed) {
     Rectangle frame_rec = {0, 0, TILE_SIZE, TILE_SIZE};
-
     switch (type) {
         case TileType_wall:
         case TileType_floor: {
@@ -742,7 +749,6 @@ Rectangle SetAtlasFrameRec(Tile_Type type, u32 seed) {
         default: {
         } break;
     }
-
     return frame_rec;
 }
 
@@ -1219,6 +1225,18 @@ int main() {
             SetTimeValueForWobbleShader(&map.wobble, current_time);
             DrawGame(&map, &manager, &player, delta_t);
 
+            // TODO: My unchecked/unsubstantiated theory of why the player movement 
+            // feel off and why buttons pressed in quick successsion aren't logged 
+            // is because of the is_moving flag. I think maybe while the player is moving 
+            // it ignores directions inputs. But as you can see the directions are stored 
+            // inside the buffer before is is_moving flag is checked. So i'm not 100% sure, 
+            // because I don't see how that could happen. But it definitely feels like inputs  
+            // get ignored while the player is moving. But I guess only if the buttons are pressed 
+            // in quick succession. Also strangely I feel like when the player picks up speed 
+            // and starts to move a lot faster things feel a bit more tighter. This I guess 
+            // is also why I think it's related to is_moving because the window where that 
+            // bool switches is so much shorter and the late game when the character is moving 
+            // really fast.
             StorePlayerDirectionsInBuffer(&player);
             if (!player.is_moving) {
                 Direction_Facing dir = InputBufferPop(&player);
@@ -1272,7 +1290,7 @@ int main() {
                         player.powerup_timer       = current_time + powerup_duration;
                         player.powered_up          = true;
                         player.blink_speed         = 5.0f;
-                        player.time_between_blinks = player.blink_speed;
+                        player.blinking_duration   = player.blink_speed;
                         ClearFlag(target_tile, TileFlag_powerup);
                         if (IsSoundPlaying(manager.sounds[SoundEffect_powerup_end])) {
                             StopSound(manager.sounds[SoundEffect_powerup_end]);
@@ -1332,7 +1350,7 @@ int main() {
                     u32 current_tile_x = (u32)player.pos.x / map.tile_size;
                     u32 current_tile_y = (u32)player.pos.y / map.tile_size;
 
-                    CheckEnclosedAreas(&arena, &map, &player, &manager, current_tile_x, current_tile_y);
+                    FillEnclosedAreas(&arena, &map, &player, &manager, current_tile_x, current_tile_y);
                 } else {
                     direction        = VectorNorm(direction);
                     Vector2 movement = VectorScale(direction, player.speed * delta_t);
@@ -1340,54 +1358,60 @@ int main() {
                 }
             }
 
-            // Powerup blinking
             if (player.powered_up) {
                 f32 end_duration_signal  = 3.0f;
+                // TODO: I've set up a seperate frame counter here for the water that I can double 
+                // or halve to speed the animation up or slow it down. Perhaps a better implementation 
+                // in the future would be to have the animate function take a speed multiplier that can 
+                // effect the global frame counter for the individual animation. This would be better 
+                // than each animation that wants a speed change to have it's own counter. Right now 
+                // only this animation in the game that wants to change it's speed so 
+                // this current implemenation is fine for now.
                 u32 water_frame_counter  = manager.frame_counter;
 
+                // TODO: I'm moving the volume value by a set amount which isn't very frame independant. 
+                // I should actually increment and decrement by some rate * delta_t.
                 manager.play_song_volume       -= 0.02f;
                 manager.play_muted_song_volume += 0.02f;
 
                 Sound powerup_effect     = manager.sounds[SoundEffect_powerup];
                 Sound powerup_end_effect = manager.sounds[SoundEffect_powerup_end];
 
-                // TODO: Need to either figure out a way to make this repeat while the player 
-                // is powered up or I need to make the sound effect last a really long time
                 if(!IsSoundPlaying(powerup_effect) && !IsSoundPlaying(powerup_end_effect))
                 {
                     PlaySound(powerup_effect);
+                    SetSoundVolume(powerup_effect, 1.5f);
                 }
 
-                if (player.powerup_timer < GetTime()) {
+                if (player.powerup_timer < current_time) { // Powerup is over.
                     player.powered_up = false;
                     player.col_bool   = false;
                     manager.score_multiplier = 1;
                     StopSound(powerup_effect);
                     StopSound(powerup_end_effect);
                 } else {
-                    if (player.powerup_timer - end_duration_signal < GetTime()) {
-                        player.blink_speed = 2.0f; 
+                    if ((player.powerup_timer - end_duration_signal) < current_time) { // Powerup over soon warning.
+                        player.blink_speed   = 2.0f; 
                         water_frame_counter *= 2;
 
                         if (!IsSoundPlaying(powerup_end_effect)) {
                             StopSound(powerup_effect);
                             PlaySound(powerup_end_effect);
+                            SetSoundVolume(powerup_end_effect, 2.0f);
                         }
                     }
 
-                    if (player.time_between_blinks > 0) {
-                    player.time_between_blinks -= 1.0f;
+                    if (player.blinking_duration > 0) {
+                    player.blinking_duration -= 1.0f;
                     } else {
-                        player.time_between_blinks = player.blink_speed;
-                        player.col_bool            = !player.col_bool;
+                        player.blinking_duration = player.blink_speed;
+                        player.col_bool          = !player.col_bool;
                     }
-
                 }
 
                 Animate(&player.animators[PlayerAnimator_water], water_frame_counter);
                 DrawTextureRec(player.animators[PlayerAnimator_water].texture, 
                                player.animators[PlayerAnimator_water].frame_rec, player.target_pos, WHITE);
-
                 if (player.col_bool) {
                     player.col = BLUE;
                 } else {
@@ -1398,14 +1422,18 @@ int main() {
                 manager.play_muted_song_volume -= 0.02f;
             }
 
+            // TODO: I need to set up a better way to crossfade these tracks. Right not this is the 
+            // only track I fade so it's probably fine 
             manager.play_song_volume       = CLAMP(manager.play_song_volume,  0.0f, 1.0f);
             manager.play_muted_song_volume = CLAMP(manager.play_muted_song_volume, 0.0f, 1.0f);
-
             SetMusicVolume(manager.song[Song_play],       manager.play_song_volume);
             SetMusicVolume(manager.song[Song_play_muted], manager.play_muted_song_volume);
 
             // Enemy spawning
             if (manager.spawn_timer > 0) {
+                // TODO: This right now is frame dependant. I should decrement by delta_t 
+                // and set the enemy_spawn_duration to reflect the real world seconds I 
+                // want to wait.
                 manager.spawn_timer -= 1.0f;
             } else {
                 manager.spawn_timer = manager.enemy_spawn_duration;

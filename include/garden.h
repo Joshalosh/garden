@@ -178,7 +178,7 @@ struct Player {
 
     f32              speed;
     f64              powerup_timer;
-    f32              time_between_blinks;
+    f32              blinking_duration;
     f32              blink_speed;
     bool             is_moving;
     bool             powered_up;
