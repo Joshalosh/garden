@@ -280,8 +280,8 @@ void GameManagerInit(Game_Manager *manager) {
 
     manager->state                   = GameState_title;
 
-    manager->enemy_spawn_duration    = 510.0f;
-    manager->enemy_move_duration     = 250.0f;
+    manager->enemy_spawn_duration    = 510.0f; // TODO: This should be in seconds.
+    manager->enemy_move_duration     = 250.0f; // TODO: This should be in seconds.
     manager->spawn_timer             = manager->enemy_spawn_duration;
     manager->enemy_move_timer        = manager->enemy_move_duration;
 
@@ -411,7 +411,7 @@ void SetupEventSequences(Event_Manager *manager) {
     ResetEvents(manager);
 }
 
-Enemy *FindEnemyInList(Enemy *sentinel, u32 index)
+Enemy *FindEnemyAtTile(Enemy *sentinel, u32 index)
 {
     Enemy *result = NULL;
     for (Enemy *enemy_to_find = sentinel->next; 
@@ -521,6 +521,14 @@ void UpdateTitleBob(Game_Title *title, f32 delta_t) {
     title->bob_velocity -= stiffness * title->bob * delta_t;
     title->bob_velocity *= damping;
     title->bob          += title->bob_velocity * delta_t;
+}
+
+void StopAllTextBursts(Game_Manager *manager) {
+    for(int index = 0; index < MAX_BURSTS; index++) {
+        if (manager->bursts[index].active) {
+            manager->bursts[index].active = false;
+        }
+    }
 }
 
 void GameOver(Player *player, Tilemap *tilemap,  Game_Manager *manager) {
@@ -753,9 +761,6 @@ Rectangle SetAtlasFrameRec(Tile_Type type, u32 seed) {
     return frame_rec;
 }
 
-// TODO: Maybe it would be cleaner to draw the texture as well as animate?
-// but that would mean I would have to pass the texture, position and a lot 
-// of other things. Perhaps it's simpler to keep the separated
 void Animate(Animation *animator, u32 frame_counter) {
     if (frame_counter % (60/FRAME_SPEED) == 0) {
         animator->current_frame++;
@@ -848,6 +853,19 @@ Text_Burst CreateTextBurst(const char *text) {
     return burst;
 }
 
+void DrawTextTripleEffect (const char *text, Vector2 pos, u32 size, f32 alpha = 1.0f) {
+
+    DrawText(text, (u32)pos.x+2.0f, (u32)pos.y+2.0f, size, Fade(BLACK,  alpha));
+    DrawText(text, (u32)pos.x+1.0f, (u32)pos.y+1.0f, size, Fade(MAROON, alpha));
+    DrawText(text, (u32)pos.x,      (u32)pos.y,      size, Fade(GOLD,   alpha));
+}
+
+void DrawTextDoubleEffect (const char *text, Vector2 pos, u32 size, f32 alpha = 1.0f) {
+
+    DrawText(text, (u32)pos.x+1.0f, (u32)pos.y+1.0f, size, Fade(BLACK, alpha));
+    DrawText(text, (u32)pos.x,      (u32)pos.y,      size, Fade(WHITE,   alpha));
+}
+
 void UpdateTextBurst(Text_Burst *burst, float dt) {
     if (burst->active) {
         burst->age += dt;
@@ -867,24 +885,21 @@ void UpdateTextBurst(Text_Burst *burst, float dt) {
     }
 }
 
-void DrawTextTripleEffect (const char *text, Vector2 pos, u32 size, f32 alpha = 1.0f) {
-
-    DrawText(text, (u32)pos.x+2.0f, (u32)pos.y+2.0f, size, Fade(BLACK,  alpha));
-    DrawText(text, (u32)pos.x+1.0f, (u32)pos.y+1.0f, size, Fade(MAROON, alpha));
-    DrawText(text, (u32)pos.x,      (u32)pos.y,      size, Fade(GOLD,   alpha));
-}
-
-void DrawTextDoubleEffect (const char *text, Vector2 pos, u32 size, f32 alpha = 1.0f) {
-
-    DrawText(text, (u32)pos.x+1.0f, (u32)pos.y+1.0f, size, Fade(BLACK, alpha));
-    DrawText(text, (u32)pos.x,      (u32)pos.y,      size, Fade(WHITE,   alpha));
-}
 void DrawTextBurst(Text_Burst *burst, Font font) {
     f32 font_size = (font.baseSize) * burst->scale;
     Color col     = Fade(WHITE, burst->alpha);
 
     //DrawTextTripleEffect(burst->text, burst->pos, font_size, burst->alpha);
     DrawTextDoubleEffect(burst->text, burst->pos, font_size, burst->alpha);
+}
+
+void UpdateAndDrawAllTextBursts(Game_Manager *manager, Font font, f32 delta_t) {
+    for(int index = 0; index < MAX_BURSTS; index++) {
+        UpdateTextBurst(&manager->bursts[index], delta_t);
+        if (manager->bursts[index].active) {
+            DrawTextBurst(&manager->bursts[index], font);
+        }
+    }
 }
 
 void AlphaFadeIn(Game_Manager *manager, Fade_Object *object, f32 duration) {
@@ -1049,7 +1064,7 @@ void DrawGame(Tilemap *map, Game_Manager *manager, Player *player, f32 delta_t)
                 }
             }
             if (IsFlagSet(tile, TileFlag_enemy)) {
-                Enemy *found_enemy = FindEnemyInList(&manager->enemy_sentinel, index);
+                Enemy *found_enemy = FindEnemyAtTile(&manager->enemy_sentinel, index);
                 if (found_enemy) {
                     // If the game has been won then change the enemy animation to thier 
                     // destroyed one.
@@ -1468,12 +1483,12 @@ int main() {
                         u32 tile_index = TilemapIndex(x, y, map.width); 
                         Tile *tile     = &map.tiles[tile_index];
 
+                        // The moved flag is necessary so that enemies don't end up moving multiple times.
                         if (IsFlagSet(tile, TileFlag_enemy) && !IsFlagSet(tile, TileFlag_moved)) {
                             u32 eligible_tile_index = FindEligibleTileIndexForEnemyMove(&map, tile_index); 
-                            Tile *eligible_tile = &map.tiles[eligible_tile_index];
-
                             if (eligible_tile_index) {
-                                Enemy *found_enemy = FindEnemyInList(&manager.enemy_sentinel, tile_index);
+                                Tile *eligible_tile = &map.tiles[eligible_tile_index];
+                                Enemy *found_enemy = FindEnemyAtTile(&manager.enemy_sentinel, tile_index);
                                 if (found_enemy) {
                                     found_enemy->tile_index = eligible_tile_index;
                                 }
@@ -1484,11 +1499,12 @@ int main() {
                         }
                     }
                 }
+                // TODO: Need to make move duration happen in seconds and decrement the timer 
+                // by delta_t;
                 manager.enemy_move_timer = manager.enemy_move_duration;
             }
 
             Rectangle src = player.animators[player.facing].frame_rec;
-
             if (player.facing == DirectionFacing_left) {
                 src.x     += src.width;
                 src.width  = -src.width;
@@ -1504,13 +1520,9 @@ int main() {
             Animate(&player.animators[player.facing], manager.frame_counter);
             DrawTexturePro(player.animators[player.facing].texture, src,
                            dest_rect, texture_offset, 0.0f, player.col);
-            for(int index = 0; index < MAX_BURSTS; index++) {
-                UpdateTextBurst(&manager.bursts[index], delta_t);
-                if (manager.bursts[index].active) {
-                    DrawTextBurst(&manager.bursts[index], font);
-                }
-            }
+            UpdateAndDrawAllTextBursts(&manager, font, delta_t);
 
+            // TODO: Take this out of the game before shipping.
             if (IsKeyPressed(KEY_P)) {
                 manager.state = GameState_win;
             }
@@ -1519,8 +1531,9 @@ int main() {
             SetTimeValueForWobbleShader(&map.wobble, current_time);
             DrawGame(&map, &manager, &player, delta_t);
 
+            //StopAllTextBursts(&manager);
+            UpdateAndDrawAllTextBursts(&manager, font, delta_t);
             StopSoundBuffer(manager.sounds);
-        
             // TODO: Probably should make the player draw it's own function because I use this code 
             // multiple times I think.
             player.facing = DirectionFacing_celebration;
