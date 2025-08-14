@@ -413,21 +413,16 @@ void SetupEventSequences(Event_Manager *manager) {
 
 Enemy *FindEnemyInList(Enemy *sentinel, u32 index)
 {
-    Enemy *enemy_to_find = sentinel->next;
-    bool enemy_found = false;
-    while (enemy_to_find != sentinel) {
+    Enemy *result = NULL;
+    for (Enemy *enemy_to_find = sentinel->next; 
+         enemy_to_find != sentinel; 
+         enemy_to_find = enemy_to_find->next) {
         if (enemy_to_find->tile_index == index) {
-            enemy_found = true;
+            result = enemy_to_find;
             break;
-        } else {
-            enemy_to_find = enemy_to_find->next;
         }
     }
-
-    if (!enemy_found) {
-        enemy_to_find = NULL;
-    }
-    return enemy_to_find;
+    return result;
 }
 
 Powerup *FindPowerupInList(Powerup *sentinel, Tile *tile)
@@ -590,15 +585,20 @@ void CheckEnclosedAreasFromPlayerPosition(Tilemap *tilemap, u32 start_x, u32 sta
     }
 } 
 
-// TODO: Need to pay attention to this, because this is where the game 
-// crashing bug is happening i'm pretty sure. It actually is probably 
-// more likely happening in the identical function below, that takes in 
-// the players tile_index.
 u32 GetRandomEmptyTileIndex(Tilemap *tilemap) {
     bool found_empty_tile = false;
     u32 index             = 0;
     u32 attempts          = 10;
 
+    // TODO: Right now it just randomly picks from all tiles 
+    // it doesn't take into account whether the tile has fire or is 
+    // eligible in any way. It randomly chooses and then checks to see 
+    // if the tile is empty. It will try this 10 times before giving up. 
+    // However if the board is majoritively willed with fire there's a solid 
+    // chance that no tile will ever be picked. Perhaps a better way to do this 
+    // is do a pass over all the tiles, and store the eligible tile indexes 
+    // into an array and then randomly choose an index from there. That way I 
+    // can ensure that if a tile can be chosen it always will be.
     while (!found_empty_tile && attempts != 0) {
         u32 random_x = GetRandomValue(1, tilemap->width - 2);
         u32 random_y = GetRandomValue(2, tilemap->height - 2);
@@ -656,8 +656,9 @@ u32 FindEligibleTileIndexForEnemyMove(Tilemap *tilemap, u32 index) {
     u32 bottom_tile  = index + tilemap->width;
     u32 top_tile     = index - tilemap->width;
 
-    u32 adjacent_tile_indexes[ADJACENT_COUNT] = {right_tile, left_tile, bottom_tile, top_tile};
-    u32 eligible_tiles[ADJACENT_COUNT] = {};
+    const u32 adjacent_count = 4;
+    u32 adjacent_tile_indexes[adjacent_count] = {right_tile, left_tile, bottom_tile, top_tile};
+    u32 eligible_tiles[adjacent_count] = {};
     u32 eligible_count = 0;
     u32 result = 0;
 
@@ -731,8 +732,8 @@ void FillEnclosedAreas(Memory_Arena *arena, Tilemap *tilemap, Player *player, Ga
                 AddFlag(tile, TileFlag_powerup);
                 Powerup *new_powerup = (Powerup *)ArenaAlloc(arena, sizeof(Powerup));
                 PowerupInit(new_powerup, &manager->powerup_sentinel, tile);
-                enemy_slain--;
             }
+            enemy_slain--;
         }
         has_flood_fill_happened = false;
     }
@@ -866,12 +867,24 @@ void UpdateTextBurst(Text_Burst *burst, float dt) {
     }
 }
 
+void DrawTextTripleEffect (const char *text, Vector2 pos, u32 size, f32 alpha = 1.0f) {
+
+    DrawText(text, (u32)pos.x+2.0f, (u32)pos.y+2.0f, size, Fade(BLACK,  alpha));
+    DrawText(text, (u32)pos.x+1.0f, (u32)pos.y+1.0f, size, Fade(MAROON, alpha));
+    DrawText(text, (u32)pos.x,      (u32)pos.y,      size, Fade(GOLD,   alpha));
+}
+
+void DrawTextDoubleEffect (const char *text, Vector2 pos, u32 size, f32 alpha = 1.0f) {
+
+    DrawText(text, (u32)pos.x+1.0f, (u32)pos.y+1.0f, size, Fade(BLACK, alpha));
+    DrawText(text, (u32)pos.x,      (u32)pos.y,      size, Fade(WHITE,   alpha));
+}
 void DrawTextBurst(Text_Burst *burst, Font font) {
     f32 font_size = (font.baseSize) * burst->scale;
     Color col     = Fade(WHITE, burst->alpha);
 
-    DrawText(burst->text, (u32)burst->pos.x, (u32)burst->pos.y, font_size, col);
-    //DrawTextEx(font, burst->text, burst->pos, font_size, 2, col);
+    //DrawTextTripleEffect(burst->text, burst->pos, font_size, burst->alpha);
+    DrawTextDoubleEffect(burst->text, burst->pos, font_size, burst->alpha);
 }
 
 void AlphaFadeIn(Game_Manager *manager, Fade_Object *object, f32 duration) {
@@ -974,14 +987,6 @@ void StartEventSequence(Event_Queue *queue) {
     queue->index  = 0;
     queue->timer  = 0.0f;
     queue->active = true;
-}
-
-void DrawTextTripleEffect (const char *text, Vector2 pos, u32 size, f32 alpha = 1.0f) {
-
-    DrawText(text, (u32)pos.x+2.0f, (u32)pos.y+2.0f, size, Fade(BLACK,  alpha));
-    DrawText(text, (u32)pos.x+1.0f, (u32)pos.y+1.0f, size, Fade(MAROON, alpha));
-    DrawText(text, (u32)pos.x,      (u32)pos.y,      size, Fade(GOLD,   alpha));
-
 }
 
 void DrawGodFace(Game_Manager *manager, f32 delta_t) {
@@ -1455,6 +1460,7 @@ int main() {
 
             // Enemy movement
             if (manager.enemy_move_timer > 0) {
+                // TODO: Again this timer is frame dependant. Needs to decrement by delta_t 
                 manager.enemy_move_timer -= 1.0f;
             } else {
                 for (u32 y = 0; y < map.height; y++) {
