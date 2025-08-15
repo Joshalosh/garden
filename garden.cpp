@@ -318,10 +318,6 @@ void GameManagerInit(Game_Manager *manager) {
     manager->screen_shake.duration   = 0;
     manager->screen_shake.decay      = 0;
 
-    manager->white_screen.alpha      = 0;
-    manager->white_screen.duration   = 0;
-    manager->white_screen.timer      = 0;
-    manager->white_screen.fade_type  = FadeType_none;
     manager->fade_count              = 0;
 
     LoadSoundBuffer(manager->sounds);
@@ -1003,23 +999,31 @@ void StartEventSequence(Event_Queue *queue) {
     queue->timer  = 0.0f;
     queue->active = true;
 }
-
-void DrawGodFace(Game_Manager *manager, f32 delta_t) {
+ 
+void UpdateGodFaceAnimation(Game_Manager *manager, f32 delta_t) {
     manager->gui.anim_timer += delta_t;
-    God_Animator face_type = manager->score > manager->happy_score     ? GodAnimator_happy     :
-                             manager->score > manager->satisfied_score ? GodAnimator_satisfied : 
-                                                                         GodAnimator_angry;
-    Vector2 face_pos = {(f32)(manager->gui.bar.width*0.5) - 
-                        (f32)(manager->gui.animators[0].frame_rec.width*0.5), 0};
-
     if (manager->gui.anim_timer > manager->gui.anim_duration) {
         manager->gui.anim_timer = 0;
         manager->gui.anim_duration = GetRandomValue(1.0f, 4.0f);
-        manager->gui.animators[face_type].current_frame = 0;
+        manager->gui.animators[manager->gui.face_type].current_frame = 0;
     }
-    Animate(&manager->gui.animators[face_type], manager->frame_counter);
-    DrawTextureRec(manager->gui.animators[face_type].texture, 
-                   manager->gui.animators[face_type].frame_rec, face_pos, WHITE);
+}
+
+void SetGodFaceType(Game_Manager *manager) {
+    manager->gui.face_type = manager->score > manager->happy_score     ? GodAnimator_happy     :
+                             manager->score > manager->satisfied_score ? GodAnimator_satisfied : 
+                                                                         GodAnimator_angry;
+}
+
+void DrawGodFace(Game_Manager *manager, f32 delta_t) {
+    SetGodFaceType(manager);
+    Vector2 face_pos = {(f32)(manager->gui.bar.width*0.5) - 
+                        (f32)(manager->gui.animators[0].frame_rec.width*0.5), 0};
+
+    UpdateGodFaceAnimation(manager, delta_t);
+    Animate(&manager->gui.animators[manager->gui.face_type], manager->frame_counter);
+    DrawTextureRec(manager->gui.animators[manager->gui.face_type].texture, 
+                   manager->gui.animators[manager->gui.face_type].frame_rec, face_pos, WHITE);
 }
 
 void DrawGame(Tilemap *map, Game_Manager *manager, Player *player, f32 delta_t)
@@ -1138,6 +1142,64 @@ void SetTimeValueForWobbleShader(Wobble_Shader *shader, f32 time) {
     SetShaderValue(shader->shader, shader->time_location, &time, SHADER_UNIFORM_FLOAT);
 }
 
+void AnimateAndDrawPlayer(Player *player, u32 frame_counter){
+            Rectangle src = player->animators[player->facing].frame_rec;
+            if (player->facing == DirectionFacing_left) {
+                src.x     +=  src.width;
+                src.width  = -src.width;
+            }
+            
+            f32 frame_width     = (f32)player->animators[player->facing].frame_rec.width;
+            f32 frame_height    = (f32)player->animators[player->facing].texture.height;
+            Rectangle dest_rect = {player->pos.x, player->pos.y, 
+                                   frame_width, frame_height}; 
+            Vector2 texture_offset = {0.0f, 20.0f};
+            Animate(&player->animators[player->facing], frame_counter);
+            DrawTexturePro(player->animators[player->facing].texture, src,
+                           dest_rect, texture_offset, 0.0f, player->col);
+}
+
+void UpdateWinScreen(Game_Manager *manager, Win_Screen *screen, f32 delta_t, Font font) {
+    SetGodFaceType(manager);
+    switch (manager->gui.face_type) {
+        case GodAnimator_happy:     screen->message = "The Gods are Pleased!";            break;
+        case GodAnimator_satisfied: screen->message = "The Gods are Satisfied... Barely"; break;
+        case GodAnimator_angry:     screen->message = "The Gods are Unsatisfied...";      break;
+    }
+
+    u32 scaling_duration = 3.0f;
+    manager->gui.step = Clamp01(manager->gui.step + delta_t / scaling_duration);
+    
+    screen->font_size = 14;
+    f32 frame_w   = (f32)manager->gui.animators[manager->gui.face_type].frame_rec.width;
+    f32 frame_h   = (f32)manager->gui.animators[manager->gui.face_type].texture.height;
+
+    f32 start_scale = 1.0f;
+    f32 end_scale   = 2.0f;
+    f32 current_scale       = Lerp(start_scale, end_scale, manager->gui.step);
+    manager->gui.face_scale = current_scale;
+
+    screen->text_pos = {(base_screen_width * 0.5f) - (MeasureText(screen->message, screen->font_size) * 0.5f),
+                        base_screen_height * 0.5f};
+
+    screen->start_pos     = {(f32)(manager->gui.bar.width * 0.5f) - (frame_w * current_scale * 0.5f), 0.0f};
+    screen->end_pos       = {screen->start_pos.x, screen->text_pos.y - (frame_h * current_scale)};
+    manager->gui.face_pos = LerpV2(screen->start_pos, screen->end_pos, manager->gui.step);
+
+    UpdateGodFaceAnimation(manager, delta_t);
+    Animate(&manager->gui.animators[manager->gui.face_type], manager->frame_counter);
+}
+
+void DrawWinScreenGodFace(Game_Manager *manager) {
+    Animation *animation = &manager->gui.animators[manager->gui.face_type];
+
+    Rectangle src_rec = animation->frame_rec;
+    Rectangle dest_rec = {manager->gui.face_pos.x, manager->gui.face_pos.y, 
+                          animation->frame_rec.width * manager->gui.face_scale,
+                          animation->texture.height  * manager->gui.face_scale};
+    DrawTexturePro(animation->texture, src_rec, dest_rec, {0,0}, 0.0f, WHITE);
+}
+
 int main() {
     // -------------------------------------
     // Initialisation
@@ -1208,6 +1270,12 @@ int main() {
 
     Tutorial_Entities tutorial_entities;
     TutorialAnimationInit(&tutorial_entities);
+
+    Win_Screen win_screen = {};
+    win_screen.white_screen.alpha      = 0;
+    win_screen.white_screen.duration   = 0;
+    win_screen.white_screen.timer      = 0;
+    win_screen.white_screen.fade_type  = FadeType_none;
 
     Memory_Arena arena;
     size_t arena_size = 1024*1024;
@@ -1504,22 +1572,7 @@ int main() {
                 manager.enemy_move_timer = manager.enemy_move_duration;
             }
 
-            Rectangle src = player.animators[player.facing].frame_rec;
-            if (player.facing == DirectionFacing_left) {
-                src.x     += src.width;
-                src.width  = -src.width;
-            }
-            
-            f32 frame_width  = (f32)player.animators[player.facing].frame_rec.width;
-            f32 frame_height = (f32)player.animators[player.facing].texture.height;
-
-            Rectangle dest_rect = {player.pos.x, player.pos.y, 
-                                   frame_width, frame_height}; 
-
-            Vector2 texture_offset = {0.0f, 20.0f};
-            Animate(&player.animators[player.facing], manager.frame_counter);
-            DrawTexturePro(player.animators[player.facing].texture, src,
-                           dest_rect, texture_offset, 0.0f, player.col);
+            AnimateAndDrawPlayer(&player, manager.frame_counter);
             UpdateAndDrawAllTextBursts(&manager, font, delta_t);
 
             // TODO: Take this out of the game before shipping.
@@ -1531,42 +1584,33 @@ int main() {
             SetTimeValueForWobbleShader(&map.wobble, current_time);
             DrawGame(&map, &manager, &player, delta_t);
 
-            //StopAllTextBursts(&manager);
             UpdateAndDrawAllTextBursts(&manager, font, delta_t);
             StopSoundBuffer(manager.sounds);
-            // TODO: Probably should make the player draw it's own function because I use this code 
-            // multiple times I think.
-            player.facing = DirectionFacing_celebration;
-            Rectangle src = player.animators[PlayerAnimator_celebration].frame_rec;
-
             BeginScreenShake(&manager.screen_shake, 4.0f, 5.0f, 10.0f);
+            // Hard coding the facing direction here so constantly play 
+            // the win celebration animation.
+            player.facing = DirectionFacing_celebration;
+            AnimateAndDrawPlayer(&player, manager.frame_counter);
 
-            f32 frame_width  = (f32)player.animators[PlayerAnimator_celebration].frame_rec.width;
-            f32 frame_height = (f32)player.animators[PlayerAnimator_celebration].texture.height;
-
-            Rectangle dest_rect = {player.pos.x, player.pos.y, 
-                                   frame_width, frame_height}; 
-
-            Vector2 texture_offset = {0.0f, 20.0f};
-            Animate(&player.animators[PlayerAnimator_celebration], manager.frame_counter);
-            DrawTexturePro(player.animators[PlayerAnimator_celebration].texture, src,
-                           dest_rect, texture_offset, 0.0f, player.col);
-            if (manager.white_screen.alpha == 0.0f) {
-                AlphaFadeIn(&manager, &manager.white_screen, 5.0f);
-            } else if (manager.white_screen.alpha == 1.0f) {
+            if (win_screen.white_screen.alpha == 0.0f) {
+                AlphaFadeIn(&manager, &win_screen.white_screen, 5.0f);
+            } else if (win_screen.white_screen.alpha == 1.0f) {
                 manager.state = GameState_win_text;
             }
-            DrawScreenFadeCol(&manager.white_screen, base_screen_width, base_screen_height, WHITE);
+            DrawScreenFadeCol(&win_screen.white_screen, base_screen_width, base_screen_height, WHITE);
             DrawGodFace(&manager, delta_t);
 
         } else if (manager.state == GameState_win_text) {
-            // TODO: this whole state is a bit of a messy bessy and I need to clean 
-            // dat ass up.
-            Event_Queue *win_sequence      = &event_manager.sequence[Sequence_win];
+            Event_Queue *win_sequence = &event_manager.sequence[Sequence_win];
             UpdateEventQueue(win_sequence, &manager, delta_t);
 
-            DrawScreenFadeCol(&manager.white_screen, base_screen_width, base_screen_height, WHITE);
+            DrawScreenFadeCol(&win_screen.white_screen, base_screen_width, base_screen_height, WHITE);
 
+            // TODO: This feels a bit like spaghetti code as lots of things are dependant on each other 
+            // and it makes the flow hard to reason about at a glance.
+            UpdateWinScreen(&manager, &win_screen, delta_t, font);
+            DrawWinScreenGodFace(&manager);
+#if 0
             manager.gui.anim_timer += delta_t;
             f32 translation_duration = 3.0f;
             if (manager.gui.step < 1.0f) {
@@ -1578,22 +1622,16 @@ int main() {
 
             u32 start_scale   = 1;
             u32 end_scale     = 2;
-            f32 current_scale = Lerp(start_scale, manager.gui.step, end_scale);
+            f32 current_scale = Lerp(start_scale, end_scale, manager.gui.step);
 
-            God_Animator face_type = manager.score > manager.happy_score      ? GodAnimator_happy     :
-                                     manager.score > manager.satisfied_score  ? GodAnimator_satisfied : 
-                                                                                GodAnimator_angry;
+            u32 font_size = 14;
 
             const char *message = manager.score > manager.happy_score     ? "The Gods are Pleased!"     : 
                                   manager.score > manager.satisfied_score ? "The Gods are Satisfied..." : 
-                                                                            "The Gods are Unsatisfied";
-            u32 font_size = 14;
-            if (manager.gui.anim_timer > manager.gui.anim_duration) {
-                manager.gui.anim_timer = 0;
-                manager.gui.anim_duration = GetRandomValue(1.0f, 4.0f);
-                manager.gui.animators[face_type].current_frame = 0;
-            }
-
+                                                                            "The Gods are Unsatisfied...";
+            God_Animator face_type = manager.score > manager.happy_score      ? GodAnimator_happy     :
+                                     manager.score > manager.satisfied_score  ? GodAnimator_satisfied : 
+                                                                                GodAnimator_angry;
             f32 frame_width  = (f32)manager.gui.animators[face_type].frame_rec.width;
             f32 frame_height = (f32)manager.gui.animators[face_type].texture.height;
 
@@ -1602,7 +1640,13 @@ int main() {
             Vector2 start_pos = {(f32)(manager.gui.bar.width*0.5) - 
                                  (f32)((frame_width*current_scale)*0.5), 0};
             Vector2 end_pos = {start_pos.x, text_pos.y - (frame_height*current_scale)};
-            Vector2 current_pos = V2Lerp(start_pos, manager.gui.step, end_pos);
+            Vector2 current_pos = LerpV2(start_pos, end_pos, manager.gui.step);
+
+            if (manager.gui.anim_timer > manager.gui.anim_duration) {
+                manager.gui.anim_timer = 0;
+                manager.gui.anim_duration = GetRandomValue(1.0f, 4.0f);
+                manager.gui.animators[face_type].current_frame = 0;
+            }
 
             Rectangle src = manager.gui.animators[face_type].frame_rec;
             Rectangle dest_rect = {current_pos.x, current_pos.y, 
@@ -1611,11 +1655,11 @@ int main() {
             Animate(&manager.gui.animators[face_type], manager.frame_counter);
             DrawTexturePro(manager.gui.animators[face_type].texture, src,
                            dest_rect, {0, 0}, 0.0f, WHITE);//Fade(WHITE, win_text_sequence.events[3].fadeable.alpha));
+#endif
 
             if (!win_sequence->active) StartEventSequence(win_sequence);
-
             Event event = win_sequence->events[1];
-            DrawTextTripleEffect(message, text_pos, font_size, event.fadeable.alpha); 
+            DrawTextTripleEffect(win_screen.message, win_screen.text_pos, win_screen.font_size, event.fadeable.alpha); 
 
             UpdateSpacebarBob(&manager.spacebar_text, delta_t);
             DrawTextTripleEffect(manager.spacebar_text.text, manager.spacebar_text.pos, manager.spacebar_text.size, 
@@ -1624,14 +1668,14 @@ int main() {
             if (IsKeyPressed(KEY_SPACE)) {
                 win_sequence->active = false;
                 ResetEvents(&event_manager);
-                if (face_type != GodAnimator_happy) manager.state = GameState_title;
-                else                                manager.state = GameState_epilogue;
+                if (manager.gui.face_type != GodAnimator_happy) manager.state = GameState_title;
+                else                                            manager.state = GameState_epilogue;
             }
 
         } else if (manager.state == GameState_epilogue) {
-            if (manager.white_screen.alpha == 1.0f)
+            if (win_screen.white_screen.alpha == 1.0f)
             {
-                AlphaFadeOut(&manager, &manager.white_screen, 5.0f);
+                AlphaFadeOut(&manager, &win_screen.white_screen, 5.0f);
             }
             end_screen.timer += delta_t;
             BeginShaderMode(end_screen.shaders[EndLayer_sky].shader);
@@ -1651,7 +1695,7 @@ int main() {
                 end_screen.blink_duration = GetRandomValue(0.5f, 3.0f);
             }
 
-            DrawScreenFadeCol(&manager.white_screen, base_screen_width, base_screen_height, WHITE);
+            DrawScreenFadeCol(&win_screen.white_screen, base_screen_width, base_screen_height, WHITE);
             if (IsKeyPressed(KEY_SPACE)) {
                 ResetEvents(&event_manager);
                 manager.state = GameState_title;
@@ -1693,6 +1737,7 @@ int main() {
                            demon_pos, Fade(WHITE, tutorial->events[0].fadeable.alpha)); 
             DrawTextureRec(tutorial_entities.powerup.texture, tutorial_entities.powerup.frame_rec, 
                            powerup_pos, Fade(WHITE, tutorial->events[1].fadeable.alpha)); 
+            SetTimeValueForWobbleShader(&map.wobble, current_time);
             BeginShaderMode(map.wobble.shader);
             DrawTextureRec(tutorial_entities.fire.texture, tutorial_entities.fire.frame_rec, 
                            fire_pos, Fade(WHITE, tutorial->events[2].fadeable.alpha)); 
@@ -1709,7 +1754,7 @@ int main() {
             // other things that need to be reset for multiple continuous 
             // playthroughs. I'm going to need a cleaner way to reset these 
             // things.
-            manager.white_screen.alpha = 0.0f;
+            win_screen.white_screen.alpha = 0.0f;
             manager.gui.step = 0.0f;
 
 #if 0
@@ -1860,10 +1905,21 @@ int main() {
             u32 text_base_y   = 25;
             u32 shadow_offset = 2;
 
+            if (manager.state != GameState_win_text) {
             DrawText(TextFormat("%d", manager.score), (text_base_x + shadow_offset) + shake_offset.x, 
                      (text_base_y + shadow_offset) + shake_offset.y, font_size, BLACK);//Fade(BLACK, alpha));
             DrawText(TextFormat("%d", manager.score), text_base_x + shake_offset.x, 
                      text_base_y + shake_offset.y, font_size, WHITE);//Fade(WHITE, alpha));
+            } else {
+            DrawTextTripleEffect(TextFormat("%d", manager.score), {text_base_x + shake_offset.x, 
+                                 text_base_y + shake_offset.y}, font_size);
+#if 0
+            DrawText(TextFormat("%d", manager.score), (text_base_x + shadow_offset) + shake_offset.x, 
+                     (text_base_y + shadow_offset) + shake_offset.y, font_size, WHITE);//Fade(BLACK, alpha));
+            DrawText(TextFormat("%d", manager.score), text_base_x + shake_offset.x, 
+                     text_base_y + shake_offset.y, font_size, BLACK);//Fade(WHITE, alpha));
+#endif
+            }
             
             if (manager.state == GameState_play || manager.state == GameState_win) {
                 const char *combo = manager.score_multiplier > 1 ? 

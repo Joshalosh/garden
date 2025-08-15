@@ -1,12 +1,12 @@
 
 #include <math.h>
 
-f32 Lerp(f32 a, f32 t, f32 b) {
+f32 Lerp(f32 a, f32 b, f32 t) {
     f32 result = (1.0f - t)*a + t*b;
     return result;
 }
 
-Vector2 V2Lerp(Vector2 v1, f32 t, Vector2 v2) {
+Vector2 LerpV2(Vector2 v1, Vector2 v2, f32 t) {
     // This is another identical equation for doing a lerp 
     Vector2 result = {v1.x + t*(v2.x - v1.x), v1.y + t*(v2.y - v1.y)};
     return result;
@@ -46,6 +46,10 @@ f32 Length(Vector2 a) {
 f32 Length(Vector3 a) {
     f32 result = SquareRoot(LengthSq(a));
     return result;
+}
+
+f32 Clamp01(f32 a) {
+    return a < 0.0f ? 0.0f : (a > 1.0f ? 1.0f : a);
 }
 
 Vector2 VectorScale(Vector2 a, f32 scale) {

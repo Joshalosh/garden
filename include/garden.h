@@ -298,10 +298,23 @@ struct Event_Manager {
 
 struct Gui {
     Texture2D    bar;
+    God_Animator face_type;
     Animation    animators[GodAnimator_count];
     f32          anim_timer;
     f32          anim_duration;
     f32          step;
+    f32          face_scale;
+    Vector2      face_pos;
+};
+
+struct Win_Screen {
+    const char   *message;
+
+    u32           font_size;
+    Vector2       text_pos;
+    Vector2       start_pos;
+    Vector2       end_pos;
+    Fade_Object   white_screen;
 };
 
 struct Game_Manager {
@@ -342,7 +355,6 @@ struct Game_Manager {
     u32           last_song_bit;
 
     Screen_Shake  screen_shake;
-    Fade_Object   white_screen;
 
     // Store a list of pointers to fadeable objects
     // to easily access them and iterate over them to 
