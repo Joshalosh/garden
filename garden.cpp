@@ -1017,13 +1017,13 @@ void SetGodFaceType(Game_Manager *manager) {
 
 void DrawGodFace(Game_Manager *manager, f32 delta_t) {
     SetGodFaceType(manager);
-    Vector2 face_pos = {(f32)(manager->gui.bar.width*0.5) - 
+    manager->gui.face_pos = {(f32)(manager->gui.bar.width*0.5) - 
                         (f32)(manager->gui.animators[0].frame_rec.width*0.5), 0};
 
     UpdateGodFaceAnimation(manager, delta_t);
     Animate(&manager->gui.animators[manager->gui.face_type], manager->frame_counter);
     DrawTextureRec(manager->gui.animators[manager->gui.face_type].texture, 
-                   manager->gui.animators[manager->gui.face_type].frame_rec, face_pos, WHITE);
+                   manager->gui.animators[manager->gui.face_type].frame_rec, manager->gui.face_pos, WHITE);
 }
 
 void DrawGame(Tilemap *map, Game_Manager *manager, Player *player, f32 delta_t)
@@ -1272,10 +1272,6 @@ int main() {
     TutorialAnimationInit(&tutorial_entities);
 
     Win_Screen win_screen = {};
-    win_screen.white_screen.alpha      = 0;
-    win_screen.white_screen.duration   = 0;
-    win_screen.white_screen.timer      = 0;
-    win_screen.white_screen.fade_type  = FadeType_none;
 
     Memory_Arena arena;
     size_t arena_size = 1024*1024;

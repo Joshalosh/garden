@@ -309,7 +309,6 @@ struct Gui {
 
 struct Win_Screen {
     const char   *message;
-
     u32           font_size;
     Vector2       text_pos;
     Vector2       start_pos;
