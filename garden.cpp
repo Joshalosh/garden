@@ -1618,8 +1618,14 @@ int main() {
             if (IsKeyPressed(KEY_SPACE)) {
                 win_sequence->active = false;
                 ResetEvents(&event_manager);
-                if (manager.gui.face_type != GodAnimator_happy) manager.state = GameState_title;
-                else                                            manager.state = GameState_epilogue;
+                manager.gui.step = 0.0f;
+                if (manager.gui.face_type != GodAnimator_happy) {
+                    win_screen.white_screen.alpha = 0.0f;
+                    manager.state = GameState_title;
+                }
+                else {
+                    manager.state = GameState_epilogue;
+                }
             }
 
         } else if (manager.state == GameState_epilogue) {
@@ -1639,6 +1645,10 @@ int main() {
             Animate(&end_screen.animator, manager.frame_counter);
             DrawTextureRec(end_screen.animator.texture, 
                            end_screen.animator.frame_rec, {0, 0}, WHITE);
+            // TODO: I could probably make this random duration animation code 
+            // a function because the god face uses the exact same code. I don't 
+            // think anyone else uses this at the moment so it's perhaps unecessary
+            // right now though. Something to keep an eye on.
             if (end_screen.timer > end_screen.blink_duration) {
                 end_screen.animator.current_frame = 0;
                 end_screen.timer = 0;
@@ -1648,6 +1658,7 @@ int main() {
             DrawScreenFadeCol(&win_screen.white_screen, base_screen_width, base_screen_height, WHITE);
             if (IsKeyPressed(KEY_SPACE)) {
                 ResetEvents(&event_manager);
+                win_screen.white_screen.alpha = 0.0f;
                 manager.state = GameState_title;
             }
 
@@ -1681,14 +1692,14 @@ int main() {
             Vector2 fire_pos    = {(f32)fire_text_pos.x - tutorial_entities.fire.frame_rec.width - icon_padding, 
                                    (f32)fire_text_pos.y - font_size};
             Animate(&tutorial_entities.enemy, manager.frame_counter);
-            Animate(&tutorial_entities.powerup, manager.frame_counter);
-            Animate(&tutorial_entities.fire, manager.frame_counter);
             DrawTextureRec(tutorial_entities.enemy.texture, tutorial_entities.enemy.frame_rec, 
                            demon_pos, Fade(WHITE, tutorial->events[0].fadeable.alpha)); 
+            Animate(&tutorial_entities.powerup, manager.frame_counter);
             DrawTextureRec(tutorial_entities.powerup.texture, tutorial_entities.powerup.frame_rec, 
                            powerup_pos, Fade(WHITE, tutorial->events[1].fadeable.alpha)); 
             SetTimeValueForWobbleShader(&map.wobble, current_time);
             BeginShaderMode(map.wobble.shader);
+            Animate(&tutorial_entities.fire, manager.frame_counter);
             DrawTextureRec(tutorial_entities.fire.texture, tutorial_entities.fire.frame_rec, 
                            fire_pos, Fade(WHITE, tutorial->events[2].fadeable.alpha)); 
             EndShaderMode();
@@ -1699,21 +1710,6 @@ int main() {
             }
 
         } else if (manager.state == GameState_title) {
-            
-            // TODO: this is temporarily here to reset the white screen and 
-            // other things that need to be reset for multiple continuous 
-            // playthroughs. I'm going to need a cleaner way to reset these 
-            // things.
-            win_screen.white_screen.alpha = 0.0f;
-            manager.gui.step = 0.0f;
-
-#if 0
-            if (IsMusicStreamPlaying(manager.song[Song_play]))       StopMusicStream(manager.song[Song_play]);
-            if (IsMusicStreamPlaying(manager.song[Song_play_muted])) StopMusicStream(manager.song[Song_play_muted]);
-            if (IsMusicStreamPlaying(manager.song[Song_win]))        StopMusicStream(manager.song[Song_win]);
-            if (IsMusicStreamPlaying(manager.song[Song_intro]))      UpdateMusicStream(manager.song[Song_intro]);
-#endif
-
             Event_Queue *title_press = &event_manager.sequence[Sequence_begin];
             UpdateEventQueue(title_press, &manager, delta_t);
             Game_Title *title = &title_screen_manager.title;
@@ -1722,7 +1718,6 @@ int main() {
 
             if (!IsMusicStreamPlaying(manager.song[Song_intro]) && !title_press->active)  
             {
-                //PlayMusicStream(manager.song[Song_intro]);
                 TriggerTitleBob(title, 5.0f);
             } else {
                 UpdateMusicStream(manager.song[Song_intro]);
@@ -1780,10 +1775,6 @@ int main() {
                 }
             }
 
-#if 0
-            title->pos.y += 0.1f*sinf(8.0f*title->bob);
-            title->bob   += delta_t;
-#endif
             Vector2 draw_pos = {title->pos.x, title->pos.y += title->bob};
             if (title->pos.y > base_screen_height) {
                 title->pos.y = 0.0f - title->texture.height;
@@ -1802,19 +1793,15 @@ int main() {
                 if (!title_press->active) {
                     StartEventSequence(title_press);
                 }
-                if (IsMusicStreamPlaying(manager.song[Song_intro])) { 
-                    StopMusicStream(manager.song[Song_intro]);
-                }
                 if (!IsSoundPlaying(manager.sounds[SoundEffect_spacebar])) {
                     PlaySound(manager.sounds[SoundEffect_spacebar]);
                 }
             }
 
             if (title_press->active) {
-                f32 pulse = (sinf(GetTime() * 48.0f) * 0.5f + 0.5f);
+                f32 pulse = (sinf(current_time * 48.0f) * 0.5f + 0.5f);
                 u32 alpha = (u32)(pulse * 255);
                 Color flash_col = {255, 255, 255, (u8)alpha};
-
                 DrawText(play_text->text, play_text->pos.x, play_text->pos.y, play_text->font_size, flash_col);
             }
         }
