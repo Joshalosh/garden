@@ -1606,52 +1606,6 @@ int main() {
             // and it makes the flow hard to reason about at a glance.
             UpdateWinScreen(&manager, &win_screen, delta_t, font);
             DrawWinScreenGodFace(&manager);
-#if 0
-            manager.gui.anim_timer += delta_t;
-            f32 translation_duration = 3.0f;
-            if (manager.gui.step < 1.0f) {
-                manager.gui.step += delta_t / translation_duration;
-                if (manager.gui.step > 1.0f) {
-                    manager.gui.step = 1.0f;
-                }
-            }
-
-            u32 start_scale   = 1;
-            u32 end_scale     = 2;
-            f32 current_scale = Lerp(start_scale, end_scale, manager.gui.step);
-
-            u32 font_size = 14;
-
-            const char *message = manager.score > manager.happy_score     ? "The Gods are Pleased!"     : 
-                                  manager.score > manager.satisfied_score ? "The Gods are Satisfied..." : 
-                                                                            "The Gods are Unsatisfied...";
-            God_Animator face_type = manager.score > manager.happy_score      ? GodAnimator_happy     :
-                                     manager.score > manager.satisfied_score  ? GodAnimator_satisfied : 
-                                                                                GodAnimator_angry;
-            f32 frame_width  = (f32)manager.gui.animators[face_type].frame_rec.width;
-            f32 frame_height = (f32)manager.gui.animators[face_type].texture.height;
-
-            Vector2 text_pos = {(base_screen_width*0.5f) - (MeasureText(message, font_size)*0.5f), 
-                                base_screen_height*0.5f};
-            Vector2 start_pos = {(f32)(manager.gui.bar.width*0.5) - 
-                                 (f32)((frame_width*current_scale)*0.5), 0};
-            Vector2 end_pos = {start_pos.x, text_pos.y - (frame_height*current_scale)};
-            Vector2 current_pos = LerpV2(start_pos, end_pos, manager.gui.step);
-
-            if (manager.gui.anim_timer > manager.gui.anim_duration) {
-                manager.gui.anim_timer = 0;
-                manager.gui.anim_duration = GetRandomValue(1.0f, 4.0f);
-                manager.gui.animators[face_type].current_frame = 0;
-            }
-
-            Rectangle src = manager.gui.animators[face_type].frame_rec;
-            Rectangle dest_rect = {current_pos.x, current_pos.y, 
-                                   frame_width*current_scale, frame_height*current_scale}; 
-
-            Animate(&manager.gui.animators[face_type], manager.frame_counter);
-            DrawTexturePro(manager.gui.animators[face_type].texture, src,
-                           dest_rect, {0, 0}, 0.0f, WHITE);//Fade(WHITE, win_text_sequence.events[3].fadeable.alpha));
-#endif
 
             if (!win_sequence->active) StartEventSequence(win_sequence);
             Event event = win_sequence->events[1];
