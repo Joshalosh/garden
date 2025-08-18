@@ -122,65 +122,39 @@ void TitleScreenManagerInit(Title_Screen_Manager *manager) {
     // TODO: Clean this up so that everything initialises into 
     // their direct destination and not into a temporary variable 
     // that is then coppied across.
-    manager->title.texture  = LoadTexture("../assets/titles/anunnaki.png");
-    manager->title.scale    = 2;
-    manager->title.pos.x    = (base_screen_width * 0.5) - 
-                              ((manager->title.texture.width * manager->title.scale) * 0.5);
-    manager->title.pos.y    = base_screen_height * 0.25;
-    manager->title.bob      = 0.0f;
+    manager->title.texture    = LoadTexture("../assets/titles/anunnaki.png");
+    manager->title.scale      = 2;
+    manager->title.pos.x      = (base_screen_width * 0.5) - 
+                                 ((manager->title.texture.width * manager->title.scale) * 0.5);
+    manager->title.pos.y      = base_screen_height * 0.25;
+    manager->title.bob        = 0.0f;
 
-#if 1
-    manager->bg.texture[0]    = LoadTexture("../assets/tiles/layer_1.png");
-    manager->bg.texture[1]    = LoadTexture("../assets/tiles/layer_2.png");
-    manager->bg.texture[2]    = LoadTexture("../assets/tiles/layer_3.png");
-    manager->bg.texture[3]    = LoadTexture("../assets/tiles/layer_4.png");
-    manager->bg.texture[4]    = LoadTexture("../assets/tiles/layer_5.png");
-    manager->bg.texture[5]    = LoadTexture("../assets/tiles/layer_6.png");
-    manager->bg.texture[6]    = LoadTexture("../assets/tiles/layer_7.png");
-    manager->bg.texture[7]    = LoadTexture("../assets/tiles/layer_8.png");
+    manager->layer[0].texture = LoadTexture("../assets/tiles/layer_1.png");
+    manager->layer[1].texture = LoadTexture("../assets/tiles/layer_2.png");
+    manager->layer[2].texture = LoadTexture("../assets/tiles/layer_3.png");
+    manager->layer[3].texture = LoadTexture("../assets/tiles/layer_4.png");
+    manager->layer[4].texture = LoadTexture("../assets/tiles/layer_5.png");
+    manager->layer[5].texture = LoadTexture("../assets/tiles/layer_6.png");
+    manager->layer[6].texture = LoadTexture("../assets/tiles/layer_7.png");
+    manager->layer[7].texture = LoadTexture("../assets/tiles/layer_8.png");
 
-    manager->bg.scroll_speed  = 50.0f;
-    manager->bg.pos_right_1   = {0.0f, 0.0f};
-    manager->bg.pos_left_1    = {0.0f, 0.0f};
-    manager->bg.pos_right_2   = {base_screen_width, 0.0f};
-    manager->bg.pos_left_2    = {base_screen_width, 0.0f};
-
-    f32 amplitude = 0.06f, frequency = 1.25f, speed = 2.0f;
-    WobbleShaderInit(&manager->bg.wobble, amplitude, frequency, speed); 
-
-    SetShaderValue(manager->bg.wobble.shader, manager->bg.wobble.amplitude_location, &manager->bg.wobble.amplitude, SHADER_UNIFORM_FLOAT);
-    SetShaderValue(manager->bg.wobble.shader, manager->bg.wobble.frequency_location, &manager->bg.wobble.frequency, SHADER_UNIFORM_FLOAT);
-    SetShaderValue(manager->bg.wobble.shader, manager->bg.wobble.speed_location,     &manager->bg.wobble.speed,     SHADER_UNIFORM_FLOAT);
-
-#else
-    manager->layer[0].texture    = LoadTexture("../assets/tiles/layer_1.png");
-    manager->layer[1].texture    = LoadTexture("../assets/tiles/layer_2.png");
-    manager->layer[2].texture    = LoadTexture("../assets/tiles/layer_3.png");
-    manager->layer[3].texture    = LoadTexture("../assets/tiles/layer_4.png");
-    manager->layer[4].texture    = LoadTexture("../assets/tiles/layer_5.png");
-    manager->layer[5].texture    = LoadTexture("../assets/tiles/layer_6.png");
-    manager->layer[6].texture    = LoadTexture("../assets/tiles/layer_7.png");
-    manager->layer[7].texture    = LoadTexture("../assets/tiles/layer_8.png");
-
-    f32 y = 0.0f;
+    f32 pos_y = 0.0f;
     for (u32 index = 0; index < BG_LAYERS; index++) {
         Background_Layer *layer = &manager->layer[index];
-        layer->x                = 0.0f;
-        layer->y                = y;
         layer->scroll_speed     = 50.0f;
+        // Cool little bit hack here as all odd numbers have their least significant 
+        // bit set to 1 and odd numbers conversely have it set to 0.
         layer->dir              = (index & 1) ? 1 : -1;
         layer->should_wobble    = (index & 1) ? true : false;
-        y                      += (f32)layer->texture.height;
+        layer->pos              = {0.0f, pos_y};
+        pos_y                  += (f32)layer->texture.height;
     }
 
     f32 amplitude = 0.06f, frequency = 1.25f, speed = 2.0f;
     WobbleShaderInit(&manager->wobble, amplitude, frequency, speed); 
-
     SetShaderValue(manager->wobble.shader, manager->wobble.amplitude_location, &manager->wobble.amplitude, SHADER_UNIFORM_FLOAT);
     SetShaderValue(manager->wobble.shader, manager->wobble.frequency_location, &manager->wobble.frequency, SHADER_UNIFORM_FLOAT);
     SetShaderValue(manager->wobble.shader, manager->wobble.speed_location,     &manager->wobble.speed,     SHADER_UNIFORM_FLOAT);
-
-#endif
 
     manager->play_text.text      = "Spacebar Begins Ritual";
     manager->play_text.font_size = 14;
@@ -194,20 +168,18 @@ void EndScreenInit(End_Screen *screen) {
     screen->textures[EndLayer_sky]   = LoadTexture("../assets/sprites/win_sky.png"); 
     screen->textures[EndLayer_trees] = LoadTexture("../assets/sprites/win_trees.png"); 
 
-    u32 texture_width = base_screen_width;
+    u32 texture_width     = base_screen_width;
     b32 animation_looping = false;
     AnimatorInit(&screen->animator, "../assets/sprites/win_blink.png", texture_width, animation_looping);
 
-    screen->timer                    = 0;
-    screen->blink_duration           = 3.0f;
+    screen->timer          = 0;
+    screen->blink_duration = 3.0f;
 
     // Setup the shaders used on the background layers of the end 
     // screen.
     {
-        f32 amplitude = 0.6f;
-        f32 frequency = 12.0f;
-        f32 speed     = 0.05f;
-        WobbleShaderInit(&screen->shaders[EndLayer_sky], amplitude, frequency, speed);
+    f32 amplitude = 0.6f; f32 frequency = 12.0f; f32 speed = 0.05f;
+    WobbleShaderInit(&screen->shaders[EndLayer_sky], amplitude, frequency, speed);
     }
     SetShaderValue(screen->shaders[EndLayer_sky].shader, screen->shaders[EndLayer_sky].amplitude_location, 
                    &screen->shaders[EndLayer_sky].amplitude, SHADER_UNIFORM_FLOAT);
@@ -217,10 +189,8 @@ void EndScreenInit(End_Screen *screen) {
                    &screen->shaders[EndLayer_sky].speed, SHADER_UNIFORM_FLOAT);
 
     {
-        f32 amplitude = 0.01f;
-        f32 frequency = 0.7f;
-        f32 speed     = 1.0f;
-        WobbleShaderInit(&screen->shaders[EndLayer_trees], amplitude, frequency, speed);
+    f32 amplitude = 0.01f; f32 frequency = 0.7f; f32 speed = 1.0f;
+    WobbleShaderInit(&screen->shaders[EndLayer_trees], amplitude, frequency, speed);
     }
     SetShaderValue(screen->shaders[EndLayer_trees].shader, screen->shaders[EndLayer_trees].amplitude_location, 
                    &screen->shaders[EndLayer_trees].amplitude, SHADER_UNIFORM_FLOAT);
@@ -303,11 +273,11 @@ void GameManagerInit(Game_Manager *manager) {
 
     u32 gui_face_size               = SPRITE_WIDTH * 2;
     b32 animation_looping           = false;
-    AnimatorInit(&manager->gui.animators[GodAnimator_angry], "../assets/sprites/angry.png", 
+    AnimatorInit(&manager->gui.animators[GodAnimator_angry],     "../assets/sprites/angry.png", 
                  gui_face_size, animation_looping);
     AnimatorInit(&manager->gui.animators[GodAnimator_satisfied], "../assets/sprites/meh.png",
                  gui_face_size, animation_looping);
-    AnimatorInit(&manager->gui.animators[GodAnimator_happy], "../assets/sprites/happy.png", 
+    AnimatorInit(&manager->gui.animators[GodAnimator_happy],     "../assets/sprites/happy.png", 
                  gui_face_size, animation_looping);
 
     manager->state                   = GameState_title;
@@ -889,8 +859,7 @@ void DrawTextTripleEffect (const char *text, Vector2 pos, u32 size, f32 alpha = 
 }
 
 void DrawTextDoubleEffect (const char *text, Vector2 pos, u32 size, f32 alpha = 1.0f) {
-
-    DrawText(text, (u32)pos.x+1.0f, (u32)pos.y+1.0f, size, Fade(BLACK, alpha));
+    DrawText(text, (u32)pos.x+2.0f, (u32)pos.y+2.0f, size, Fade(BLACK, alpha));
     DrawText(text, (u32)pos.x,      (u32)pos.y,      size, Fade(WHITE,   alpha));
 }
 
@@ -916,8 +885,6 @@ void UpdateTextBurst(Text_Burst *burst, float dt) {
 void DrawTextBurst(Text_Burst *burst, Font font) {
     f32 font_size = (font.baseSize) * burst->scale;
     Color col     = Fade(WHITE, burst->alpha);
-
-    //DrawTextTripleEffect(burst->text, burst->pos, font_size, burst->alpha);
     DrawTextDoubleEffect(burst->text, burst->pos, font_size, burst->alpha);
 }
 
@@ -1232,45 +1199,40 @@ void DrawWinScreenGodFace(Game_Manager *manager) {
     DrawTexturePro(animation->texture, src_rec, dest_rec, {0,0}, 0.0f, WHITE);
 }
 
-#if 0
 // TODO: Is this a cleaner way to do WrapMod?
 f32 WrapMod(f32 pos_x, f32 period) {
     f32 result = fmodf(pos_x, period);
-    //if (result < 0.0f) result += period;
     result     = (result < 0.0f) ? result + period : result;
     return result;
 }
 
 void UpdateBackgroundLayer(Background_Layer *layer, f32 delta_t) {
-    layer->x += layer->dir * layer->scroll_speed * delta_t;
+    layer->pos.x += layer->dir * layer->scroll_speed * delta_t;
     f32 width = (f32)layer->texture.width;
 
     if (layer->dir < 0) {
-        layer->x = -WrapMod(-layer->x, width);
+        layer->pos.x = -WrapMod(-layer->pos.x, width);
     } else {
-        layer->x = WrapMod(layer->x, width);
+        layer->pos.x = WrapMod(layer->pos.x, width);
     }
 }
 
 void DrawBackgroundLayer(Background_Layer *layer) {
     f32 width = (f32)layer->texture.width;
-    f32 x0 = (layer->dir < 0) ? layer->x : layer->x - width;
+    f32 x0 = (layer->dir < 0) ? layer->pos.x : layer->pos.x - width;
     f32 x1 = x0 + width;
 
-    x0 = floorf(x0);
-    x1 = floorf(x1);
-
-    DrawTextureV(layer->texture, {x0, layer->y}, WHITE);
-    DrawTextureV(layer->texture, {x1, layer->y}, WHITE);
+    DrawTextureV(layer->texture, {x0, layer->pos.y}, WHITE);
+    DrawTextureV(layer->texture, {x1, layer->pos.y}, WHITE);
 }
 
-void UpdateTitleBackground(Title_Screen_Manager *bg, f32 delta_t) {
+void UpdateTitleScreenBackground(Title_Screen_Manager *bg, f32 delta_t) {
     for (u32 index = 0; index < BG_LAYERS; index++) {
         UpdateBackgroundLayer(&bg->layer[index], delta_t);
     }
 }
 
-void DrawTitleBackground(Title_Screen_Manager *bg, float current_time) {
+void DrawTitleScreenBackground(Title_Screen_Manager *bg, float current_time) {
     // Draw the non-wobbling layers first to minimise the shader mode switching.
     for (u32 index = 0; index < BG_LAYERS; index++) {
         if (!bg->layer[index].should_wobble) {
@@ -1288,7 +1250,6 @@ void DrawTitleBackground(Title_Screen_Manager *bg, float current_time) {
     }
     EndShaderMode();
 }
-#endif
 
 
 int main() {
@@ -1816,58 +1777,8 @@ int main() {
 
             if (IsKeyPressed(KEY_P)) TriggerTitleBob(title, 150.0f);
 
-            // The background is split up into layers and moves in two different
-            // directions. Each background layer needs a secondary layer that is 
-            // drawn right next to the first layer for seamless bg scrolling. This is 
-            // why there are two positions for each background direction. It is to 
-            // accomodate for the position of both background textures next to each 
-            // other.
-#if 0
-            UpdateTitleBackground(&title_screen_manager, delta_t);
-            DrawTitleBackground(&title_screen_manager, current_time);
-#else 
-            Title_Screen_Background *bg = &title_screen_manager.bg;
-            bg->pos_left_1.x  -= bg->scroll_speed * delta_t;
-            bg->pos_left_2.x  -= bg->scroll_speed * delta_t;
-            bg->pos_right_1.x += bg->scroll_speed * delta_t;
-            bg->pos_right_2.x += bg->scroll_speed * delta_t;
-
-            if (bg->pos_left_1.x <= -base_screen_width) {
-                bg->pos_left_1.x = bg->pos_left_2.x + base_screen_width;
-            }
-            if (bg->pos_left_2.x <= -base_screen_width) {
-                bg->pos_left_2.x = bg->pos_left_1.x + base_screen_width;
-            }
-            if (bg->pos_right_1.x >= base_screen_width) {
-                bg->pos_right_1.x = bg->pos_right_2.x - base_screen_width;
-            }
-            if (bg->pos_right_2.x >= base_screen_width) {
-                bg->pos_right_2.x = bg->pos_right_1.x - base_screen_width;
-            }
-
-            for (int index = 0; index < BG_LAYERS; index++ ) {
-                if (index % 2) {
-                    Vector2 draw_pos_right_1 = {bg->pos_right_1.x, 
-                                                bg->pos_right_1.y + bg->texture[index].height*index};
-                    Vector2 draw_pos_right_2 = {bg->pos_right_2.x, 
-                                                bg->pos_right_2.y + bg->texture[index].height*index};
-                    // I prefer the look when only half the layers have the wobble shader attached 
-                    // that's why the right moving ones wobble and the left moving ones don't.
-                    SetTimeValueForWobbleShader(&title_screen_manager.bg.wobble, current_time);
-                    BeginShaderMode(bg->wobble.shader);
-                    DrawTextureV(bg->texture[index], draw_pos_right_1, WHITE);
-                    DrawTextureV(bg->texture[index], draw_pos_right_2, WHITE);
-                    EndShaderMode();
-                } else {
-                    Vector2 draw_pos_left_1 = {bg->pos_left_1.x, 
-                                               bg->pos_left_1.y + bg->texture[index].height*index};
-                    Vector2 draw_pos_left_2 = {bg->pos_left_2.x, 
-                                               bg->pos_left_2.y + bg->texture[index].height*index};
-                    DrawTextureV(bg->texture[index], draw_pos_left_1, WHITE);
-                    DrawTextureV(bg->texture[index], draw_pos_left_2, WHITE);
-                }
-            }
-#endif
+            UpdateTitleScreenBackground(&title_screen_manager, delta_t);
+            DrawTitleScreenBackground(&title_screen_manager, current_time);
 
             Vector2 draw_pos = {title->pos.x, title->pos.y += title->bob};
             if (title->pos.y > base_screen_height) {
@@ -1880,7 +1791,6 @@ int main() {
             play_text->pos.y     = draw_pos.y + 80.0f;
             play_text->pos.y    += 1.0f*sinf(8.0f*play_text->bob);
             play_text->bob      += delta_t;
-
             DrawTextTripleEffect(play_text->text, play_text->pos, play_text->font_size);
             
             if (IsKeyPressed(KEY_SPACE)) {
@@ -1914,52 +1824,37 @@ int main() {
         BeginDrawing();
         ClearBackground(DARKGRAY);
 
-        float scale_x = (float)WINDOW_WIDTH  / base_screen_width;
-        float scale_y = (float)WINDOW_HEIGHT / base_screen_height;
+        f32 scale_x = (f32)WINDOW_WIDTH  / base_screen_width;
+        f32 scale_y = (f32)WINDOW_HEIGHT / base_screen_height;
         Vector2 shake_offset = GetScreenShakeOffset(&manager.screen_shake);
 
-        Rectangle dest_rect = {
-            ((WINDOW_WIDTH - (base_screen_width * scale_x)) * 0.5f) + shake_offset.x,
-            ((WINDOW_HEIGHT - (base_screen_height * scale_y)) * 0.5f) + shake_offset.y,
-            base_screen_width * scale_x,
-            base_screen_height * scale_y,
-        };
-
-        Rectangle rect = {0.0f, 0.0f, (float)target.texture.width, -(float)target.texture.height}; 
+        Rectangle dest_rect = {((WINDOW_WIDTH  - (base_screen_width  * scale_x)) * 0.5f) + shake_offset.x,
+                               ((WINDOW_HEIGHT - (base_screen_height * scale_y)) * 0.5f) + shake_offset.y,
+                               (base_screen_width * scale_x), (base_screen_height * scale_y)};
+        Rectangle rect   = {0.0f, 0.0f, (f32)target.texture.width, -(f32)target.texture.height}; 
         Vector2 zero_vec = {0, 0};
-        DrawTexturePro(target.texture, rect,
-                       dest_rect, zero_vec, 0.0f, WHITE);
+        DrawTexturePro(target.texture, rect, dest_rect, zero_vec, 0.0f, WHITE);
         if (manager.state == GameState_play || manager.state == GameState_win || 
             manager.state == GameState_win_text) {
             u32 font_size     = 38;
-            u32 text_base_x   = 192;
-            u32 text_base_y   = 25;
+            f32 text_pos_x    = 192 + shake_offset.x;
+            f32 text_pos_y    = 25  + shake_offset.y;
             u32 shadow_offset = 2;
 
             if (manager.state != GameState_win_text) {
-            DrawText(TextFormat("%d", manager.score), (text_base_x + shadow_offset) + shake_offset.x, 
-                     (text_base_y + shadow_offset) + shake_offset.y, font_size, BLACK);//Fade(BLACK, alpha));
-            DrawText(TextFormat("%d", manager.score), text_base_x + shake_offset.x, 
-                     text_base_y + shake_offset.y, font_size, WHITE);//Fade(WHITE, alpha));
+                DrawTextDoubleEffect(TextFormat("%d", manager.score), {text_pos_x, text_pos_y}, font_size);
             } else {
-            DrawTextTripleEffect(TextFormat("%d", manager.score), {text_base_x + shake_offset.x, 
-                                 text_base_y + shake_offset.y}, font_size);
-#if 0
-            DrawText(TextFormat("%d", manager.score), (text_base_x + shadow_offset) + shake_offset.x, 
-                     (text_base_y + shadow_offset) + shake_offset.y, font_size, WHITE);//Fade(BLACK, alpha));
-            DrawText(TextFormat("%d", manager.score), text_base_x + shake_offset.x, 
-                     text_base_y + shake_offset.y, font_size, BLACK);//Fade(WHITE, alpha));
-#endif
+                DrawTextTripleEffect(TextFormat("%d", manager.score), {text_pos_x, text_pos_y}, font_size);
             }
             
             if (manager.state == GameState_play || manager.state == GameState_win) {
                 const char *combo = manager.score_multiplier > 1 ? 
                                     TextFormat("%d Combo", manager.score_multiplier) :
                                     ("0 Combo");
-                DrawText(combo, WINDOW_WIDTH - ((text_base_x + shadow_offset) + MeasureText(combo, font_size)) + shake_offset.x, 
-                         (text_base_y + shadow_offset) + shake_offset.y, font_size, BLACK);
-                DrawText(combo, WINDOW_WIDTH - (text_base_x + MeasureText(combo, font_size)) + shake_offset.x, 
-                             text_base_y + shake_offset.y, font_size, WHITE);
+                DrawText(combo, WINDOW_WIDTH - ((text_pos_x + shadow_offset) + MeasureText(combo, font_size)), 
+                         (text_pos_y + shadow_offset), font_size, BLACK);
+                DrawText(combo, WINDOW_WIDTH - (text_pos_x + MeasureText(combo, font_size)), 
+                         text_pos_y, font_size, WHITE);
             }
         };
 
