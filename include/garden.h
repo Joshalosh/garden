@@ -246,20 +246,36 @@ struct Game_Title {
     f32       bob_velocity;
 };
 
-struct Title_Screen_Background {
-    Texture2D texture[BG_LAYERS];
-    f32           scroll_speed;
-    Vector2       pos_left_1;
-    Vector2       pos_left_2;
-    Vector2       pos_right_1;
-    Vector2       pos_right_2;
-    Wobble_Shader wobble;
+struct Background_Layer {
+    Texture2D texture;
+    f32       x;
+    f32       y;
+    s32       dir;
+    f32       scroll_speed;
+    b32       should_wobble;
 };
+
+#if 1
+struct Title_Screen_Background {
+    Texture2D        texture[BG_LAYERS];
+    f32              scroll_speed;
+    Vector2          pos_left_1;
+    Vector2          pos_left_2;
+    Vector2          pos_right_1;
+    Vector2          pos_right_2;
+    Wobble_Shader    wobble;
+};
+#endif
 
 struct Title_Screen_Manager {
     Game_Title              title;
     Play_Text               play_text;
+#if 1
     Title_Screen_Background bg;
+#else
+    Background_Layer layer[BG_LAYERS];
+#endif
+    Wobble_Shader    wobble;
 };
 
 struct End_Screen {

@@ -129,6 +129,7 @@ void TitleScreenManagerInit(Title_Screen_Manager *manager) {
     manager->title.pos.y    = base_screen_height * 0.25;
     manager->title.bob      = 0.0f;
 
+#if 1
     manager->bg.texture[0]    = LoadTexture("../assets/tiles/layer_1.png");
     manager->bg.texture[1]    = LoadTexture("../assets/tiles/layer_2.png");
     manager->bg.texture[2]    = LoadTexture("../assets/tiles/layer_3.png");
@@ -137,6 +138,7 @@ void TitleScreenManagerInit(Title_Screen_Manager *manager) {
     manager->bg.texture[5]    = LoadTexture("../assets/tiles/layer_6.png");
     manager->bg.texture[6]    = LoadTexture("../assets/tiles/layer_7.png");
     manager->bg.texture[7]    = LoadTexture("../assets/tiles/layer_8.png");
+
     manager->bg.scroll_speed  = 50.0f;
     manager->bg.pos_right_1   = {0.0f, 0.0f};
     manager->bg.pos_left_1    = {0.0f, 0.0f};
@@ -149,6 +151,36 @@ void TitleScreenManagerInit(Title_Screen_Manager *manager) {
     SetShaderValue(manager->bg.wobble.shader, manager->bg.wobble.amplitude_location, &manager->bg.wobble.amplitude, SHADER_UNIFORM_FLOAT);
     SetShaderValue(manager->bg.wobble.shader, manager->bg.wobble.frequency_location, &manager->bg.wobble.frequency, SHADER_UNIFORM_FLOAT);
     SetShaderValue(manager->bg.wobble.shader, manager->bg.wobble.speed_location,     &manager->bg.wobble.speed,     SHADER_UNIFORM_FLOAT);
+
+#else
+    manager->layer[0].texture    = LoadTexture("../assets/tiles/layer_1.png");
+    manager->layer[1].texture    = LoadTexture("../assets/tiles/layer_2.png");
+    manager->layer[2].texture    = LoadTexture("../assets/tiles/layer_3.png");
+    manager->layer[3].texture    = LoadTexture("../assets/tiles/layer_4.png");
+    manager->layer[4].texture    = LoadTexture("../assets/tiles/layer_5.png");
+    manager->layer[5].texture    = LoadTexture("../assets/tiles/layer_6.png");
+    manager->layer[6].texture    = LoadTexture("../assets/tiles/layer_7.png");
+    manager->layer[7].texture    = LoadTexture("../assets/tiles/layer_8.png");
+
+    f32 y = 0.0f;
+    for (u32 index = 0; index < BG_LAYERS; index++) {
+        Background_Layer *layer = &manager->layer[index];
+        layer->x                = 0.0f;
+        layer->y                = y;
+        layer->scroll_speed     = 50.0f;
+        layer->dir              = (index & 1) ? 1 : -1;
+        layer->should_wobble    = (index & 1) ? true : false;
+        y                      += (f32)layer->texture.height;
+    }
+
+    f32 amplitude = 0.06f, frequency = 1.25f, speed = 2.0f;
+    WobbleShaderInit(&manager->wobble, amplitude, frequency, speed); 
+
+    SetShaderValue(manager->wobble.shader, manager->wobble.amplitude_location, &manager->wobble.amplitude, SHADER_UNIFORM_FLOAT);
+    SetShaderValue(manager->wobble.shader, manager->wobble.frequency_location, &manager->wobble.frequency, SHADER_UNIFORM_FLOAT);
+    SetShaderValue(manager->wobble.shader, manager->wobble.speed_location,     &manager->wobble.speed,     SHADER_UNIFORM_FLOAT);
+
+#endif
 
     manager->play_text.text      = "Spacebar Begins Ritual";
     manager->play_text.font_size = 14;
@@ -1200,6 +1232,65 @@ void DrawWinScreenGodFace(Game_Manager *manager) {
     DrawTexturePro(animation->texture, src_rec, dest_rec, {0,0}, 0.0f, WHITE);
 }
 
+#if 0
+// TODO: Is this a cleaner way to do WrapMod?
+f32 WrapMod(f32 pos_x, f32 period) {
+    f32 result = fmodf(pos_x, period);
+    //if (result < 0.0f) result += period;
+    result     = (result < 0.0f) ? result + period : result;
+    return result;
+}
+
+void UpdateBackgroundLayer(Background_Layer *layer, f32 delta_t) {
+    layer->x += layer->dir * layer->scroll_speed * delta_t;
+    f32 width = (f32)layer->texture.width;
+
+    if (layer->dir < 0) {
+        layer->x = -WrapMod(-layer->x, width);
+    } else {
+        layer->x = WrapMod(layer->x, width);
+    }
+}
+
+void DrawBackgroundLayer(Background_Layer *layer) {
+    f32 width = (f32)layer->texture.width;
+    f32 x0 = (layer->dir < 0) ? layer->x : layer->x - width;
+    f32 x1 = x0 + width;
+
+    x0 = floorf(x0);
+    x1 = floorf(x1);
+
+    DrawTextureV(layer->texture, {x0, layer->y}, WHITE);
+    DrawTextureV(layer->texture, {x1, layer->y}, WHITE);
+}
+
+void UpdateTitleBackground(Title_Screen_Manager *bg, f32 delta_t) {
+    for (u32 index = 0; index < BG_LAYERS; index++) {
+        UpdateBackgroundLayer(&bg->layer[index], delta_t);
+    }
+}
+
+void DrawTitleBackground(Title_Screen_Manager *bg, float current_time) {
+    // Draw the non-wobbling layers first to minimise the shader mode switching.
+    for (u32 index = 0; index < BG_LAYERS; index++) {
+        if (!bg->layer[index].should_wobble) {
+            DrawBackgroundLayer(&bg->layer[index]);
+        }
+    }
+
+    // Then draw the wobble shader layers in a single block
+    SetShaderValue(bg->wobble.shader, bg->wobble.time_location, &current_time, SHADER_UNIFORM_FLOAT);
+    BeginShaderMode(bg->wobble.shader);
+    for (u32 index = 0; index < BG_LAYERS; index++) {
+        if (bg->layer[index].should_wobble) {
+            DrawBackgroundLayer(&bg->layer[index]);
+        }
+    }
+    EndShaderMode();
+}
+#endif
+
+
 int main() {
     // -------------------------------------
     // Initialisation
@@ -1731,9 +1822,11 @@ int main() {
             // why there are two positions for each background direction. It is to 
             // accomodate for the position of both background textures next to each 
             // other.
-            //
+#if 0
+            UpdateTitleBackground(&title_screen_manager, delta_t);
+            DrawTitleBackground(&title_screen_manager, current_time);
+#else 
             Title_Screen_Background *bg = &title_screen_manager.bg;
-
             bg->pos_left_1.x  -= bg->scroll_speed * delta_t;
             bg->pos_left_2.x  -= bg->scroll_speed * delta_t;
             bg->pos_right_1.x += bg->scroll_speed * delta_t;
@@ -1774,6 +1867,7 @@ int main() {
                     DrawTextureV(bg->texture[index], draw_pos_left_2, WHITE);
                 }
             }
+#endif
 
             Vector2 draw_pos = {title->pos.x, title->pos.y += title->bob};
             if (title->pos.y > base_screen_height) {
