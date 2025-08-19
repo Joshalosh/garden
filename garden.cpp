@@ -325,6 +325,11 @@ void GameManagerInit(Game_Manager *manager) {
     LoadSoundBuffer(manager->sounds);
     LoadHypeSoundBuffer(manager->hype_sounds);
 
+#if 0
+    manager->hype_text = {"WOW",      "YEAH",   "AMAZING",      "SANCTIFY", 
+                          "HOLY COW", "DIVINE", "UNBELIEVABLE", "WOAH",
+                          "AWESOME",  "COSMIC", "RITUALISTIC",  "LEGENDARY"};
+#endif
     manager->spacebar_text;
     SpacebarTextInit(&manager->spacebar_text);
 }
@@ -882,17 +887,18 @@ void UpdateTextBurst(Text_Burst *burst, float dt) {
     }
 }
 
-void DrawTextBurst(Text_Burst *burst, Font font) {
-    f32 font_size = (font.baseSize) * burst->scale;
-    Color col     = Fade(WHITE, burst->alpha);
+void DrawTextBurst(Text_Burst *burst) {
+    f32 font_base_size = 32;
+    f32 font_size      = font_base_size * burst->scale;
+    Color col          = Fade(WHITE, burst->alpha);
     DrawTextDoubleEffect(burst->text, burst->pos, font_size, burst->alpha);
 }
 
-void UpdateAndDrawAllTextBursts(Game_Manager *manager, Font font, f32 delta_t) {
+void UpdateAndDrawAllTextBursts(Game_Manager *manager, f32 delta_t) {
     for(int index = 0; index < MAX_BURSTS; index++) {
         UpdateTextBurst(&manager->bursts[index], delta_t);
         if (manager->bursts[index].active) {
-            DrawTextBurst(&manager->bursts[index], font);
+            DrawTextBurst(&manager->bursts[index]);
         }
     }
 }
@@ -1158,7 +1164,7 @@ void AnimateAndDrawPlayer(Player *player, u32 frame_counter){
                            dest_rect, texture_offset, 0.0f, player->col);
 }
 
-void UpdateWinScreen(Game_Manager *manager, Win_Screen *screen, f32 delta_t, Font font) {
+void UpdateWinScreen(Game_Manager *manager, Win_Screen *screen, f32 delta_t) {
     SetGodFaceType(manager);
     switch (manager->gui.face_type) {
         case GodAnimator_happy:     screen->message = "The Gods are Pleased!";            break;
@@ -1199,7 +1205,6 @@ void DrawWinScreenGodFace(Game_Manager *manager) {
     DrawTexturePro(animation->texture, src_rec, dest_rec, {0,0}, 0.0f, WHITE);
 }
 
-// TODO: Is this a cleaner way to do WrapMod?
 f32 WrapMod(f32 pos_x, f32 period) {
     f32 result = fmodf(pos_x, period);
     result     = (result < 0.0f) ? result + period : result;
@@ -1251,6 +1256,543 @@ void DrawTitleScreenBackground(Title_Screen_Manager *bg, float current_time) {
     EndShaderMode();
 }
 
+void UpdateAndDrawFrame(Memory_Arena *arena, Tilemap *map, Game_Manager *manager, Player *player, 
+                        End_Screen *end_screen, Event_Manager *event_manager, 
+                        Tutorial_Entities *tutorial_entities, Win_Screen *win_screen, 
+                        Title_Screen_Manager *title_screen_manager, RenderTexture2D *target) {
+    // -----------------------------------
+    // Update
+    // -----------------------------------
+    
+    f32 delta_t      = GetFrameTime();
+    f32 current_time = GetTime();
+
+    UpdateScreenShake(&manager->screen_shake, delta_t);
+    UpdateAlphaFade(manager, delta_t);
+
+    // NOTE: reset the counter back to zero after everything to not mess up 
+    // the individual animations
+    if (manager->frame_counter >= 60/FRAME_SPEED) {
+        manager->frame_counter = 0;
+    }
+    manager->frame_counter++;
+
+    // Draw to render texture
+    BeginTextureMode(*target);
+    ClearBackground(BLACK);
+        
+    if (manager->state == GameState_play) {
+        manager->fire_cleared = true;
+
+        SetTimeValueForWobbleShader(&map->wobble, current_time);
+        DrawGame(map, manager, player, delta_t);
+
+        // TODO: My unchecked/unsubstantiated theory of why the player movement 
+        // feel off and why buttons pressed in quick successsion aren't logged 
+        // is because of the is_moving flag. I think maybe while the player is moving 
+        // it ignores directions inputs. But as you can see the directions are stored 
+        // inside the buffer before is is_moving flag is checked. So i'm not 100% sure, 
+        // because I don't see how that could happen. But it definitely feels like inputs  
+        // get ignored while the player is moving. But I guess only if the buttons are pressed 
+        // in quick succession. Also strangely I feel like when the player picks up speed 
+        // and starts to move a lot faster things feel a bit more tighter. This I guess 
+        // is also why I think it's related to is_moving because the window where that 
+        // bool switches is so much shorter and the late game when the character is moving 
+        // really fast.
+        StorePlayerDirectionsInBuffer(player);
+        if (!player->is_moving) {
+            Direction_Facing dir = InputBufferPop(player);
+            if (dir == DirectionFacing_none) dir = player->facing;
+
+            Vector2 input_axis = {0, 0};
+            switch (dir) {
+                case DirectionFacing_up:    input_axis = { 0,-1}; break;
+                case DirectionFacing_down:  input_axis = { 0, 1}; break;
+                case DirectionFacing_left:  input_axis = {-1, 0}; break;
+                case DirectionFacing_right: input_axis = { 1, 0}; break;
+                default: break;
+            }
+            
+
+            if (input_axis.x || input_axis.y) {
+                // NOTE: Calculate the next tile position
+                u32 current_tile_x = (u32)player->pos.x / map->tile_size;
+                u32 current_tile_y = (u32)player->pos.y / map->tile_size;
+                u32 target_tile_x  = current_tile_x + (u32)input_axis.x;
+                u32 target_tile_y  = current_tile_y + (u32)input_axis.y;
+                u32 target_tile_index = TilemapIndex(target_tile_x, target_tile_y, map->width);
+                Tile *target_tile     = &map->tiles[target_tile_index];
+
+                if (target_tile_x > 0 && target_tile_x < map->width-1 &&
+                    target_tile_y > 0 && target_tile_y < map->height-1) {
+
+                    if (target_tile->type != TileType_wall  && 
+                        target_tile->type != TileType_none) {
+                        
+                        // Start moving
+                        player->facing     = dir;
+                        player->target_pos = {(float)target_tile_x * map->tile_size, (float)target_tile_y * map->tile_size};
+                        player->is_moving  = true;
+
+                        u32 current_tile_index = TilemapIndex(current_tile_x, current_tile_y, map->width);
+                        Tile *current_tile     = &map->tiles[current_tile_index];
+                        if (!player->powered_up) {
+                            AddFlag(current_tile, TileFlag_fire);
+                        }
+                    } else {
+                        GameOver(player, map, manager);
+                    }
+                } else {
+                    // Out of bounds
+                    GameOver(player, map, manager);
+                }
+
+                if (IsFlagSet(target_tile, TileFlag_powerup)) {
+                    f32 powerup_duration        = 10.0f;
+                    player->powerup_timer       = current_time + powerup_duration;
+                    player->powered_up          = true;
+                    player->blink_speed         = 5.0f;
+                    player->blinking_duration   = player->blink_speed;
+                    ClearFlag(target_tile, TileFlag_powerup);
+                    if (IsSoundPlaying(manager->sounds[SoundEffect_powerup_end])) {
+                        StopSound(manager->sounds[SoundEffect_powerup_end]);
+                    }
+                    PlaySound(manager->sounds[SoundEffect_powerup_collect]);
+                    manager->hype_sound_timer   = 0;
+                }
+
+                if (player->powered_up) {
+                    //manager.hype_sound_timer += delta_t;
+                    if (IsFlagSet(target_tile, TileFlag_fire)) {
+                        ClearFlag(target_tile, TileFlag_fire);
+                        manager->score += (10 * manager->score_multiplier);
+                        BeginScreenShake(&manager->screen_shake, 1.5f, 0.6f, 10.0f); 
+                        // Create the text bursts
+                        for (int index = 0; index < MAX_BURSTS; index++) {
+                            if (!manager->bursts[index].active) {
+                                u32 random_index      = GetRandomValue(0, HYPE_WORD_COUNT - 1);
+                                const char *word      = manager->hype_text[random_index];
+                                // TODO: Settle on what kind of positioning I want to have the create 
+                                // text burst appear at.
+                                manager->bursts[index] = CreateTextBurst(word);
+                                break;
+                            }
+                        }
+                        // Play the hype sounds
+                        if (manager->hype_sound_timer <= current_time) {
+                            u32 index = GetRandomValue(0, HYPE_WORD_COUNT - 1);
+                            while (index == manager->hype_prev_index) {
+                                index = GetRandomValue(0, HYPE_WORD_COUNT -1);
+                            }
+                            ASSERT(index < HYPE_WORD_COUNT);
+                            Sound hype_sound = manager->hype_sounds[index];
+                            f32 sound_boost  = 3.0f;
+                            SetSoundVolume(hype_sound, sound_boost);
+                            PlaySound(hype_sound);
+
+                            manager->hype_prev_index  = index;
+                            f32 sound_duration        = current_time + 0.90f;
+                            manager->hype_sound_timer = sound_duration;
+                        }
+                    }
+                }
+
+                if (IsFlagSet(target_tile, TileFlag_fire) || IsFlagSet(target_tile, TileFlag_enemy)) {
+                    GameOver(player, map, manager);
+                }
+            }
+        } else {
+            // Move towards target position
+            Vector2 direction = VectorSub(player->target_pos, player->pos);
+            float distance    = Length(direction);
+            if (distance <= player->speed * delta_t) {
+                player->pos       = player->target_pos;
+                player->is_moving = false;
+
+                u32 current_tile_x = (u32)player->pos.x / map->tile_size;
+                u32 current_tile_y = (u32)player->pos.y / map->tile_size;
+
+                FillEnclosedAreas(arena, map, player, manager, current_tile_x, current_tile_y);
+            } else {
+                direction        = VectorNorm(direction);
+                Vector2 movement = VectorScale(direction, player->speed * delta_t);
+                player->pos       = VectorAdd(player->pos, movement);
+            }
+        }
+
+        if (player->powered_up) {
+            f32 end_duration_signal  = 3.0f;
+            // TODO: I've set up a seperate frame counter here for the water that I can double 
+            // or halve to speed the animation up or slow it down. Perhaps a better implementation 
+            // in the future would be to have the animate function take a speed multiplier that can 
+            // effect the global frame counter for the individual animation. This would be better 
+            // than each animation that wants a speed change to have it's own counter. Right now 
+            // only this animation in the game that wants to change it's speed so 
+            // this current implemenation is fine for now.
+            u32 water_frame_counter  = manager->frame_counter;
+
+            // TODO: I'm moving the volume value by a set amount which isn't very frame independant. 
+            // I should actually increment and decrement by some rate * delta_t.
+            manager->play_song_volume       -= 0.02f;
+            manager->play_muted_song_volume += 0.02f;
+
+            Sound powerup_effect     = manager->sounds[SoundEffect_powerup];
+            Sound powerup_end_effect = manager->sounds[SoundEffect_powerup_end];
+
+            if(!IsSoundPlaying(powerup_effect) && !IsSoundPlaying(powerup_end_effect))
+            {
+                PlaySound(powerup_effect);
+                SetSoundVolume(powerup_effect, 1.5f);
+            }
+
+            if (player->powerup_timer < current_time) { // Powerup is over.
+                player->powered_up = false;
+                player->col_bool   = false;
+                manager->score_multiplier = 1;
+                StopSound(powerup_effect);
+                StopSound(powerup_end_effect);
+            } else {
+                if ((player->powerup_timer - end_duration_signal) < current_time) { // Powerup over soon warning.
+                    player->blink_speed   = 2.0f; 
+                    water_frame_counter *= 2;
+
+                    if (!IsSoundPlaying(powerup_end_effect)) {
+                        StopSound(powerup_effect);
+                        PlaySound(powerup_end_effect);
+                        SetSoundVolume(powerup_end_effect, 2.0f);
+                    }
+                }
+
+                if (player->blinking_duration > 0) {
+                player->blinking_duration -= 1.0f;
+                } else {
+                    player->blinking_duration = player->blink_speed;
+                    player->col_bool          = !player->col_bool;
+                }
+            }
+
+            Animate(&player->animators[PlayerAnimator_water], water_frame_counter);
+            DrawTextureRec(player->animators[PlayerAnimator_water].texture, 
+                           player->animators[PlayerAnimator_water].frame_rec, player->target_pos, WHITE);
+            if (player->col_bool) {
+                player->col = BLUE;
+            } else {
+                player->col = WHITE;
+            }
+        } else {
+            manager->play_song_volume       += 0.02f;
+            manager->play_muted_song_volume -= 0.02f;
+        }
+
+        // TODO: I need to set up a better way to crossfade these tracks. Right not this is the 
+        // only track I fade so it's probably fine 
+        manager->play_song_volume       = CLAMP(manager->play_song_volume,  0.0f, 1.0f);
+        manager->play_muted_song_volume = CLAMP(manager->play_muted_song_volume, 0.0f, 1.0f);
+        SetMusicVolume(manager->song[Song_play],       manager->play_song_volume);
+        SetMusicVolume(manager->song[Song_play_muted], manager->play_muted_song_volume);
+
+        // Enemy spawning
+        if (manager->spawn_timer > 0) {
+            // TODO: This right now is frame dependant. I should decrement by delta_t 
+            // and set the enemy_spawn_duration to reflect the real world seconds I 
+            // want to wait.
+            manager->spawn_timer -= 1.0f;
+        } else {
+            manager->spawn_timer = manager->enemy_spawn_duration;
+
+            s32 player_tile_x     = (u32)player->pos.x / map->tile_size; 
+            s32 player_tile_y     = (u32)player->pos.y / map->tile_size; 
+            u32 player_tile_index = TilemapIndex(player_tile_x, player_tile_y, map->width);
+
+            u32 tile_index = GetRandomEmptyTileIndex(map, player_tile_index);
+            if (tile_index) {
+                Tile *tile = &map->tiles[tile_index];
+                AddFlag(tile, TileFlag_enemy);
+
+                // Add enemy
+                Enemy *new_enemy = (Enemy *)ArenaAlloc(arena, sizeof(Enemy));
+                EnemyInit(new_enemy, &manager->enemy_sentinel, tile_index);
+            }
+        }
+
+        // Enemy movement
+        if (manager->enemy_move_timer > 0) {
+            // TODO: Again this timer is frame dependant. Needs to decrement by delta_t 
+            manager->enemy_move_timer -= 1.0f;
+        } else {
+            for (u32 y = 0; y < map->height; y++) {
+                for (u32 x = 0; x < map->width; x++) {
+                    u32 tile_index = TilemapIndex(x, y, map->width); 
+                    Tile *tile     = &map->tiles[tile_index];
+
+                    // The moved flag is necessary so that enemies don't end up moving multiple times.
+                    if (IsFlagSet(tile, TileFlag_enemy) && !IsFlagSet(tile, TileFlag_moved)) {
+                        u32 eligible_tile_index = FindEligibleTileIndexForEnemyMove(map, tile_index); 
+                        if (eligible_tile_index) {
+                            Tile *eligible_tile = &map->tiles[eligible_tile_index];
+                            Enemy *found_enemy = FindEnemyAtTile(&manager->enemy_sentinel, tile_index);
+                            if (found_enemy) {
+                                found_enemy->tile_index = eligible_tile_index;
+                            }
+                            ClearFlag(tile, TileFlag_enemy);
+                            AddFlag(eligible_tile, TileFlag_enemy);
+                            AddFlag(eligible_tile, TileFlag_moved);
+                        }
+                    }
+                }
+            }
+            // TODO: Need to make move duration happen in seconds and decrement the timer 
+            // by delta_t;
+            manager->enemy_move_timer = manager->enemy_move_duration;
+        }
+
+        AnimateAndDrawPlayer(player, manager->frame_counter);
+        UpdateAndDrawAllTextBursts(manager, delta_t);
+
+        // TODO: Take this out of the game before shipping.
+        if (IsKeyPressed(KEY_P)) {
+            manager->state = GameState_win;
+        }
+
+    } else if (manager->state == GameState_win) {
+        SetTimeValueForWobbleShader(&map->wobble, current_time);
+        DrawGame(map, manager, player, delta_t);
+
+        UpdateAndDrawAllTextBursts(manager, delta_t);
+        StopSoundBuffer(manager->sounds);
+        BeginScreenShake(&manager->screen_shake, 4.0f, 5.0f, 10.0f);
+        // Hard coding the facing direction here so constantly play 
+        // the win celebration animation.
+        player->facing = DirectionFacing_celebration;
+        AnimateAndDrawPlayer(player, manager->frame_counter);
+
+        if (win_screen->white_screen.alpha == 0.0f) {
+            AlphaFadeIn(manager, &win_screen->white_screen, 5.0f);
+        } else if (win_screen->white_screen.alpha == 1.0f) {
+            manager->state = GameState_win_text;
+        }
+        DrawScreenFadeCol(&win_screen->white_screen, base_screen_width, base_screen_height, WHITE);
+        DrawGodFace(manager, delta_t);
+
+    } else if (manager->state == GameState_win_text) {
+        Event_Queue *win_sequence = &event_manager->sequence[Sequence_win];
+        UpdateEventQueue(win_sequence, manager, delta_t);
+
+        DrawScreenFadeCol(&win_screen->white_screen, base_screen_width, base_screen_height, WHITE);
+
+        // TODO: This feels a bit like spaghetti code as lots of things are dependant on each other 
+        // and it makes the flow hard to reason about at a glance.
+        UpdateWinScreen(manager, win_screen, delta_t);
+        DrawWinScreenGodFace(manager);
+
+        if (!win_sequence->active) StartEventSequence(win_sequence);
+        Event event = win_sequence->events[1];
+        DrawTextTripleEffect(win_screen->message, win_screen->text_pos, win_screen->font_size, event.fadeable.alpha); 
+
+        UpdateSpacebarBob(&manager->spacebar_text, delta_t);
+        DrawTextTripleEffect(manager->spacebar_text.text, manager->spacebar_text.pos, manager->spacebar_text.size, 
+                             win_sequence->events[3].fadeable.alpha); 
+
+        if (IsKeyPressed(KEY_SPACE)) {
+            win_sequence->active = false;
+            ResetEvents(event_manager);
+            manager->gui.step = 0.0f;
+            if (manager->gui.face_type != GodAnimator_happy) {
+                win_screen->white_screen.alpha = 0.0f;
+                manager->state = GameState_title;
+            }
+            else {
+                manager->state = GameState_epilogue;
+            }
+        }
+
+    } else if (manager->state == GameState_epilogue) {
+        if (win_screen->white_screen.alpha == 1.0f)
+        {
+            AlphaFadeOut(manager, &win_screen->white_screen, 5.0f);
+        }
+        end_screen->timer += delta_t;
+        BeginShaderMode(end_screen->shaders[EndLayer_sky].shader);
+        SetTimeValueForWobbleShader(&end_screen->shaders[EndLayer_sky], current_time);
+        DrawTextureV(end_screen->textures[EndLayer_sky], {0, 0}, WHITE);
+        EndShaderMode();
+        SetTimeValueForWobbleShader(&end_screen->shaders[EndLayer_trees], current_time);
+        BeginShaderMode(end_screen->shaders[EndLayer_trees].shader);
+        DrawTextureV(end_screen->textures[EndLayer_trees], {-30.0f, 0}, WHITE);
+        EndShaderMode();
+        Animate(&end_screen->animator, manager->frame_counter);
+        DrawTextureRec(end_screen->animator.texture, 
+                       end_screen->animator.frame_rec, {0, 0}, WHITE);
+        // TODO: I could probably make this random duration animation code 
+        // a function because the god face uses the exact same code. I don't 
+        // think anyone else uses this at the moment so it's perhaps unecessary
+        // right now though. Something to keep an eye on.
+        if (end_screen->timer > end_screen->blink_duration) {
+            end_screen->animator.current_frame = 0;
+            end_screen->timer = 0;
+            end_screen->blink_duration = GetRandomValue(0.5f, 3.0f);
+        }
+
+        DrawScreenFadeCol(&win_screen->white_screen, base_screen_width, base_screen_height, WHITE);
+        if (IsKeyPressed(KEY_SPACE)) {
+            ResetEvents(event_manager);
+            win_screen->white_screen.alpha = 0.0f;
+            manager->state = GameState_title;
+        }
+
+    } else if (manager->state == GameState_tutorial) {
+        Event_Queue *tutorial    = &event_manager->sequence[Sequence_tutorial];
+        UpdateEventQueue(tutorial, manager, delta_t);
+        DrawRectangle(0, 0, base_screen_width, base_screen_height, BLACK);
+        if (!tutorial->active) StartEventSequence(tutorial);
+
+        const char *sacred_fire  = "Clear all of the fire to complete the ritual";
+        const char *powerup      = "Collect powerups to clear the fire";
+        const char *demon        = "Sacrifice demons by trapping them in fire";
+        u32 font_size            = 7;
+        f32 icon_padding         = 10.0f;
+        f32 text_pos_x           = (base_screen_width*0.5f) - ((MeasureText(sacred_fire, font_size) - 
+                                   (SPRITE_WIDTH + icon_padding))*0.5f);
+        Vector2 powerup_text_pos = {text_pos_x, (base_screen_height*0.5f) - font_size};
+        Vector2 demon_text_pos   = {text_pos_x, powerup_text_pos.y - font_size*4};
+        Vector2 fire_text_pos    = {text_pos_x, powerup_text_pos.y + font_size*4};
+        DrawTextTripleEffect(demon,       demon_text_pos,   font_size, tutorial->events[0].fadeable.alpha);
+        DrawTextTripleEffect(powerup,     powerup_text_pos, font_size, tutorial->events[1].fadeable.alpha);
+        DrawTextTripleEffect(sacred_fire, fire_text_pos,    font_size, tutorial->events[2].fadeable.alpha);
+
+        UpdateSpacebarBob(&manager->spacebar_text, delta_t);
+        DrawTextTripleEffect(manager->spacebar_text.text, manager->spacebar_text.pos, font_size, 
+                             tutorial->events[4].fadeable.alpha);
+        Vector2 demon_pos   = {(f32)demon_text_pos.x - tutorial_entities->enemy.frame_rec.width - icon_padding, 
+                               (f32)demon_text_pos.y - (tutorial_entities->enemy.frame_rec.height*0.5f)-font_size};
+        Vector2 powerup_pos = {(f32)powerup_text_pos.x - tutorial_entities->powerup.frame_rec.width - icon_padding, 
+                               (f32)powerup_text_pos.y - font_size};
+        Vector2 fire_pos    = {(f32)fire_text_pos.x - tutorial_entities->fire.frame_rec.width - icon_padding, 
+                               (f32)fire_text_pos.y - font_size};
+        Animate(&tutorial_entities->enemy, manager->frame_counter);
+        DrawTextureRec(tutorial_entities->enemy.texture, tutorial_entities->enemy.frame_rec, 
+                       demon_pos, Fade(WHITE, tutorial->events[0].fadeable.alpha)); 
+        Animate(&tutorial_entities->powerup, manager->frame_counter);
+        DrawTextureRec(tutorial_entities->powerup.texture, tutorial_entities->powerup.frame_rec, 
+                       powerup_pos, Fade(WHITE, tutorial->events[1].fadeable.alpha)); 
+        SetTimeValueForWobbleShader(&map->wobble, current_time);
+        BeginShaderMode(map->wobble.shader);
+        Animate(&tutorial_entities->fire, manager->frame_counter);
+        DrawTextureRec(tutorial_entities->fire.texture, tutorial_entities->fire.frame_rec, 
+                       fire_pos, Fade(WHITE, tutorial->events[2].fadeable.alpha)); 
+        EndShaderMode();
+
+        if (IsKeyPressed(KEY_SPACE)) {
+            tutorial->active = false;
+            GameOver(player, map, manager);
+        }
+
+    } else if (manager->state == GameState_title) {
+        Event_Queue *title_press = &event_manager->sequence[Sequence_begin];
+        UpdateEventQueue(title_press, manager, delta_t);
+        Game_Title *title = &title_screen_manager->title;
+        UpdateTitleBob(title, delta_t);
+        manager->should_title_music_play = !title_press->active;
+
+        if (!IsMusicStreamPlaying(manager->song[Song_intro]) && !title_press->active)  
+        {
+            TriggerTitleBob(title, 5.0f);
+        } else {
+            UpdateMusicStream(manager->song[Song_intro]);
+        }
+
+        if (IsKeyPressed(KEY_P)) TriggerTitleBob(title, 150.0f);
+
+        UpdateTitleScreenBackground(title_screen_manager, delta_t);
+        DrawTitleScreenBackground(title_screen_manager, current_time);
+
+        Vector2 draw_pos = {title->pos.x, title->pos.y += title->bob};
+        if (title->pos.y > base_screen_height) {
+            title->pos.y = 0.0f - title->texture.height;
+        }
+        DrawTextureEx(title->texture, {draw_pos.x-4.0f, draw_pos.y+4.0f}, 0.0f, title->scale, BLACK);
+        DrawTextureEx(title->texture, draw_pos, 0.0f, title->scale, WHITE);
+
+        Play_Text *play_text = &title_screen_manager->play_text;
+        play_text->pos.y     = draw_pos.y + 80.0f;
+        play_text->pos.y    += 1.0f*sinf(8.0f*play_text->bob);
+        play_text->bob      += delta_t;
+        DrawTextTripleEffect(play_text->text, play_text->pos, play_text->font_size);
+        
+        if (IsKeyPressed(KEY_SPACE)) {
+            if (!title_press->active) {
+                StartEventSequence(title_press);
+            }
+            if (!IsSoundPlaying(manager->sounds[SoundEffect_spacebar])) {
+                PlaySound(manager->sounds[SoundEffect_spacebar]);
+            }
+        }
+
+        if (title_press->active) {
+            f32 pulse = (sinf(current_time * 48.0f) * 0.5f + 0.5f);
+            u32 alpha = (u32)(pulse * 255);
+            Color flash_col = {255, 255, 255, (u8)alpha};
+            DrawText(play_text->text, play_text->pos.x, play_text->pos.y, play_text->font_size, flash_col);
+        }
+    }
+
+    // TODO: Play the music here after the game logic has occured to make 
+    // sure that all the tracks are playing correctly on thier exact frames 
+    // they are supposed to and not a frame behind.
+    PlayAllMusicForGameCorrectly(manager);
+    EndTextureMode();
+
+    // -----------------------------------
+    // Draw
+    // -----------------------------------
+
+    // NOTE: Draw the render texture to the screen, scaling it with window size
+    BeginDrawing();
+    ClearBackground(DARKGRAY);
+
+    f32 scale_x = (f32)WINDOW_WIDTH  / base_screen_width;
+    f32 scale_y = (f32)WINDOW_HEIGHT / base_screen_height;
+    Vector2 shake_offset = GetScreenShakeOffset(&manager->screen_shake);
+
+    Rectangle dest_rect = {((WINDOW_WIDTH  - (base_screen_width  * scale_x)) * 0.5f) + shake_offset.x,
+                           ((WINDOW_HEIGHT - (base_screen_height * scale_y)) * 0.5f) + shake_offset.y,
+                           (base_screen_width * scale_x), (base_screen_height * scale_y)};
+    Rectangle rect   = {0.0f, 0.0f, (f32)target->texture.width, -(f32)target->texture.height}; 
+    Vector2 zero_vec = {0, 0};
+    DrawTexturePro(target->texture, rect, dest_rect, zero_vec, 0.0f, WHITE);
+    if (manager->state == GameState_play || manager->state == GameState_win || 
+        manager->state == GameState_win_text) {
+        u32 font_size     = 38;
+        f32 text_pos_x    = 192 + shake_offset.x;
+        f32 text_pos_y    = 25  + shake_offset.y;
+        u32 shadow_offset = 2;
+
+        if (manager->state != GameState_win_text) {
+            DrawTextDoubleEffect(TextFormat("%d", manager->score), {text_pos_x, text_pos_y}, font_size);
+        } else {
+            DrawTextTripleEffect(TextFormat("%d", manager->score), {text_pos_x, text_pos_y}, font_size);
+        }
+        
+        if (manager->state == GameState_play || manager->state == GameState_win) {
+            const char *combo = manager->score_multiplier > 1 ? 
+                                TextFormat("%d Combo", manager->score_multiplier) :
+                                ("0 Combo");
+            DrawText(combo, WINDOW_WIDTH - ((text_pos_x + shadow_offset) + MeasureText(combo, font_size)), 
+                     (text_pos_y + shadow_offset), font_size, BLACK);
+            DrawText(combo, WINDOW_WIDTH - (text_pos_x + MeasureText(combo, font_size)), 
+                     text_pos_y, font_size, WHITE);
+        }
+    };
+
+    if (manager->fire_cleared && player->powered_up) {
+        if (manager->state == GameState_play) {
+            manager->state = GameState_win;
+        }
+    }
+
+    EndDrawing();
+    // -----------------------------------
+}
 
 int main() {
     // -------------------------------------
@@ -1268,10 +1810,6 @@ int main() {
     const char *hype_text[HYPE_WORD_COUNT] = {"WOW",      "YEAH",   "AMAZING",      "SANCTIFY", 
                                               "HOLY COW", "DIVINE", "UNBELIEVABLE", "WOAH",
                                               "AWESOME",  "COSMIC", "RITUALISTIC",  "LEGENDARY"};
-    // TODO: This font is only being used in the draw text burst function to get it's font size 
-    // but it's not even the font that is being drawn, this is a little weird, i'm going to 
-    // have to change this to be cleaner and make more immediate sense
-    Font font = LoadFont("../assets/fonts/Ammaine-Standard.ttf");
 
     Tilemap map;
     TilemapInit(&map);
@@ -1310,6 +1848,7 @@ int main() {
 
     Game_Manager manager;
     GameManagerInit(&manager);
+    manager.hype_text = hype_text;
 
     Title_Screen_Manager title_screen_manager;
     TitleScreenManagerInit(&title_screen_manager);
@@ -1334,538 +1873,8 @@ int main() {
     // -------------------------------------
     // Main Game Loop
     while (!WindowShouldClose()) {
-        // -----------------------------------
-        // Update
-        // -----------------------------------
-        
-        f32 delta_t      = GetFrameTime();
-        f32 current_time = GetTime();
-
-        UpdateScreenShake(&manager.screen_shake, delta_t);
-        UpdateAlphaFade(&manager, delta_t);
-
-        // NOTE: reset the counter back to zero after everything to not mess up 
-        // the individual animations
-        if (manager.frame_counter >= 60/FRAME_SPEED) {
-            manager.frame_counter = 0;
-        }
-        manager.frame_counter++;
-
-        // Draw to render texture
-        BeginTextureMode(target);
-        ClearBackground(BLACK);
-            
-        if (manager.state == GameState_play) {
-            manager.fire_cleared = true;
-
-            SetTimeValueForWobbleShader(&map.wobble, current_time);
-            DrawGame(&map, &manager, &player, delta_t);
-
-            // TODO: My unchecked/unsubstantiated theory of why the player movement 
-            // feel off and why buttons pressed in quick successsion aren't logged 
-            // is because of the is_moving flag. I think maybe while the player is moving 
-            // it ignores directions inputs. But as you can see the directions are stored 
-            // inside the buffer before is is_moving flag is checked. So i'm not 100% sure, 
-            // because I don't see how that could happen. But it definitely feels like inputs  
-            // get ignored while the player is moving. But I guess only if the buttons are pressed 
-            // in quick succession. Also strangely I feel like when the player picks up speed 
-            // and starts to move a lot faster things feel a bit more tighter. This I guess 
-            // is also why I think it's related to is_moving because the window where that 
-            // bool switches is so much shorter and the late game when the character is moving 
-            // really fast.
-            StorePlayerDirectionsInBuffer(&player);
-            if (!player.is_moving) {
-                Direction_Facing dir = InputBufferPop(&player);
-                if (dir == DirectionFacing_none) dir = player.facing;
-
-                Vector2 input_axis = {0, 0};
-                switch (dir) {
-                    case DirectionFacing_up:    input_axis = { 0,-1}; break;
-                    case DirectionFacing_down:  input_axis = { 0, 1}; break;
-                    case DirectionFacing_left:  input_axis = {-1, 0}; break;
-                    case DirectionFacing_right: input_axis = { 1, 0}; break;
-                    default: break;
-                }
-                
-
-                if (input_axis.x || input_axis.y) {
-                    // NOTE: Calculate the next tile position
-                    u32 current_tile_x = (u32)player.pos.x / map.tile_size;
-                    u32 current_tile_y = (u32)player.pos.y / map.tile_size;
-                    u32 target_tile_x  = current_tile_x + (u32)input_axis.x;
-                    u32 target_tile_y  = current_tile_y + (u32)input_axis.y;
-                    u32 target_tile_index = TilemapIndex(target_tile_x, target_tile_y, map.width);
-                    Tile *target_tile     = &map.tiles[target_tile_index];
-
-                    if (target_tile_x > 0 && target_tile_x < map.width-1 &&
-                        target_tile_y > 0 && target_tile_y < map.height-1) {
-
-                        if (target_tile->type != TileType_wall  && 
-                            target_tile->type != TileType_none) {
-                            
-                            // Start moving
-                            player.facing     = dir;
-                            player.target_pos = {(float)target_tile_x * map.tile_size, (float)target_tile_y * map.tile_size};
-                            player.is_moving  = true;
-
-                            u32 current_tile_index = TilemapIndex(current_tile_x, current_tile_y, map.width);
-                            Tile *current_tile     = &map.tiles[current_tile_index];
-                            if (!player.powered_up) {
-                                AddFlag(current_tile, TileFlag_fire);
-                            }
-                        } else {
-                            GameOver(&player, &map, &manager);
-                        }
-                    } else {
-                        // Out of bounds
-                        GameOver(&player, &map, &manager);
-                    }
-
-                    if (IsFlagSet(target_tile, TileFlag_powerup)) {
-                        f32 powerup_duration       = 10.0f;
-                        player.powerup_timer       = current_time + powerup_duration;
-                        player.powered_up          = true;
-                        player.blink_speed         = 5.0f;
-                        player.blinking_duration   = player.blink_speed;
-                        ClearFlag(target_tile, TileFlag_powerup);
-                        if (IsSoundPlaying(manager.sounds[SoundEffect_powerup_end])) {
-                            StopSound(manager.sounds[SoundEffect_powerup_end]);
-                        }
-                        PlaySound(manager.sounds[SoundEffect_powerup_collect]);
-                        manager.hype_sound_timer   = 0;
-                    }
-
-                    if (player.powered_up) {
-                        //manager.hype_sound_timer += delta_t;
-                        if (IsFlagSet(target_tile, TileFlag_fire)) {
-                            ClearFlag(target_tile, TileFlag_fire);
-                            manager.score += (10 * manager.score_multiplier);
-                            BeginScreenShake(&manager.screen_shake, 1.5f, 0.6f, 10.0f); 
-                            // Create the text bursts
-                            for (int index = 0; index < MAX_BURSTS; index++) {
-                                if (!manager.bursts[index].active) {
-                                    u32 random_index      = GetRandomValue(0, HYPE_WORD_COUNT - 1);
-                                    const char *word      = hype_text[random_index];
-                                    // TODO: Settle on what kind of positioning I want to have the create 
-                                    // text burst appear at.
-                                    manager.bursts[index] = CreateTextBurst(word);
-                                    break;
-                                }
-                            }
-                            // Play the hype sounds
-                            if (manager.hype_sound_timer <= current_time) {
-                                u32 index = GetRandomValue(0, HYPE_WORD_COUNT - 1);
-                                while (index == manager.hype_prev_index) {
-                                    index = GetRandomValue(0, HYPE_WORD_COUNT -1);
-                                }
-                                ASSERT(index < HYPE_WORD_COUNT);
-                                Sound hype_sound = manager.hype_sounds[index];
-                                f32 sound_boost  = 3.0f;
-                                SetSoundVolume(hype_sound, sound_boost);
-                                PlaySound(hype_sound);
-
-                                manager.hype_prev_index  = index;
-                                f32 sound_duration       = current_time + 0.90f;
-                                manager.hype_sound_timer = sound_duration;
-                            }
-                        }
-                    }
-
-                    if (IsFlagSet(target_tile, TileFlag_fire) || IsFlagSet(target_tile, TileFlag_enemy)) {
-                        GameOver(&player, &map, &manager);
-                    }
-                }
-            } else {
-                // Move towards target position
-                Vector2 direction = VectorSub(player.target_pos, player.pos);
-                float distance    = Length(direction);
-                if (distance <= player.speed * delta_t) {
-                    player.pos       = player.target_pos;
-                    player.is_moving = false;
-
-                    u32 current_tile_x = (u32)player.pos.x / map.tile_size;
-                    u32 current_tile_y = (u32)player.pos.y / map.tile_size;
-
-                    FillEnclosedAreas(&arena, &map, &player, &manager, current_tile_x, current_tile_y);
-                } else {
-                    direction        = VectorNorm(direction);
-                    Vector2 movement = VectorScale(direction, player.speed * delta_t);
-                    player.pos       = VectorAdd(player.pos, movement);
-                }
-            }
-
-            if (player.powered_up) {
-                f32 end_duration_signal  = 3.0f;
-                // TODO: I've set up a seperate frame counter here for the water that I can double 
-                // or halve to speed the animation up or slow it down. Perhaps a better implementation 
-                // in the future would be to have the animate function take a speed multiplier that can 
-                // effect the global frame counter for the individual animation. This would be better 
-                // than each animation that wants a speed change to have it's own counter. Right now 
-                // only this animation in the game that wants to change it's speed so 
-                // this current implemenation is fine for now.
-                u32 water_frame_counter  = manager.frame_counter;
-
-                // TODO: I'm moving the volume value by a set amount which isn't very frame independant. 
-                // I should actually increment and decrement by some rate * delta_t.
-                manager.play_song_volume       -= 0.02f;
-                manager.play_muted_song_volume += 0.02f;
-
-                Sound powerup_effect     = manager.sounds[SoundEffect_powerup];
-                Sound powerup_end_effect = manager.sounds[SoundEffect_powerup_end];
-
-                if(!IsSoundPlaying(powerup_effect) && !IsSoundPlaying(powerup_end_effect))
-                {
-                    PlaySound(powerup_effect);
-                    SetSoundVolume(powerup_effect, 1.5f);
-                }
-
-                if (player.powerup_timer < current_time) { // Powerup is over.
-                    player.powered_up = false;
-                    player.col_bool   = false;
-                    manager.score_multiplier = 1;
-                    StopSound(powerup_effect);
-                    StopSound(powerup_end_effect);
-                } else {
-                    if ((player.powerup_timer - end_duration_signal) < current_time) { // Powerup over soon warning.
-                        player.blink_speed   = 2.0f; 
-                        water_frame_counter *= 2;
-
-                        if (!IsSoundPlaying(powerup_end_effect)) {
-                            StopSound(powerup_effect);
-                            PlaySound(powerup_end_effect);
-                            SetSoundVolume(powerup_end_effect, 2.0f);
-                        }
-                    }
-
-                    if (player.blinking_duration > 0) {
-                    player.blinking_duration -= 1.0f;
-                    } else {
-                        player.blinking_duration = player.blink_speed;
-                        player.col_bool          = !player.col_bool;
-                    }
-                }
-
-                Animate(&player.animators[PlayerAnimator_water], water_frame_counter);
-                DrawTextureRec(player.animators[PlayerAnimator_water].texture, 
-                               player.animators[PlayerAnimator_water].frame_rec, player.target_pos, WHITE);
-                if (player.col_bool) {
-                    player.col = BLUE;
-                } else {
-                    player.col = WHITE;
-                }
-            } else {
-                manager.play_song_volume       += 0.02f;
-                manager.play_muted_song_volume -= 0.02f;
-            }
-
-            // TODO: I need to set up a better way to crossfade these tracks. Right not this is the 
-            // only track I fade so it's probably fine 
-            manager.play_song_volume       = CLAMP(manager.play_song_volume,  0.0f, 1.0f);
-            manager.play_muted_song_volume = CLAMP(manager.play_muted_song_volume, 0.0f, 1.0f);
-            SetMusicVolume(manager.song[Song_play],       manager.play_song_volume);
-            SetMusicVolume(manager.song[Song_play_muted], manager.play_muted_song_volume);
-
-            // Enemy spawning
-            if (manager.spawn_timer > 0) {
-                // TODO: This right now is frame dependant. I should decrement by delta_t 
-                // and set the enemy_spawn_duration to reflect the real world seconds I 
-                // want to wait.
-                manager.spawn_timer -= 1.0f;
-            } else {
-                manager.spawn_timer = manager.enemy_spawn_duration;
-
-                s32 player_tile_x     = (u32)player.pos.x / map.tile_size; 
-                s32 player_tile_y     = (u32)player.pos.y / map.tile_size; 
-                u32 player_tile_index = TilemapIndex(player_tile_x, player_tile_y, map.width);
-
-                u32 tile_index = GetRandomEmptyTileIndex(&map, player_tile_index);
-                if (tile_index) {
-                    Tile *tile = &map.tiles[tile_index];
-                    AddFlag(tile, TileFlag_enemy);
-
-                    // Add enemy
-                    Enemy *new_enemy = (Enemy *)ArenaAlloc(&arena, sizeof(Enemy));
-                    EnemyInit(new_enemy, &manager.enemy_sentinel, tile_index);
-                }
-            }
-
-            // Enemy movement
-            if (manager.enemy_move_timer > 0) {
-                // TODO: Again this timer is frame dependant. Needs to decrement by delta_t 
-                manager.enemy_move_timer -= 1.0f;
-            } else {
-                for (u32 y = 0; y < map.height; y++) {
-                    for (u32 x = 0; x < map.width; x++) {
-                        u32 tile_index = TilemapIndex(x, y, map.width); 
-                        Tile *tile     = &map.tiles[tile_index];
-
-                        // The moved flag is necessary so that enemies don't end up moving multiple times.
-                        if (IsFlagSet(tile, TileFlag_enemy) && !IsFlagSet(tile, TileFlag_moved)) {
-                            u32 eligible_tile_index = FindEligibleTileIndexForEnemyMove(&map, tile_index); 
-                            if (eligible_tile_index) {
-                                Tile *eligible_tile = &map.tiles[eligible_tile_index];
-                                Enemy *found_enemy = FindEnemyAtTile(&manager.enemy_sentinel, tile_index);
-                                if (found_enemy) {
-                                    found_enemy->tile_index = eligible_tile_index;
-                                }
-                                ClearFlag(tile, TileFlag_enemy);
-                                AddFlag(eligible_tile, TileFlag_enemy);
-                                AddFlag(eligible_tile, TileFlag_moved);
-                            }
-                        }
-                    }
-                }
-                // TODO: Need to make move duration happen in seconds and decrement the timer 
-                // by delta_t;
-                manager.enemy_move_timer = manager.enemy_move_duration;
-            }
-
-            AnimateAndDrawPlayer(&player, manager.frame_counter);
-            UpdateAndDrawAllTextBursts(&manager, font, delta_t);
-
-            // TODO: Take this out of the game before shipping.
-            if (IsKeyPressed(KEY_P)) {
-                manager.state = GameState_win;
-            }
-
-        } else if (manager.state == GameState_win) {
-            SetTimeValueForWobbleShader(&map.wobble, current_time);
-            DrawGame(&map, &manager, &player, delta_t);
-
-            UpdateAndDrawAllTextBursts(&manager, font, delta_t);
-            StopSoundBuffer(manager.sounds);
-            BeginScreenShake(&manager.screen_shake, 4.0f, 5.0f, 10.0f);
-            // Hard coding the facing direction here so constantly play 
-            // the win celebration animation.
-            player.facing = DirectionFacing_celebration;
-            AnimateAndDrawPlayer(&player, manager.frame_counter);
-
-            if (win_screen.white_screen.alpha == 0.0f) {
-                AlphaFadeIn(&manager, &win_screen.white_screen, 5.0f);
-            } else if (win_screen.white_screen.alpha == 1.0f) {
-                manager.state = GameState_win_text;
-            }
-            DrawScreenFadeCol(&win_screen.white_screen, base_screen_width, base_screen_height, WHITE);
-            DrawGodFace(&manager, delta_t);
-
-        } else if (manager.state == GameState_win_text) {
-            Event_Queue *win_sequence = &event_manager.sequence[Sequence_win];
-            UpdateEventQueue(win_sequence, &manager, delta_t);
-
-            DrawScreenFadeCol(&win_screen.white_screen, base_screen_width, base_screen_height, WHITE);
-
-            // TODO: This feels a bit like spaghetti code as lots of things are dependant on each other 
-            // and it makes the flow hard to reason about at a glance.
-            UpdateWinScreen(&manager, &win_screen, delta_t, font);
-            DrawWinScreenGodFace(&manager);
-
-            if (!win_sequence->active) StartEventSequence(win_sequence);
-            Event event = win_sequence->events[1];
-            DrawTextTripleEffect(win_screen.message, win_screen.text_pos, win_screen.font_size, event.fadeable.alpha); 
-
-            UpdateSpacebarBob(&manager.spacebar_text, delta_t);
-            DrawTextTripleEffect(manager.spacebar_text.text, manager.spacebar_text.pos, manager.spacebar_text.size, 
-                                 win_sequence->events[3].fadeable.alpha); 
-
-            if (IsKeyPressed(KEY_SPACE)) {
-                win_sequence->active = false;
-                ResetEvents(&event_manager);
-                manager.gui.step = 0.0f;
-                if (manager.gui.face_type != GodAnimator_happy) {
-                    win_screen.white_screen.alpha = 0.0f;
-                    manager.state = GameState_title;
-                }
-                else {
-                    manager.state = GameState_epilogue;
-                }
-            }
-
-        } else if (manager.state == GameState_epilogue) {
-            if (win_screen.white_screen.alpha == 1.0f)
-            {
-                AlphaFadeOut(&manager, &win_screen.white_screen, 5.0f);
-            }
-            end_screen.timer += delta_t;
-            BeginShaderMode(end_screen.shaders[EndLayer_sky].shader);
-            SetTimeValueForWobbleShader(&end_screen.shaders[EndLayer_sky], current_time);
-            DrawTextureV(end_screen.textures[EndLayer_sky], {0, 0}, WHITE);
-            EndShaderMode();
-            SetTimeValueForWobbleShader(&end_screen.shaders[EndLayer_trees], current_time);
-            BeginShaderMode(end_screen.shaders[EndLayer_trees].shader);
-            DrawTextureV(end_screen.textures[EndLayer_trees], {-30.0f, 0}, WHITE);
-            EndShaderMode();
-            Animate(&end_screen.animator, manager.frame_counter);
-            DrawTextureRec(end_screen.animator.texture, 
-                           end_screen.animator.frame_rec, {0, 0}, WHITE);
-            // TODO: I could probably make this random duration animation code 
-            // a function because the god face uses the exact same code. I don't 
-            // think anyone else uses this at the moment so it's perhaps unecessary
-            // right now though. Something to keep an eye on.
-            if (end_screen.timer > end_screen.blink_duration) {
-                end_screen.animator.current_frame = 0;
-                end_screen.timer = 0;
-                end_screen.blink_duration = GetRandomValue(0.5f, 3.0f);
-            }
-
-            DrawScreenFadeCol(&win_screen.white_screen, base_screen_width, base_screen_height, WHITE);
-            if (IsKeyPressed(KEY_SPACE)) {
-                ResetEvents(&event_manager);
-                win_screen.white_screen.alpha = 0.0f;
-                manager.state = GameState_title;
-            }
-
-        } else if (manager.state == GameState_tutorial) {
-            Event_Queue *tutorial    = &event_manager.sequence[Sequence_tutorial];
-            UpdateEventQueue(tutorial, &manager, delta_t);
-            DrawRectangle(0, 0, base_screen_width, base_screen_height, BLACK);
-            if (!tutorial->active) StartEventSequence(tutorial);
-
-            const char *sacred_fire  = "Clear all of the fire to complete the ritual";
-            const char *powerup      = "Collect powerups to clear the fire";
-            const char *demon        = "Sacrifice demons by trapping them in fire";
-            u32 font_size            = 7;
-            f32 icon_padding         = 10.0f;
-            f32 text_pos_x           = (base_screen_width*0.5f) - ((MeasureText(sacred_fire, font_size) - 
-                                       (SPRITE_WIDTH + icon_padding))*0.5f);
-            Vector2 powerup_text_pos = {text_pos_x, (base_screen_height*0.5f) - font_size};
-            Vector2 demon_text_pos   = {text_pos_x, powerup_text_pos.y - font_size*4};
-            Vector2 fire_text_pos    = {text_pos_x, powerup_text_pos.y + font_size*4};
-            DrawTextTripleEffect(demon,       demon_text_pos,   font_size, tutorial->events[0].fadeable.alpha);
-            DrawTextTripleEffect(powerup,     powerup_text_pos, font_size, tutorial->events[1].fadeable.alpha);
-            DrawTextTripleEffect(sacred_fire, fire_text_pos,    font_size, tutorial->events[2].fadeable.alpha);
-
-            UpdateSpacebarBob(&manager.spacebar_text, delta_t);
-            DrawTextTripleEffect(manager.spacebar_text.text, manager.spacebar_text.pos, font_size, 
-                                 tutorial->events[4].fadeable.alpha);
-            Vector2 demon_pos   = {(f32)demon_text_pos.x - tutorial_entities.enemy.frame_rec.width - icon_padding, 
-                                   (f32)demon_text_pos.y - (tutorial_entities.enemy.frame_rec.height*0.5f)-font_size};
-            Vector2 powerup_pos = {(f32)powerup_text_pos.x - tutorial_entities.powerup.frame_rec.width - icon_padding, 
-                                   (f32)powerup_text_pos.y - font_size};
-            Vector2 fire_pos    = {(f32)fire_text_pos.x - tutorial_entities.fire.frame_rec.width - icon_padding, 
-                                   (f32)fire_text_pos.y - font_size};
-            Animate(&tutorial_entities.enemy, manager.frame_counter);
-            DrawTextureRec(tutorial_entities.enemy.texture, tutorial_entities.enemy.frame_rec, 
-                           demon_pos, Fade(WHITE, tutorial->events[0].fadeable.alpha)); 
-            Animate(&tutorial_entities.powerup, manager.frame_counter);
-            DrawTextureRec(tutorial_entities.powerup.texture, tutorial_entities.powerup.frame_rec, 
-                           powerup_pos, Fade(WHITE, tutorial->events[1].fadeable.alpha)); 
-            SetTimeValueForWobbleShader(&map.wobble, current_time);
-            BeginShaderMode(map.wobble.shader);
-            Animate(&tutorial_entities.fire, manager.frame_counter);
-            DrawTextureRec(tutorial_entities.fire.texture, tutorial_entities.fire.frame_rec, 
-                           fire_pos, Fade(WHITE, tutorial->events[2].fadeable.alpha)); 
-            EndShaderMode();
-
-            if (IsKeyPressed(KEY_SPACE)) {
-                tutorial->active = false;
-                GameOver(&player, &map, &manager);
-            }
-
-        } else if (manager.state == GameState_title) {
-            Event_Queue *title_press = &event_manager.sequence[Sequence_begin];
-            UpdateEventQueue(title_press, &manager, delta_t);
-            Game_Title *title = &title_screen_manager.title;
-            UpdateTitleBob(title, delta_t);
-            manager.should_title_music_play = !title_press->active;
-
-            if (!IsMusicStreamPlaying(manager.song[Song_intro]) && !title_press->active)  
-            {
-                TriggerTitleBob(title, 5.0f);
-            } else {
-                UpdateMusicStream(manager.song[Song_intro]);
-            }
-
-            if (IsKeyPressed(KEY_P)) TriggerTitleBob(title, 150.0f);
-
-            UpdateTitleScreenBackground(&title_screen_manager, delta_t);
-            DrawTitleScreenBackground(&title_screen_manager, current_time);
-
-            Vector2 draw_pos = {title->pos.x, title->pos.y += title->bob};
-            if (title->pos.y > base_screen_height) {
-                title->pos.y = 0.0f - title->texture.height;
-            }
-            DrawTextureEx(title->texture, {draw_pos.x-4.0f, draw_pos.y+4.0f}, 0.0f, title->scale, BLACK);
-            DrawTextureEx(title->texture, draw_pos, 0.0f, title->scale, WHITE);
-
-            Play_Text *play_text = &title_screen_manager.play_text;
-            play_text->pos.y     = draw_pos.y + 80.0f;
-            play_text->pos.y    += 1.0f*sinf(8.0f*play_text->bob);
-            play_text->bob      += delta_t;
-            DrawTextTripleEffect(play_text->text, play_text->pos, play_text->font_size);
-            
-            if (IsKeyPressed(KEY_SPACE)) {
-                if (!title_press->active) {
-                    StartEventSequence(title_press);
-                }
-                if (!IsSoundPlaying(manager.sounds[SoundEffect_spacebar])) {
-                    PlaySound(manager.sounds[SoundEffect_spacebar]);
-                }
-            }
-
-            if (title_press->active) {
-                f32 pulse = (sinf(current_time * 48.0f) * 0.5f + 0.5f);
-                u32 alpha = (u32)(pulse * 255);
-                Color flash_col = {255, 255, 255, (u8)alpha};
-                DrawText(play_text->text, play_text->pos.x, play_text->pos.y, play_text->font_size, flash_col);
-            }
-        }
-
-        // TODO: Play the music here after the game logic has occured to make 
-        // sure that all the tracks are playing correctly on thier exact frames 
-        // they are supposed to and not a frame behind.
-        PlayAllMusicForGameCorrectly(&manager);
-        EndTextureMode();
-
-        // -----------------------------------
-        // Draw
-        // -----------------------------------
-
-        // NOTE: Draw the render texture to the screen, scaling it with window size
-        BeginDrawing();
-        ClearBackground(DARKGRAY);
-
-        f32 scale_x = (f32)WINDOW_WIDTH  / base_screen_width;
-        f32 scale_y = (f32)WINDOW_HEIGHT / base_screen_height;
-        Vector2 shake_offset = GetScreenShakeOffset(&manager.screen_shake);
-
-        Rectangle dest_rect = {((WINDOW_WIDTH  - (base_screen_width  * scale_x)) * 0.5f) + shake_offset.x,
-                               ((WINDOW_HEIGHT - (base_screen_height * scale_y)) * 0.5f) + shake_offset.y,
-                               (base_screen_width * scale_x), (base_screen_height * scale_y)};
-        Rectangle rect   = {0.0f, 0.0f, (f32)target.texture.width, -(f32)target.texture.height}; 
-        Vector2 zero_vec = {0, 0};
-        DrawTexturePro(target.texture, rect, dest_rect, zero_vec, 0.0f, WHITE);
-        if (manager.state == GameState_play || manager.state == GameState_win || 
-            manager.state == GameState_win_text) {
-            u32 font_size     = 38;
-            f32 text_pos_x    = 192 + shake_offset.x;
-            f32 text_pos_y    = 25  + shake_offset.y;
-            u32 shadow_offset = 2;
-
-            if (manager.state != GameState_win_text) {
-                DrawTextDoubleEffect(TextFormat("%d", manager.score), {text_pos_x, text_pos_y}, font_size);
-            } else {
-                DrawTextTripleEffect(TextFormat("%d", manager.score), {text_pos_x, text_pos_y}, font_size);
-            }
-            
-            if (manager.state == GameState_play || manager.state == GameState_win) {
-                const char *combo = manager.score_multiplier > 1 ? 
-                                    TextFormat("%d Combo", manager.score_multiplier) :
-                                    ("0 Combo");
-                DrawText(combo, WINDOW_WIDTH - ((text_pos_x + shadow_offset) + MeasureText(combo, font_size)), 
-                         (text_pos_y + shadow_offset), font_size, BLACK);
-                DrawText(combo, WINDOW_WIDTH - (text_pos_x + MeasureText(combo, font_size)), 
-                         text_pos_y, font_size, WHITE);
-            }
-        };
-
-        if (manager.fire_cleared && player.powered_up) {
-            if (manager.state == GameState_play) {
-                manager.state = GameState_win;
-            }
-        }
-
-        EndDrawing();
-        // -----------------------------------
+        UpdateAndDrawFrame(&arena, &map, &manager, &player, &end_screen, &event_manager, 
+                           &tutorial_entities, &win_screen, &title_screen_manager, &target);
     }
     // -------------------------------------
     // De-Initialisation

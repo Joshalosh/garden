@@ -342,6 +342,7 @@ struct Game_Manager {
     f32           hype_sound_timer;
     u32           hype_prev_index;
     Sound         hype_sounds[HYPE_WORD_COUNT];
+    const char   **hype_text;
 
     Sound         sounds[SoundEffect_count];
     Text_Burst    bursts[MAX_BURSTS];
