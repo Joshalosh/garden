@@ -10,6 +10,10 @@
 
 #include "shader.cpp"
 
+#if defined(PLATFORM_WEB)
+#include <emscripten/emscripten.h>
+#endif
+
 void AnimatorInit(Animation *animator, const char *path, u32 sprite_width, b32 looping) {
     animator->texture       = LoadTexture(path);
     animator->max_frames    = (f32)animator->texture.width / sprite_width;
@@ -1872,10 +1876,14 @@ int main() {
     SetTargetFPS(60);
     // -------------------------------------
     // Main Game Loop
+#if defined(PLATFORM_WEB)
+    emscripten_set_main_loop(UpdateAndDrawFrame, 0, 1);
+#else
     while (!WindowShouldClose()) {
         UpdateAndDrawFrame(&arena, &map, &manager, &player, &end_screen, &event_manager, 
                            &tutorial_entities, &win_screen, &title_screen_manager, &target);
     }
+#endif
     // -------------------------------------
     // De-Initialisation
     // -------------------------------------

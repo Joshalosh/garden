@@ -18,6 +18,10 @@ typedef float64 f64;
 
 typedef u32 b32;
 
+#if defined(PLATFORM_WEB)
+#define ASSERT(expression) do { if(!(expression)) __builtin_trap(); } while(0)
+#else
 #define ASSERT(expression) if(!(expression)) {*(int *)0 = 0;}
+#endif
 #define ARRAY_COUNT(array) (sizeof(array) / sizeof((array)[0]))
 #define CLAMP(val, min, max) ((val) < (min) ? (min) : ((val) > (max) ? (max) : (val)))
