@@ -10,6 +10,17 @@
 
 #include "shader.cpp"
 
+static Memory_Arena         g_arena;
+static Tilemap              g_map;
+static Game_Manager         g_manager;
+static Player               g_player;
+static End_Screen           g_end_screen;
+static Event_Manager        g_event_manager;
+static Tutorial_Entities    g_tutorial_entities;
+static Win_Screen           g_win_screen; // TODO: Find out if this is initialised to zero.
+static Title_Screen_Manager g_title_screen_manager;
+static RenderTexture2D      g_target;
+
 #if defined(PLATFORM_WEB)
 #include <emscripten/emscripten.h>
 #endif
@@ -1815,8 +1826,7 @@ int main() {
                                               "HOLY COW", "DIVINE", "UNBELIEVABLE", "WOAH",
                                               "AWESOME",  "COSMIC", "RITUALISTIC",  "LEGENDARY"};
 
-    Tilemap map;
-    TilemapInit(&map);
+    TilemapInit(&g_map);
     u32 tilemap[TILEMAP_HEIGHT][TILEMAP_WIDTH] = {
         { 1, 1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1, 1, },
         { 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, },
@@ -1838,41 +1848,32 @@ int main() {
     };
     Tile tiles[TILEMAP_HEIGHT][TILEMAP_WIDTH];
 
-    map.original_map = &tilemap[0][0];
-    map.tiles        = &tiles[0][0];
-    TileInit(&map);
+    g_map.original_map = &tilemap[0][0];
+    g_map.tiles        = &tiles[0][0];
+    TileInit(&g_map);
 
-    Player player;
-    PlayerInit(&player);
+    PlayerInit(&g_player);
     // I'm seperating initialising the player animators from 
     // the rest of the initialisation because I re-init the player
     // on a game over to set the player back to default values. I 
     // do not need to re-init the player animators at game over though.
-    PlayerAnimatorInit(&player);
+    PlayerAnimatorInit(&g_player);
 
-    Game_Manager manager;
-    GameManagerInit(&manager);
-    manager.hype_text = hype_text;
+    GameManagerInit(&g_manager);
+    g_manager.hype_text = hype_text;
 
-    Title_Screen_Manager title_screen_manager;
-    TitleScreenManagerInit(&title_screen_manager);
+    TitleScreenManagerInit(&g_title_screen_manager);
 
-    End_Screen end_screen;
-    EndScreenInit(&end_screen);
+    EndScreenInit(&g_end_screen);
 
-    Event_Manager event_manager;
-    SetupEventSequences(&event_manager);
+    SetupEventSequences(&g_event_manager);
 
-    Tutorial_Entities tutorial_entities;
-    TutorialAnimationInit(&tutorial_entities);
+    TutorialAnimationInit(&g_tutorial_entities);
 
-    Win_Screen win_screen = {};
-
-    Memory_Arena arena;
     size_t arena_size = 1024*1024;
-    ArenaInit(&arena, arena_size); 
+    ArenaInit(&g_arena, arena_size); 
 
-    RenderTexture2D target   = LoadRenderTexture(base_screen_width, base_screen_height); 
+    g_target = LoadRenderTexture(base_screen_width, base_screen_height); 
     SetTargetFPS(60);
     // -------------------------------------
     // Main Game Loop
@@ -1880,15 +1881,15 @@ int main() {
     emscripten_set_main_loop(UpdateAndDrawFrame, 0, 1);
 #else
     while (!WindowShouldClose()) {
-        UpdateAndDrawFrame(&arena, &map, &manager, &player, &end_screen, &event_manager, 
-                           &tutorial_entities, &win_screen, &title_screen_manager, &target);
+        UpdateAndDrawFrame(&g_arena, &g_map, &g_manager, &g_player, &g_end_screen, &g_event_manager, 
+                           &g_tutorial_entities, &g_win_screen, &g_title_screen_manager, &g_target);
     }
 #endif
     // -------------------------------------
     // De-Initialisation
     // -------------------------------------
     // TODO: Need to make sure I unload the music and probably the textures.
-    UnloadAllSoundBuffers(&manager);
+    UnloadAllSoundBuffers(&g_manager);
     CloseAudioDevice();
     CloseWindow();
     // -------------------------------------
