@@ -18,7 +18,7 @@ pushd %OUTDIR%
 
 rem Complile + link to HTML/WASM
 rem Use em++ (handles .cpp). It can compile the C raylib sources too.
-em++ ^
+emcc ^
   %SRC% ^
   %RAYLIB%\rcore.c ^
   %RAYLIB%\rmodels.c ^
