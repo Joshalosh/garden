@@ -12,8 +12,7 @@ set OUTNAME=garden
 rem --- Load emscripten env for this shell --- 
 call "%EMSDK%\emsdk_env.bat"
 
-if not exist %OUTDIR% mkdir %OUTDIR% 
-
+if NOT EXIST %OUTDIR% mkdir %OUTDIR% 
 pushd %OUTDIR%
 
 rem Complile + link to HTML/WASM
@@ -30,12 +29,15 @@ emcc ^
   -I"%RAYLIB%" ^
   -I"..\include" ^
   -DPLATFORM_WEB ^
+  -DGRAPHICS_API_OPENGL_ES2 ^
+  -sUSE_GLFW=3 ^
   -sMIN_WEBGL_VERSION=2 -sMAX_WEBGL_VERSION=2 ^
+  -sFULL_ES3=1 ^
   -sALLOW_MEMORY_GROWTH=1 ^
   -sASYNCIFY ^
-  --preload-file "..\assets@assets" ^ 
+  --preload-file "..\assets@assets" ^
   -O3 ^
-  -o "%OUTDIR%\%OUTNAME%.html"
+  -o "%OUTNAME%.html"
 
 popd
 

@@ -4,7 +4,7 @@
 #include "raylib.h"
 #include "types.h"
 #include "mymath.h"
-#include "memory.h"
+#include "game_memory.h"
 #include "shader.h"
 #include "garden.h"
 
@@ -340,12 +340,6 @@ void GameManagerInit(Game_Manager *manager) {
     LoadSoundBuffer(manager->sounds);
     LoadHypeSoundBuffer(manager->hype_sounds);
 
-#if 0
-    manager->hype_text = {"WOW",      "YEAH",   "AMAZING",      "SANCTIFY", 
-                          "HOLY COW", "DIVINE", "UNBELIEVABLE", "WOAH",
-                          "AWESOME",  "COSMIC", "RITUALISTIC",  "LEGENDARY"};
-#endif
-    manager->spacebar_text;
     SpacebarTextInit(&manager->spacebar_text);
 }
 
