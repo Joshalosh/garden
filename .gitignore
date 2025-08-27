@@ -16,3 +16,6 @@
 # Ignore all png files
 # *.png
 
+# Ignore the web build directory
+/dist
+

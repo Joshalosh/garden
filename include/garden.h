@@ -352,6 +352,7 @@ struct Game_Manager {
     f32           play_muted_song_volume;
     b32           should_title_music_play;
     u32           last_song_bit;
+    b32           audio_initiated;
 
     Screen_Shake  screen_shake;
 

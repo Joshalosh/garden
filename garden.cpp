@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include "raylib.h"
+#include "rlgl.h"
 #include "types.h"
 #include "mymath.h"
 #include "game_memory.h"
@@ -20,13 +21,34 @@ static Tutorial_Entities    g_tutorial_entities;
 static Win_Screen           g_win_screen; // TODO: Find out if this is initialised to zero.
 static Title_Screen_Manager g_title_screen_manager;
 static RenderTexture2D      g_target;
+static Music                g_music;
 
 #if defined(PLATFORM_WEB)
 #include <emscripten/emscripten.h>
 #endif
 
+Texture2D LoadTextureWebSafe(const char* path) {
+    Texture2D texture = LoadTexture(path);
+
+#if defined(PLATFORM_WEB) 
+    SetTextureWrap(texture, TEXTURE_WRAP_CLAMP);
+    SetTextureFilter(texture, TEXTURE_FILTER_POINT);
+#endif
+    return texture;
+}
+
+RenderTexture2D LoadRenderTextureWebSafe(u32 width, u32 height) {
+    RenderTexture2D render_texture = LoadRenderTexture(width, height);
+
+#if defined(PLATFORM_WEB) 
+    SetTextureWrap(render_texture.texture, TEXTURE_WRAP_CLAMP);
+    SetTextureFilter(render_texture.texture, TEXTURE_FILTER_POINT);
+#endif
+    return render_texture;
+}
+
 void AnimatorInit(Animation *animator, const char *path, u32 sprite_width, b32 looping) {
-    animator->texture       = LoadTexture(path);
+    animator->texture       = LoadTextureWebSafe(path);
     animator->max_frames    = (f32)animator->texture.width / sprite_width;
     animator->frame_rec     = {0.0f, 0.0f,
                                (f32)animator->texture.width / animator->max_frames,
@@ -137,21 +159,21 @@ void TitleScreenManagerInit(Title_Screen_Manager *manager) {
     // TODO: Clean this up so that everything initialises into 
     // their direct destination and not into a temporary variable 
     // that is then coppied across.
-    manager->title.texture    = LoadTexture("../assets/titles/anunnaki.png");
+    manager->title.texture    = LoadTextureWebSafe("../assets/titles/anunnaki.png");
     manager->title.scale      = 2;
     manager->title.pos.x      = (base_screen_width * 0.5) - 
                                  ((manager->title.texture.width * manager->title.scale) * 0.5);
     manager->title.pos.y      = base_screen_height * 0.25;
     manager->title.bob        = 0.0f;
 
-    manager->layer[0].texture = LoadTexture("../assets/tiles/layer_1.png");
-    manager->layer[1].texture = LoadTexture("../assets/tiles/layer_2.png");
-    manager->layer[2].texture = LoadTexture("../assets/tiles/layer_3.png");
-    manager->layer[3].texture = LoadTexture("../assets/tiles/layer_4.png");
-    manager->layer[4].texture = LoadTexture("../assets/tiles/layer_5.png");
-    manager->layer[5].texture = LoadTexture("../assets/tiles/layer_6.png");
-    manager->layer[6].texture = LoadTexture("../assets/tiles/layer_7.png");
-    manager->layer[7].texture = LoadTexture("../assets/tiles/layer_8.png");
+    manager->layer[0].texture = LoadTextureWebSafe("../assets/tiles/layer_1.png");
+    manager->layer[1].texture = LoadTextureWebSafe("../assets/tiles/layer_2.png");
+    manager->layer[2].texture = LoadTextureWebSafe("../assets/tiles/layer_3.png");
+    manager->layer[3].texture = LoadTextureWebSafe("../assets/tiles/layer_4.png");
+    manager->layer[4].texture = LoadTextureWebSafe("../assets/tiles/layer_5.png");
+    manager->layer[5].texture = LoadTextureWebSafe("../assets/tiles/layer_6.png");
+    manager->layer[6].texture = LoadTextureWebSafe("../assets/tiles/layer_7.png");
+    manager->layer[7].texture = LoadTextureWebSafe("../assets/tiles/layer_8.png");
 
     f32 pos_y = 0.0f;
     for (u32 index = 0; index < BG_LAYERS; index++) {
@@ -180,8 +202,8 @@ void TitleScreenManagerInit(Title_Screen_Manager *manager) {
 }
 
 void EndScreenInit(End_Screen *screen) {
-    screen->textures[EndLayer_sky]   = LoadTexture("../assets/sprites/win_sky.png"); 
-    screen->textures[EndLayer_trees] = LoadTexture("../assets/sprites/win_trees.png"); 
+    screen->textures[EndLayer_sky]   = LoadTextureWebSafe("../assets/sprites/win_sky.png"); 
+    screen->textures[EndLayer_trees] = LoadTextureWebSafe("../assets/sprites/win_trees.png"); 
 
     u32 texture_width     = base_screen_width;
     b32 animation_looping = false;
@@ -279,9 +301,9 @@ void GameManagerInit(Game_Manager *manager) {
     manager->frame_counter          = 0;
     manager->fire_cleared           = false;
 
-    manager->atlas[Atlas_tile]      = LoadTexture("../assets/tiles/tile_row.png");
-    manager->atlas[Atlas_wall]      = LoadTexture("../assets/tiles/wall_tiles.png");
-    manager->gui.bar                = LoadTexture("../assets/tiles/bar.png");
+    manager->atlas[Atlas_tile]      = LoadTextureWebSafe("../assets/tiles/tile_row.png");
+    manager->atlas[Atlas_wall]      = LoadTextureWebSafe("../assets/tiles/wall_tiles.png");
+    manager->gui.bar                = LoadTextureWebSafe("../assets/tiles/bar.png");
     manager->gui.anim_timer         = 0;
     manager->gui.anim_duration      = 4.0f;
     manager->gui.step               = 0.0f;
@@ -314,6 +336,7 @@ void GameManagerInit(Game_Manager *manager) {
     manager->play_muted_song_volume  = 0.0f;
     manager->should_title_music_play = false;
     manager->last_song_bit           = 0xFFFFFFFF;
+    manager->audio_initiated         = false;
     SetMusicVolume(manager->song[Song_play], manager->play_song_volume);
     SetMusicVolume(manager->song[Song_play_muted], manager->play_muted_song_volume);
     // Set all the songs in the song buffer to loop
@@ -1267,13 +1290,34 @@ void DrawTitleScreenBackground(Title_Screen_Manager *bg, float current_time) {
     EndShaderMode();
 }
 
+void InitAudioDeviceForWeb(Game_Manager *manager) {
+    if(!manager->audio_initiated) {
+        if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) ||
+            IsKeyPressed(KEY_SPACE) || IsKeyPressed(KEY_ENTER) || 
+            IsKeyPressed(KEY_W)     || IsKeyPressed(KEY_A)     || 
+            IsKeyPressed(KEY_S)     || IsKeyPressed(KEY_D)     ||
+            IsKeyPressed(KEY_UP)    || IsKeyPressed(KEY_DOWN)  || 
+            IsKeyPressed(KEY_LEFT)  || IsKeyPressed(KEY_RIGHT)) {
+
+            InitAudioDevice();
+            g_music = LoadMusicStream("../assets/sounds/intro_music.wav");
+            PlayMusicStream(g_music);
+            manager->audio_initiated = true;
+        }
+    }
+}
+
+#if 0
 void UpdateAndDrawFrame() {
     // -----------------------------------
     // Update
     // -----------------------------------
-    
     f32 delta_t      = GetFrameTime();
     f32 current_time = GetTime();
+
+#if defined(PLATFORM_WEB)
+    InitAudioDeviceForWeb(&g_manager);
+#endif
 
     UpdateScreenShake(&g_manager.screen_shake, delta_t);
     UpdateAlphaFade(&g_manager, delta_t);
@@ -1801,6 +1845,23 @@ void UpdateAndDrawFrame() {
     EndDrawing();
     // -----------------------------------
 }
+#else
+void UpdateAndDrawFrame() {
+
+    InitAudioDeviceForWeb(&g_manager);
+    if (g_manager.audio_initiated) {
+        UpdateMusicStream(g_music);
+    }
+
+    BeginDrawing();
+
+    ClearBackground(MAGENTA);
+    DrawText(g_manager.audio_initiated ? "Audio playing" : "Click or press a key to start audio", 20, 90, 24, RAYWHITE);
+    DrawFPS(20, 120);
+
+    EndDrawing();
+}
+#endif
 
 int main() {
     // -------------------------------------
@@ -1808,7 +1869,11 @@ int main() {
     // -------------------------------------
 
     InitWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "Anunnaki");
+
+#if 0
+#if !defined(PLATFORM_WEB)
     InitAudioDevice();
+#endif
 
     // TODO: I don't really know how I feel about this living here. At least if it's 
     // here I can initialise it how I want it straight away. If I put it into the 
@@ -1865,14 +1930,15 @@ int main() {
 
     size_t arena_size = 1024*1024;
     ArenaInit(&g_arena, arena_size); 
+#endif
 
-    g_target = LoadRenderTexture(base_screen_width, base_screen_height); 
-    SetTargetFPS(60);
+    g_target = LoadRenderTextureWebSafe(base_screen_width, base_screen_height); 
     // -------------------------------------
     // Main Game Loop
 #if defined(PLATFORM_WEB)
     emscripten_set_main_loop(UpdateAndDrawFrame, 0, 1);
 #else
+    SetTargetFPS(60);
     while (!WindowShouldClose()) {
         UpdateAndDrawFrame();
     }
