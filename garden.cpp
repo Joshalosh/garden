@@ -21,12 +21,145 @@ static Tutorial_Entities    g_tutorial_entities;
 static Win_Screen           g_win_screen; // TODO: Find out if this is initialised to zero.
 static Title_Screen_Manager g_title_screen_manager;
 static RenderTexture2D      g_target;
-static Music                g_music;
+static bool                 g_audio_initiated;
 
 #if defined(PLATFORM_WEB)
+// ---------------- WEB AUDIO SHIM (slots map to your Song_* enum) ----------------
 #include <emscripten/emscripten.h>
+#include <emscripten/html5.h>
+
+// The music slots operate like
+// slot 0 = Song_intro
+// slot 1 = Song_play 
+// slot 2 = Song_play_muted
+// I can add more slots later and the sound effects 
+// can be done in the same way.
+
+EM_JS(void, wa_setup, (), {
+  if (!Module._wa) Module._wa = {};
+  const A = Module._wa;
+  A.ctx = A.ctx || new (window.AudioContext || window.webkitAudioContext)();
+  if (A.ctx.state === 'suspended') A.ctx.resume();
+
+  A.master = A.master || A.ctx.createGain(); A.master.gain.value = 1.0;
+  A.master.connect(A.ctx.destination);
+
+  // per-slot state
+  if (!A.slots) {
+    A.slots = {};
+    for (let i = 0; i < 8; ++i) {
+      A.slots[i] = { gain: null, src: null, html: null, startTime: 0, duration: 0, elNode: null };
+    }
+  }
+  for (let i = 0; i < 8; ++i) {
+    const S = A.slots[i];
+    if (!S.gain) { S.gain = A.ctx.createGain(); S.gain.gain.value = 0.0; S.gain.connect(A.master); }
+  }
+});
+
+EM_JS(void, wa_unlock, (), {
+  const A = Module._wa; if (!A || !A.ctx) return;
+  if (A.ctx.state === 'suspended') A.ctx.resume();
+  // nudge pull
+  const o = A.ctx.createOscillator(); const g = A.ctx.createGain(); g.gain.value = 0.0;
+  o.connect(g).connect(A.master); o.start(); o.stop(A.ctx.currentTime + 0.01);
+});
+
+EM_JS(int, wa_is_unlocked, (), {
+  const A = Module._wa; return (A && A.ctx && A.ctx.state === 'running') ? 1 : 0;
+});
+
+static inline bool Web_IsUnlocked() { 
+    return wa_is_unlocked() != 0; 
+}
+
+EM_JS(void, wa_slot_stop, (int slot), {
+  const A = Module._wa; if (!A) return; const S = A.slots[slot]; if (!S) return;
+  try { if (S.src) S.src.stop(); } catch(e) {}
+  S.src = null;
+  if (S.html) { try { S.html.pause(); } catch(e) {} S.html = null; }
+});
+
+EM_JS(void, wa_slot_set_volume, (int slot, double v), {
+  const A = Module._wa; if (!A) return; const S = A.slots[slot]; if (!S || !S.gain) return;
+  S.gain.gain.value = Math.max(0, Math.min(1, v));
+});
+
+EM_JS(int, wa_slot_is_playing, (int slot), {
+  const A = Module._wa; if (!A) return 0; const S = A.slots[slot]; if (!S) return 0;
+  if (S.html) return !S.html.paused ? 1 : 0;
+  return S.src ? 1 : 0;
+});
+
+// Read file BYTES from MEMFS, decode via WebAudio; fallback to HTMLAudio(Blob) if decode fails.
+EM_JS(void, wa_slot_play_file, (int slot, const char* path_c, int loop), {
+  try {
+    const path = UTF8ToString(path_c);
+    const A = Module._wa; if (!A) return;
+    if (!A.ctx) { Module._wa = {}; wa_setup(); }
+    if (A.ctx.state === 'suspended') A.ctx.resume();
+
+    const S = A.slots[slot]; if (!S) return;
+    // Stop anything currently playing
+    try { if (S.src) S.src.stop(); } catch(e) {}
+    if (S.html) { try { S.html.pause(); } catch(e) {} S.html = null; }
+    S.src = null;
+
+    // Read from MEMFS (because --preload-file is used in the web build script)
+    const u8 = FS.readFile(path);
+    const ab = u8.buffer.slice(u8.byteOffset, u8.byteOffset + u8.byteLength);
+
+    function mime(p){
+      const ext = p.split('.').pop().toLowerCase();
+      if (ext==='mp3') return 'audio/mpeg';
+      if (ext==='ogg'||ext==='oga') return 'audio/ogg';
+      if (ext==='wav') return 'audio/wav';
+      return 'application/octet-stream';
+    }
+
+    A.ctx.decodeAudioData(ab.slice(0)).then(buf => {
+      const node = A.ctx.createBufferSource();
+      node.buffer = buf;
+      node.loop = !!loop;
+      node.connect(S.gain);
+      node.start();
+      S.src = node;
+      S.startTime = A.ctx.currentTime;
+      S.duration  = buf.duration;
+      S.html = null;
+    }).catch(err => {
+      console.warn('decodeAudioData failed; falling back to HTMLAudioElement:', err);
+      const blob = new Blob([ab], { type: mime(path) });
+      const url  = URL.createObjectURL(blob);
+      const el   = new Audio();
+      el.src   = url;
+      el.loop  = !!loop;
+      el.volume = 1.0;  // volume is controlled by S.gain if routed
+      // Pipe element → graph if allowed
+      try {
+        if (!S.elNode && A.ctx.createMediaElementSource) {
+          S.elNode = A.ctx.createMediaElementSource(el);
+          S.elNode.connect(S.gain);
+        }
+      } catch(e) {}
+      el.play().then(()=> {
+        S.html = el;
+        el.addEventListener('loadedmetadata', ()=> { S.duration = isNaN(el.duration)?0:el.duration; }, { once:true });
+      }).catch(e => console.error('element.play() failed', e));
+    });
+
+  } catch(e) { console.error('wa_slot_play_file error', e); }
+});
+
+static inline void WebAudioInit() { wa_setup(); }
+static inline void WebAudioUnlockOnGesture() { wa_setup(); wa_unlock(); }
+static inline void WebAudioPlaySlot(int slot, const char *path, bool loop) { wa_slot_play_file(slot, path, loop?1:0); }
+static inline void WebAudioStopSlot(int slot) { wa_slot_stop(slot); }
+static inline void WebAudioSetVol(int slot, float v) { wa_slot_set_volume(slot, (double)v); }
+static inline bool WebAudioIsPlaying(int slot) { return wa_slot_is_playing(slot) != 0; }
 #endif
 
+// ---------------------------------------------------------------
 Texture2D LoadTextureWebSafe(const char* path) {
     Texture2D texture = LoadTexture(path);
 
@@ -336,7 +469,6 @@ void GameManagerInit(Game_Manager *manager) {
     manager->play_muted_song_volume  = 0.0f;
     manager->should_title_music_play = false;
     manager->last_song_bit           = 0xFFFFFFFF;
-    manager->audio_initiated         = false;
     SetMusicVolume(manager->song[Song_play], manager->play_song_volume);
     SetMusicVolume(manager->song[Song_play_muted], manager->play_muted_song_volume);
     // Set all the songs in the song buffer to loop
@@ -1290,24 +1422,6 @@ void DrawTitleScreenBackground(Title_Screen_Manager *bg, float current_time) {
     EndShaderMode();
 }
 
-void InitAudioDeviceForWeb(Game_Manager *manager) {
-    if(!manager->audio_initiated) {
-        if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) ||
-            IsKeyPressed(KEY_SPACE) || IsKeyPressed(KEY_ENTER) || 
-            IsKeyPressed(KEY_W)     || IsKeyPressed(KEY_A)     || 
-            IsKeyPressed(KEY_S)     || IsKeyPressed(KEY_D)     ||
-            IsKeyPressed(KEY_UP)    || IsKeyPressed(KEY_DOWN)  || 
-            IsKeyPressed(KEY_LEFT)  || IsKeyPressed(KEY_RIGHT)) {
-
-            InitAudioDevice();
-            g_music = LoadMusicStream("../assets/sounds/intro_music.wav");
-            PlayMusicStream(g_music);
-            manager->audio_initiated = true;
-        }
-    }
-}
-
-#if 0
 void UpdateAndDrawFrame() {
     // -----------------------------------
     // Update
@@ -1316,7 +1430,23 @@ void UpdateAndDrawFrame() {
     f32 current_time = GetTime();
 
 #if defined(PLATFORM_WEB)
-    InitAudioDeviceForWeb(&g_manager);
+    if (!g_audio_initiated) {
+        if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) || 
+            IsKeyPressed(KEY_SPACE) || IsKeyPressed(KEY_ENTER) ||
+            IsKeyPressed(KEY_W)     || IsKeyPressed(KEY_A)     ||
+            IsKeyPressed(KEY_S)     || IsKeyPressed(KEY_D)     ||
+            IsKeyPressed(KEY_UP)    || IsKeyPressed(KEY_DOWN)  ||
+            IsKeyPressed(KEY_LEFT)  || IsKeyPressed(KEY_RIGHT)) {
+
+            WebAudioUnlockOnGesture();
+            if (g_manager.state == GameState_title) {
+                WebAudioPlaySlot(Song_intro, "../sounds/intro_music.wav", true);
+                WebAudioSetVol(Song_intro, 1.0f);
+            }
+
+            g_audio_initiated = true;
+        }
+    }
 #endif
 
     UpdateScreenShake(&g_manager.screen_shake, delta_t);
@@ -1845,23 +1975,6 @@ void UpdateAndDrawFrame() {
     EndDrawing();
     // -----------------------------------
 }
-#else
-void UpdateAndDrawFrame() {
-
-    InitAudioDeviceForWeb(&g_manager);
-    if (g_manager.audio_initiated) {
-        UpdateMusicStream(g_music);
-    }
-
-    BeginDrawing();
-
-    ClearBackground(MAGENTA);
-    DrawText(g_manager.audio_initiated ? "Audio playing" : "Click or press a key to start audio", 20, 90, 24, RAYWHITE);
-    DrawFPS(20, 120);
-
-    EndDrawing();
-}
-#endif
 
 int main() {
     // -------------------------------------
@@ -1869,9 +1982,9 @@ int main() {
     // -------------------------------------
 
     InitWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "Anunnaki");
-
-#if 0
-#if !defined(PLATFORM_WEB)
+#if defined(PLATFORM_WEB)
+    WebAudioInit();
+#else
     InitAudioDevice();
 #endif
 
@@ -1930,11 +2043,11 @@ int main() {
 
     size_t arena_size = 1024*1024;
     ArenaInit(&g_arena, arena_size); 
-#endif
 
     g_target = LoadRenderTextureWebSafe(base_screen_width, base_screen_height); 
     // -------------------------------------
     // Main Game Loop
+
 #if defined(PLATFORM_WEB)
     emscripten_set_main_loop(UpdateAndDrawFrame, 0, 1);
 #else
@@ -1947,9 +2060,12 @@ int main() {
     // De-Initialisation
     // -------------------------------------
     // TODO: Need to make sure I unload the music and probably the textures.
+#if !defined(PLATFORM_WEB)
     UnloadAllSoundBuffers(&g_manager);
     CloseAudioDevice();
     CloseWindow();
+#endif
     // -------------------------------------
     return 0;
 }
+

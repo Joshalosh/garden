@@ -34,7 +34,6 @@ emcc ^
   -sMIN_WEBGL_VERSION=2 -sMAX_WEBGL_VERSION=2 ^
   -sFULL_ES3=1 ^
   -sALLOW_MEMORY_GROWTH=1 ^
-  -sASYNCIFY ^
   --preload-file "..\assets@assets" ^
   -O3 ^
   -o "%OUTNAME%.html"
