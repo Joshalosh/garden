@@ -23,6 +23,7 @@ static Title_Screen_Manager g_title_screen_manager;
 static RenderTexture2D      g_target;
 static bool                 g_audio_initiated;
 
+
 #if defined(PLATFORM_WEB)
 // ---------------- WEB AUDIO SHIM (slots map to your Song_* enum) ----------------
 #include <emscripten/emscripten.h>
@@ -34,6 +35,14 @@ static bool                 g_audio_initiated;
 // slot 2 = Song_play_muted
 // I can add more slots later and the sound effects 
 // can be done in the same way.
+
+static const char *g_song_paths[Song_count] = {
+    "assets/sounds/music.wav",          // Song_play
+    "assets/sounds/music_muted.wav",    // Song_play_muted
+    "assets/sounds/tutorial_track.wav", // Song_tutorial
+    "assets/sounds/intro_music.wav",    // Song_intro
+    "assets/sounds/win_track.wav",      // Song_win
+};
 
 EM_JS(void, wa_setup, (), {
   if (!Module._wa) Module._wa = {};
@@ -1290,6 +1299,15 @@ void PlayAllMusicForGameCorrectly(Game_Manager *manager) {
     if (wanted_song_bit != manager->last_song_bit) {
         for (u32 index = 0; index < Song_count; index++) {
             b32 should_play = (wanted_song_bit & SongBit(index)) != 0;
+
+#if defined(PLATFORM_WEB) 
+            const bool is_playing = WebAudioIsPlaying((int)index);
+            if (should_play && !is_playing) {
+                WebAudioPlaySlot((int)index, g_song_paths[index], true);
+            } else if (!should_play && is_playing) {
+                WebAudioStopSlot((int)index);
+            }
+#else
             b32 is_playing = IsMusicStreamPlaying(manager->song[index]);
 
             if (should_play && !is_playing) {
@@ -1297,15 +1315,20 @@ void PlayAllMusicForGameCorrectly(Game_Manager *manager) {
             } else if (!should_play && is_playing) {
                 StopMusicStream(manager->song[index]);
             }
+#endif
         }
         manager->last_song_bit = wanted_song_bit;
     }
 
+#if defined(PLATFORM_WEB)
+    // WebAudio doesn't need to call UpdateMusicStream();
+#else
     for (u32 index = 0; index < Song_count; index++) {
         if (IsMusicStreamPlaying(manager->song[index])) {
             UpdateMusicStream(manager->song[index]);
         }
     }
+#endif
 }
 
 void SetTimeValueForWobbleShader(Wobble_Shader *shader, f32 time) {
