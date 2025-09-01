@@ -37,11 +37,19 @@ static bool                 g_audio_initiated;
 // can be done in the same way.
 
 static const char *g_song_paths[Song_count] = {
-    "assets/sounds/music.wav",          // Song_play
-    "assets/sounds/music_muted.wav",    // Song_play_muted
-    "assets/sounds/tutorial_track.wav", // Song_tutorial
-    "assets/sounds/intro_music.wav",    // Song_intro
-    "assets/sounds/win_track.wav",      // Song_win
+    "../assets/sounds/music.wav",          // Song_play
+    "../assets/sounds/music_muted.wav",    // Song_play_muted
+    "../assets/sounds/tutorial_track.wav", // Song_tutorial
+    "../assets/sounds/intro_music.wav",    // Song_intro
+    "../assets/sounds/win_track.wav",      // Song_win
+};
+
+static const char *g_sfx_paths[SoundEffect_count] = {
+    "../assets/sounds/powerup.wav",         // SoundEffect_powerup
+    "../assets/sounds/powerup_end.wav",     // SoundEffect_powerup_end
+    "../assets/sounds/powerup_collect.wav", // SoundEffect_powerup_collect
+    "../assets/sounds/powerup_appear.wav",  // SoundEffect_powerup_appear
+    "../assets/sounds/start.wav",           // SoundEffect_spacebar
 };
 
 EM_JS(void, wa_setup, (), {
@@ -160,12 +168,107 @@ EM_JS(void, wa_slot_play_file, (int slot, const char* path_c, int loop), {
   } catch(e) { console.error('wa_slot_play_file error', e); }
 });
 
+EM_JS(void, wa_sfx_init, (), {
+  if (!Module._wa) Module._wa = {};
+  const A = Module._wa;
+  A.ctx = A.ctx || new (window.AudioContext || window.webkitAudioContext)();
+  if (A.ctx.state === 'suspended') A.ctx.resume();
+
+  A.master = A.master || A.ctx.createGain();
+  A.master.gain.value = 1.0;
+  A.master.connect(A.ctx.destination);
+
+  if (!A.sfx) A.sfx = { buffers:{}, gains:{}, actives:{}, master: null };
+  if (!A.sfx.master) { A.sfx.master = A.ctx.createGain(); A.sfx.master.gain.value = 1.0; A.sfx.master.connect(A.master); }
+});
+
+// WEB AUDIO SFX
+EM_JS(void, wa_sfx_preload, (int id, const char* path_c), {
+  try {
+    const path = UTF8ToString(path_c);
+    const A = Module._wa; if (!A) return;
+    if (!A.ctx) { Module._wa = {}; wa_sfx_init(); }
+    if (A.ctx.state === 'suspended') A.ctx.resume();
+
+    if (!A.sfx) wa_sfx_init();
+    if (!A.sfx.gains[id]) { const g = A.sfx.gains[id] = A.ctx.createGain(); g.gain.value = 1.0; g.connect(A.sfx.master); }
+    if (!A.sfx.actives[id]) A.sfx.actives[id] = [];
+
+    // Ensure the file exists in MEMFS
+    const info = FS.analyzePath(path);
+    if (!info.exists) { console.error('SFX MEMFS missing:', path); return; }
+
+    const u8 = FS.readFile(path);
+    const ab = u8.buffer.slice(u8.byteOffset, u8.byteOffset + u8.byteLength);
+
+    A.ctx.decodeAudioData(ab.slice(0)).then(buf => {
+      A.sfx.buffers[id] = buf;
+      // console.log('SFX decoded', id, path, buf.duration);
+    }).catch(err => {
+      console.error('SFX decode failed', path, err);
+    });
+  } catch(e) { console.error('wa_sfx_preload error', e); }
+});
+
+EM_JS(void, wa_sfx_set_volume, (int id, double v), {
+  const A = Module._wa; if (!A || !A.sfx || !A.sfx.gains[id]) return;
+  A.sfx.gains[id].gain.value = Math.max(0, Math.min(1, v));
+});
+
+EM_JS(void, wa_sfx_play, (int id), {
+  const A = Module._wa; if (!A || !A.sfx) return;
+  if (A.ctx.state === 'suspended') A.ctx.resume();
+  const buf = A.sfx.buffers[id]; if (!buf) return; // not loaded yet
+  const g = A.sfx.gains[id];     if (!g) return;
+
+  const src = A.ctx.createBufferSource();
+  src.buffer = buf;
+  src.connect(g);
+  src.start();
+  if (!A.sfx.actives[id]) A.sfx.actives[id] = [];
+  A.sfx.actives[id].push(src);
+  src.onended = () => {
+    const arr = A.sfx.actives[id]; if (!arr) return;
+    const i = arr.indexOf(src); if (i >= 0) arr.splice(i, 1);
+  };
+});
+
+EM_JS(int, wa_sfx_is_playing, (int id), {
+  const A = Module._wa; 
+  if (!A || !A.sfx || !A.sfx.actives[id]) return 0;
+  return A.sfx.actives[id].length > 0 ? 1 : 0;
+});
+
+EM_JS(void, wa_sfx_stop, (int id), {
+  const A = Module._wa; if (!A || !A.sfx || !A.sfx.actives[id]) return;
+  const arr = A.sfx.actives[id].slice();
+  arr.forEach(src => { try { src.stop(); } catch(e){} });
+  A.sfx.actives[id] = [];
+});
+
+EM_JS(void, wa_sfx_stop_all, (), {
+  const A = Module._wa; if (!A || !A.sfx) return;
+  for (const k in A.sfx.actives) {
+    const arr = A.sfx.actives[k].slice();
+    arr.forEach(src => { try { src.stop(); } catch(e){} });
+    A.sfx.actives[k] = [];
+  }
+});
+
 static inline void WebAudioInit() { wa_setup(); }
 static inline void WebAudioUnlockOnGesture() { wa_setup(); wa_unlock(); }
 static inline void WebAudioPlaySlot(int slot, const char *path, bool loop) { wa_slot_play_file(slot, path, loop?1:0); }
 static inline void WebAudioStopSlot(int slot) { wa_slot_stop(slot); }
 static inline void WebAudioSetVol(int slot, float v) { wa_slot_set_volume(slot, (double)v); }
 static inline bool WebAudioIsPlaying(int slot) { return wa_slot_is_playing(slot) != 0; }
+
+static inline void WebAudioSfxInit() { wa_sfx_init(); }
+static inline void WebAudioSfxPreload(int id, const char *path) { wa_sfx_preload(id, path); }
+static inline void WebAudioSfxSetVolume(int id, float v) { wa_sfx_set_volume(id, (double)v); }
+static inline void WebAudioSfxPlay(int id) { wa_sfx_play(id); }
+static inline bool WebAudioSfxIsPlaying(int id) { return wa_sfx_is_playing(id) != 0; }
+static inline void WebAudioSfxStop(int id) { wa_sfx_stop(id); }
+static inline void WebAudioSfxStopAll() { wa_sfx_stop_all(); }
 #endif
 
 // ---------------------------------------------------------------
@@ -466,18 +569,13 @@ void GameManagerInit(Game_Manager *manager) {
     manager->spawn_timer             = manager->enemy_spawn_duration;
     manager->enemy_move_timer        = manager->enemy_move_duration;
 
-    manager->hype_sound_timer        = 0.0f;
-    manager->hype_prev_index         = 0;
-
+#if !defined(PLATFORM_WEB)
     manager->song[Song_play]         = LoadMusicStream("../assets/sounds/music.wav");
     manager->song[Song_play_muted]   = LoadMusicStream("../assets/sounds/music_muted.wav");
     manager->song[Song_tutorial]     = LoadMusicStream("../assets/sounds/tutorial_track.wav");
     manager->song[Song_intro]        = LoadMusicStream("../assets/sounds/intro_music.wav");
     manager->song[Song_win]          = LoadMusicStream("../assets/sounds/win_track.wav");
-    manager->play_song_volume        = 1.0f;
-    manager->play_muted_song_volume  = 0.0f;
-    manager->should_title_music_play = false;
-    manager->last_song_bit           = 0xFFFFFFFF;
+
     SetMusicVolume(manager->song[Song_play], manager->play_song_volume);
     SetMusicVolume(manager->song[Song_play_muted], manager->play_muted_song_volume);
     // Set all the songs in the song buffer to loop
@@ -485,6 +583,25 @@ void GameManagerInit(Game_Manager *manager) {
         ASSERT(IsMusicReady(manager->song[index]));
         manager->song[index].looping = true;
     }
+
+    LoadSoundBuffer(manager->sounds);
+    LoadHypeSoundBuffer(manager->hype_sounds);
+
+    manager->hype_sound_timer        = 0.0f;
+    manager->hype_prev_index         = 0;
+#else
+    WebAudioSfxInit();
+    for (int i = 0; i < (int)SoundEffect_count; i++) {
+        WebAudioSfxPreload(i, g_sfx_paths[i]);
+        WebAudioSfxSetVolume(i, 1.0f);
+    }
+#endif
+
+
+    manager->play_song_volume        = 1.0f;
+    manager->play_muted_song_volume  = 0.0f;
+    manager->should_title_music_play = false;
+    manager->last_song_bit           = 0xFFFFFFFF;
 
     manager->enemy_sentinel          = {};
     manager->enemy_sentinel.next     = &manager->enemy_sentinel;
@@ -500,9 +617,6 @@ void GameManagerInit(Game_Manager *manager) {
     manager->screen_shake.decay      = 0;
 
     manager->fade_count              = 0;
-
-    LoadSoundBuffer(manager->sounds);
-    LoadHypeSoundBuffer(manager->hype_sounds);
 
     SpacebarTextInit(&manager->spacebar_text);
 }
@@ -905,7 +1019,12 @@ void FillEnclosedAreas(Memory_Arena *arena, Tilemap *tilemap, Player *player, Ga
 
     if (has_flood_fill_happened) {
         if (enemy_slain) {
+#if defined(PLATFORM_WEB)
+            WebAudioSfxSetVolume(SoundEffect_powerup_appear, 1.0f);
+            WebAudioSfxPlay(SoundEffect_powerup_appear);
+#else
             PlaySound(manager->sounds[SoundEffect_powerup_appear]);
+#endif
             BeginScreenShake(&manager->screen_shake, 2.0f*enemy_slain, 0.6f, 10.0f);
             manager->score_multiplier = enemy_slain;
         }
@@ -1304,6 +1423,7 @@ void PlayAllMusicForGameCorrectly(Game_Manager *manager) {
             const bool is_playing = WebAudioIsPlaying((int)index);
             if (should_play && !is_playing) {
                 WebAudioPlaySlot((int)index, g_song_paths[index], true);
+                WebAudioSetVol((int)index, 1.0f);
             } else if (!should_play && is_playing) {
                 WebAudioStopSlot((int)index);
             }
@@ -1463,7 +1583,7 @@ void UpdateAndDrawFrame() {
 
             WebAudioUnlockOnGesture();
             if (g_manager.state == GameState_title) {
-                WebAudioPlaySlot(Song_intro, "../sounds/intro_music.wav", true);
+                WebAudioPlaySlot(Song_intro, "../assets/sounds/intro_music.wav", true);
                 WebAudioSetVol(Song_intro, 1.0f);
             }
 
@@ -1562,7 +1682,12 @@ void UpdateAndDrawFrame() {
                     if (IsSoundPlaying(g_manager.sounds[SoundEffect_powerup_end])) {
                         StopSound(g_manager.sounds[SoundEffect_powerup_end]);
                     }
+#if defined(PLATFORM_WEB)
+                    WebAudioSfxSetVolume(SoundEffect_powerup_collect, 1.0f);
+                    WebAudioSfxPlay(SoundEffect_powerup_collect);
+#else
                     PlaySound(g_manager.sounds[SoundEffect_powerup_collect]);
+#endif
                     g_manager.hype_sound_timer   = 0;
                 }
 
@@ -1644,11 +1769,18 @@ void UpdateAndDrawFrame() {
             Sound powerup_effect     = g_manager.sounds[SoundEffect_powerup];
             Sound powerup_end_effect = g_manager.sounds[SoundEffect_powerup_end];
 
-            if(!IsSoundPlaying(powerup_effect) && !IsSoundPlaying(powerup_end_effect))
+#if defined(PLATFORM_WEB)
+            if (!WebAudioSfxIsPlaying(SoundEffect_powerup) && !WebAudioSfxIsPlaying(SoundEffect_powerup_end)) {
+                WebAudioSfxSetVolume(SoundEffect_powerup, 1.5f);
+                WebAudioSfxPlay(SoundEffect_powerup);
+            }
+#else
+            if (!IsSoundPlaying(powerup_effect) && !IsSoundPlaying(powerup_end_effect))
             {
                 PlaySound(powerup_effect);
                 SetSoundVolume(powerup_effect, 1.5f);
             }
+#endif
 
             if (g_player.powerup_timer < current_time) { // Powerup is over.
                 g_player.powered_up = false;
@@ -1661,11 +1793,19 @@ void UpdateAndDrawFrame() {
                     g_player.blink_speed   = 2.0f; 
                     water_frame_counter *= 2;
 
+#if defined(PLATFORM_WEB)
+                    if (!WebAudioSfxIsPlaying(SoundEffect_powerup_end)) {
+                        WebAudioSfxStop(SoundEffect_powerup);
+                        WebAudioSfxSetVolume(SoundEffect_powerup_end, 2.0f);
+                        WebAudioSfxPlay(SoundEffect_powerup_end);
+                    }
+#else
                     if (!IsSoundPlaying(powerup_end_effect)) {
                         StopSound(powerup_effect);
                         PlaySound(powerup_end_effect);
                         SetSoundVolume(powerup_end_effect, 2.0f);
                     }
+#endif
                 }
 
                 if (g_player.blinking_duration > 0) {
@@ -1693,8 +1833,13 @@ void UpdateAndDrawFrame() {
         // only track I fade so it's probably fine 
         g_manager.play_song_volume       = CLAMP(g_manager.play_song_volume,  0.0f, 1.0f);
         g_manager.play_muted_song_volume = CLAMP(g_manager.play_muted_song_volume, 0.0f, 1.0f);
+#if defined(PLATFORM_WEB)
+        WebAudioSetVol(Song_play,       g_manager.play_song_volume);
+        WebAudioSetVol(Song_play_muted, g_manager.play_muted_song_volume);
+#else 
         SetMusicVolume(g_manager.song[Song_play],       g_manager.play_song_volume);
         SetMusicVolume(g_manager.song[Song_play_muted], g_manager.play_muted_song_volume);
+#endif
 
         // Enemy spawning
         if (g_manager.spawn_timer > 0) {
@@ -1899,12 +2044,12 @@ void UpdateAndDrawFrame() {
         UpdateTitleBob(title, delta_t);
         g_manager.should_title_music_play = !title_press->active;
 
+#if !defined(PLATFORM_WEB)
         if (!IsMusicStreamPlaying(g_manager.song[Song_intro]) && !title_press->active)  
         {
             TriggerTitleBob(title, 5.0f);
-        } else {
-            UpdateMusicStream(g_manager.song[Song_intro]);
         }
+#endif
 
         if (IsKeyPressed(KEY_P)) TriggerTitleBob(title, 150.0f);
 
@@ -1928,9 +2073,15 @@ void UpdateAndDrawFrame() {
             if (!title_press->active) {
                 StartEventSequence(title_press);
             }
+#if defined(PLATFORM_WEB) 
+            if (!WebAudioSfxIsPlaying(SoundEffect_spacebar)) {
+                WebAudioSfxPlay(SoundEffect_spacebar);
+            }
+#else
             if (!IsSoundPlaying(g_manager.sounds[SoundEffect_spacebar])) {
                 PlaySound(g_manager.sounds[SoundEffect_spacebar]);
             }
+#endif
         }
 
         if (title_press->active) {
