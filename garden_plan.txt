@@ -2,6 +2,7 @@
 - Player
 
 - UI
+- Add spacebar text to epilogue screen.
 
 - Art Assets
   
@@ -15,19 +16,11 @@
    - Fire douse?
   
 - Juice
- - Figure our better scoring system.
  - Maybe have the win screen background play out behind the tutorial?
 
 - Refactor
- - Fix get tile rect function to not do multiple things.
  - Go over all the TODOS.
 
 - Bugs
- - if there is literally no more squares for a powerup to appear in when an enemy slay happens 
-   the game crashes. (I think I fixed this to work with a single space but perhaps I didn't make 
-   this work for the instance there are literally no spaces available).
  - Make sure to unload all the assets and sounds and stuff. I need to pay attention to the 
    de-initialisation phase.
- - The game bugs out when going up into the top wall because i've gotten rid of the wall up there,
-   to make space for the GUI bar. The solution is probably to just make it so that if the player target 
-   position also goes into a tile_type of none its a game over as well.
