@@ -52,6 +52,21 @@ static const char *g_sfx_paths[SoundEffect_count] = {
     "../assets/sounds/start.wav",           // SoundEffect_spacebar
 };
 
+static const char *g_hype_paths[HYPE_WORD_COUNT] = {
+    "../assets/sounds/hype_1.wav", 
+    "../assets/sounds/hype_2.wav", 
+    "../assets/sounds/hype_3.wav", 
+    "../assets/sounds/hype_4.wav", 
+    "../assets/sounds/hype_5.wav", 
+    "../assets/sounds/hype_6.wav", 
+    "../assets/sounds/hype_7.wav", 
+    "../assets/sounds/hype_8.wav", 
+    "../assets/sounds/hype_9.wav", 
+    "../assets/sounds/hype_10.wav", 
+    "../assets/sounds/hype_11.wav", 
+    "../assets/sounds/hype_12.wav", 
+};
+
 EM_JS(void, wa_setup, (), {
   if (!Module._wa) Module._wa = {};
   const A = Module._wa;
@@ -506,15 +521,28 @@ void LoadHypeSoundBuffer(Sound *sound) {
 }
 
 void StopSoundBuffer(Sound *sounds) {
+#if defined(PLATFORM_WEB)
+    for (int index = 0; index < (int)SoundEffect_count; index++) {
+        WebAudioSfxStop(index);
+    }
+#else
     for (u32 index = 0; index < SoundEffect_count; index++) {
         StopSound(sounds[index]);
     }
+#endif
 }
 
 void StopHypeSoundBuffer(Sound *sounds) {
+#if defined(PLATFORM_WEB)
+    for (int index = 0; index < (int)HYPE_WORD_COUNT; index++) {
+        WebAudioSfxStop(HYPE_SFX_BASE + index);
+    }
+#else
     for (u32 index = 0; index < HYPE_WORD_COUNT; index++) {
         StopSound(sounds[index]);
     }
+#endif
+    
 }
 
 void StopAllSoundBuffers(Game_Manager *manager) {
@@ -594,6 +622,10 @@ void GameManagerInit(Game_Manager *manager) {
     for (int i = 0; i < (int)SoundEffect_count; i++) {
         WebAudioSfxPreload(i, g_sfx_paths[i]);
         WebAudioSfxSetVolume(i, 1.0f);
+    }
+    for (int i = 0; i < (int)HYPE_WORD_COUNT; i++) {
+        WebAudioSfxPreload(HYPE_SFX_BASE + i, g_hype_paths[i]);
+        WebAudioSfxSetVolume(HYPE_SFX_BASE + i, 3.0f);
     }
 #endif
 
@@ -924,7 +956,7 @@ u32 GetRandomEmptyTileIndex(Tilemap *tilemap, u32 tile_index) {
     u32 right_tile  = tile_index + 1;
     u32 left_tile   = tile_index - 1;
     u32 bottom_tile = tile_index + tilemap->width;
-    u32 top_tile    = tile_index - tilemap->height;
+    u32 top_tile    = tile_index - tilemap->width;
 
     while (!found_empty_tile && attempts != 0) {
         u32 random_x = GetRandomValue(1, tilemap->width - 2);
@@ -1572,6 +1604,7 @@ void UpdateAndDrawFrame() {
     f32 delta_t      = GetFrameTime();
     f32 current_time = GetTime();
 
+/*
 #if defined(PLATFORM_WEB)
     if (!g_audio_initiated) {
         if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) || 
@@ -1591,6 +1624,7 @@ void UpdateAndDrawFrame() {
         }
     }
 #endif
+*/
 
     UpdateScreenShake(&g_manager.screen_shake, delta_t);
     UpdateAlphaFade(&g_manager, delta_t);
@@ -1640,11 +1674,12 @@ void UpdateAndDrawFrame() {
             
 
             if (input_axis.x || input_axis.y) {
+#if 0
                 // NOTE: Calculate the next tile position
                 u32 current_tile_x = (u32)g_player.pos.x / g_map.tile_size;
                 u32 current_tile_y = (u32)g_player.pos.y / g_map.tile_size;
-                u32 target_tile_x  = current_tile_x + (u32)input_axis.x;
-                u32 target_tile_y  = current_tile_y + (u32)input_axis.y;
+                u32 target_tile_x  = current_tile_x + input_axis.x;
+                u32 target_tile_y  = current_tile_y + input_axis.y;
                 u32 target_tile_index = TilemapIndex(target_tile_x, target_tile_y, g_map.width);
                 Tile *target_tile     = &g_map.tiles[target_tile_index];
 
@@ -1671,6 +1706,40 @@ void UpdateAndDrawFrame() {
                     // Out of bounds
                     GameOver(&g_player, &g_map, &g_manager);
                 }
+#else
+                s32 current_tile_x = (s32)floorf(g_player.pos.x / g_map.tile_size);
+                s32 current_tile_y = (s32)floorf(g_player.pos.y / g_map.tile_size);
+
+                s32 direction_x = (s32)input_axis.x;
+                s32 direction_y = (s32)input_axis.y;
+
+                s32 target_tile_x = current_tile_x + direction_x;
+                s32 target_tile_y = current_tile_y + direction_y;
+
+                u32 target_tile_index = TilemapIndex((u32)target_tile_x, (u32)target_tile_y, g_map.width);
+                Tile *target_tile = &g_map.tiles[target_tile_index];
+
+                if (target_tile_x > 0 && target_tile_x < (s32)g_map.width - 1 && 
+                    target_tile_y > 0 && target_tile_y < (s32)g_map.height - 1) {
+
+                    if (target_tile->type != TileType_wall && target_tile->type != TileType_none) { 
+                        g_player.facing = dir;
+                        g_player.target_pos = {(float)target_tile_x * g_map.tile_size, (float)target_tile_y * g_map.tile_size};
+                        g_player.is_moving = true;
+
+                        u32 current_tile_index = TilemapIndex((u32)current_tile_x, (u32)current_tile_y, g_map.width);
+                        Tile *current_tile = &g_map.tiles[current_tile_index];
+                        if (!g_player.powered_up) {
+                            AddFlag(current_tile, TileFlag_fire);
+                        }
+                    } else {
+                        GameOver(&g_player, &g_map, &g_manager);
+                    }
+                } else {
+                    // Out of bounds
+                    GameOver(&g_player, &g_map, &g_manager);
+                }
+#endif
 
                 if (IsFlagSet(target_tile, TileFlag_powerup)) {
                     f32 powerup_duration        = 10.0f;
@@ -1679,9 +1748,16 @@ void UpdateAndDrawFrame() {
                     g_player.blink_speed         = 5.0f;
                     g_player.blinking_duration   = g_player.blink_speed;
                     ClearFlag(target_tile, TileFlag_powerup);
+#if defined(PLATFORM_WEB)
+                    if (WebAudioSfxIsPlaying(SoundEffect_powerup_end)) {
+                        WebAudioSfxStop(SoundEffect_powerup_end);
+                    }
+#else
                     if (IsSoundPlaying(g_manager.sounds[SoundEffect_powerup_end])) {
                         StopSound(g_manager.sounds[SoundEffect_powerup_end]);
                     }
+#endif
+
 #if defined(PLATFORM_WEB)
                     WebAudioSfxSetVolume(SoundEffect_powerup_collect, 1.0f);
                     WebAudioSfxPlay(SoundEffect_powerup_collect);
@@ -1715,10 +1791,16 @@ void UpdateAndDrawFrame() {
                                 index = GetRandomValue(0, HYPE_WORD_COUNT -1);
                             }
                             ASSERT(index < HYPE_WORD_COUNT);
+#if defined(PLATFORM_WEB)
+                            // For the web the id is the base + the index.
+                            int hype_id = (int)(HYPE_SFX_BASE + index);
+                            WebAudioSfxPlay(hype_id);
+#else
                             Sound hype_sound = g_manager.hype_sounds[index];
                             f32 sound_boost  = 3.0f;
                             SetSoundVolume(hype_sound, sound_boost);
                             PlaySound(hype_sound);
+#endif
 
                             g_manager.hype_prev_index  = index;
                             f32 sound_duration        = current_time + 0.90f;
@@ -1786,8 +1868,13 @@ void UpdateAndDrawFrame() {
                 g_player.powered_up = false;
                 g_player.col_bool   = false;
                 g_manager.score_multiplier = 1;
+#if defined(PLATFORM_WEB)
+                WebAudioSfxStop(SoundEffect_powerup);
+                WebAudioSfxStop(SoundEffect_powerup_end);
+#else
                 StopSound(powerup_effect);
                 StopSound(powerup_end_effect);
+#endif
             } else {
                 if ((g_player.powerup_timer - end_duration_signal) < current_time) { // Powerup over soon warning.
                     g_player.blink_speed   = 2.0f; 
@@ -2158,6 +2245,23 @@ int main() {
     InitWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "Anunnaki");
 #if defined(PLATFORM_WEB)
     WebAudioInit();
+    emscripten_run_script(
+      "var cv=document.getElementById('canvas');"
+      "if(cv){"
+      "  cv.style.outline='none';"
+      "  cv.tabIndex=1;"
+      "  cv.focus();"
+      "  cv.addEventListener('click', ()=>cv.focus());"
+      "}"
+      // Prevent browser scrolling on space/arrow keys
+      "document.addEventListener('keydown', function(e){"
+      "  if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' ','Space'].includes(e.key)){"
+      "    e.preventDefault();"
+      "  }"
+      "}, {passive:false});"
+      // Optional: keep page from moving if something else bubbles
+      "document.body.style.overflow='hidden';"
+    );
 #else
     InitAudioDevice();
 #endif
@@ -2167,12 +2271,12 @@ int main() {
     // game manager struct then it's more annoying to initialise this array. I'd 
     // probably have to loop over the array... so I guess for now it can live here 
     // until I can come up with a clearly better solution.
-    const char *hype_text[HYPE_WORD_COUNT] = {"WOW",      "YEAH",   "AMAZING",      "SANCTIFY", 
+    static const char *hype_text[HYPE_WORD_COUNT] = {"WOW",      "YEAH",   "AMAZING",      "SANCTIFY", 
                                               "HOLY COW", "DIVINE", "UNBELIEVABLE", "WOAH",
                                               "AWESOME",  "COSMIC", "RITUALISTIC",  "LEGENDARY"};
 
     TilemapInit(&g_map);
-    u32 tilemap[TILEMAP_HEIGHT][TILEMAP_WIDTH] = {
+    static u32 tilemap[TILEMAP_HEIGHT][TILEMAP_WIDTH] = {
         { 1, 1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1, 1, },
         { 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, },
         { 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, },
@@ -2191,7 +2295,7 @@ int main() {
         { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, },
 
     };
-    Tile tiles[TILEMAP_HEIGHT][TILEMAP_WIDTH];
+    static Tile tiles[TILEMAP_HEIGHT][TILEMAP_WIDTH];
 
     g_map.original_map = &tilemap[0][0];
     g_map.tiles        = &tiles[0][0];

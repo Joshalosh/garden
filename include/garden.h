@@ -13,6 +13,7 @@
 #define FRAME_SPEED 8
 #define INPUT_MAX 5
 #define HYPE_WORD_COUNT 12
+#define HYPE_SFX_BASE 5
 #define MAX_BURSTS 32
 #define BG_LAYERS 8 
 #define MAX_EVENTS 16
