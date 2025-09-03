@@ -404,7 +404,7 @@ void PlayerAnimatorInit(Player *player) {
                  SPRITE_WIDTH, looping); 
     // The left animation uses the same texture as the right animation 
     // and then it just gets flipped along the x axis.
-    AnimatorInit(&player->animators[PlayerAnimator_left], "../assets/sprites/hat_right.png", 
+    AnimatorInit(&player->animators[PlayerAnimator_left], "../assets/sprites/hat_left.png", 
                  SPRITE_WIDTH, looping); 
     AnimatorInit(&player->animators[PlayerAnimator_right], "../assets/sprites/hat_right.png", 
                  SPRITE_WIDTH, looping); 
@@ -1487,21 +1487,46 @@ void SetTimeValueForWobbleShader(Wobble_Shader *shader, f32 time) {
     SetShaderValue(shader->shader, shader->time_location, &time, SHADER_UNIFORM_FLOAT);
 }
 
-void AnimateAndDrawPlayer(Player *player, u32 frame_counter){
-            Rectangle src = player->animators[player->facing].frame_rec;
-            if (player->facing == DirectionFacing_left) {
-                src.x     +=  src.width;
-                src.width  = -src.width;
-            }
-            
-            f32 frame_width     = (f32)player->animators[player->facing].frame_rec.width;
-            f32 frame_height    = (f32)player->animators[player->facing].texture.height;
-            Rectangle dest_rect = {player->pos.x, player->pos.y, 
-                                   frame_width, frame_height}; 
-            Vector2 texture_offset = {0.0f, 20.0f};
-            Animate(&player->animators[player->facing], frame_counter);
-            DrawTexturePro(player->animators[player->facing].texture, src,
-                           dest_rect, texture_offset, 0.0f, player->col);
+void AnimateAndDrawPlayer(Player *player, u32 frame_counter) {
+#if 0
+    Animation* anim = &player->animators[player->facing];
+
+    // Advance first so the src reflects the frame that will be drawn.
+    Animate(anim, frame_counter);
+
+    Rectangle source_rect = anim->frame_rec;
+    f32 width = source_rect.width;
+    f32 height = (f32)anim->texture.height;
+
+    Rectangle dest_rect = {player->pos.x, player->pos.y, width, height};
+    Vector2 origin = {0.0f, 20.0f};
+
+    if (player->facing == DirectionFacing_left) {
+        dest_rect.width  = -width;
+        origin.x = width;
+    }
+
+    DrawTexturePro(anim->texture, source_rect, dest_rect, origin, 0.0f, player->col);
+#else
+    Rectangle src = player->animators[player->facing].frame_rec;
+#if 0
+    if (player->facing == DirectionFacing_left) {
+        src.x     +=  src.width;
+        src.width  = -src.width;
+        //src.x = fminf(src.x + src.width, player->animators[player->facing].texture.width - 0.001f);
+        //src.width = -src.width;
+    }
+#endif
+    
+    f32 frame_width     = (f32)player->animators[player->facing].frame_rec.width;
+    f32 frame_height    = (f32)player->animators[player->facing].texture.height;
+    Rectangle dest_rect = {player->pos.x, player->pos.y, 
+                           frame_width, frame_height}; 
+    Vector2 texture_offset = {0.0f, 20.0f};
+    Animate(&player->animators[player->facing], frame_counter);
+    DrawTexturePro(player->animators[player->facing].texture, src,
+                   dest_rect, texture_offset, 0.0f, player->col);
+#endif
 }
 
 void UpdateWinScreen(Game_Manager *manager, Win_Screen *screen, f32 delta_t) {
@@ -1604,8 +1629,7 @@ void UpdateAndDrawFrame() {
     f32 delta_t      = GetFrameTime();
     f32 current_time = GetTime();
 
-/*
-#if defined(PLATFORM_WEB)
+/*#if defined(PLATFORM_WEB)
     if (!g_audio_initiated) {
         if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) || 
             IsKeyPressed(KEY_SPACE) || IsKeyPressed(KEY_ENTER) ||
@@ -2271,12 +2295,12 @@ int main() {
     // game manager struct then it's more annoying to initialise this array. I'd 
     // probably have to loop over the array... so I guess for now it can live here 
     // until I can come up with a clearly better solution.
-    static const char *hype_text[HYPE_WORD_COUNT] = {"WOW",      "YEAH",   "AMAZING",      "SANCTIFY", 
+    const char *hype_text[HYPE_WORD_COUNT] = {"WOW",      "YEAH",   "AMAZING",      "SANCTIFY", 
                                               "HOLY COW", "DIVINE", "UNBELIEVABLE", "WOAH",
                                               "AWESOME",  "COSMIC", "RITUALISTIC",  "LEGENDARY"};
 
     TilemapInit(&g_map);
-    static u32 tilemap[TILEMAP_HEIGHT][TILEMAP_WIDTH] = {
+    u32 tilemap[TILEMAP_HEIGHT][TILEMAP_WIDTH] = {
         { 1, 1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1, 1, },
         { 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, },
         { 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, },
@@ -2295,7 +2319,7 @@ int main() {
         { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, },
 
     };
-    static Tile tiles[TILEMAP_HEIGHT][TILEMAP_WIDTH];
+    Tile tiles[TILEMAP_HEIGHT][TILEMAP_WIDTH];
 
     g_map.original_map = &tilemap[0][0];
     g_map.tiles        = &tiles[0][0];
