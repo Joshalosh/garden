@@ -96,6 +96,7 @@ enum Event_Sequence {
     Sequence_win,
     Sequence_tutorial,
     Sequence_begin,
+    Sequence_epilogue,
 
     Sequence_count,
 };

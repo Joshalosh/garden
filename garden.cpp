@@ -307,7 +307,7 @@ void SpacebarTextInit(Spacebar_Text *text) {
 
 void GameManagerInit(Game_Manager *manager) {
     manager->score                  = 0;
-    manager->happy_score            = 10000;
+    manager->happy_score            = 100;
     manager->satisfied_score        = 2500;
     manager->score_multiplier       = 1;
     manager->frame_counter          = 0;
@@ -418,6 +418,7 @@ void TutorialAnimationInit(Tutorial_Entities *entities) {
 }
 
 void ResetEvents(Event_Manager *manager) {
+    manager->sequence[Sequence_epilogue] = manager->original_sequence[Sequence_epilogue];
     manager->sequence[Sequence_win]      = manager->original_sequence[Sequence_win];
     manager->sequence[Sequence_tutorial] = manager->original_sequence[Sequence_tutorial];
     manager->sequence[Sequence_begin]    = manager->original_sequence[Sequence_begin];
@@ -430,6 +431,14 @@ void SetupEventSequences(Event_Manager *manager) {
     // The final ResetEvent() call at the end of this sets the actual 
     // events to their base value at the end of this initialisation.
     
+    // The epilogue press spacebar sequence.
+    manager->original_sequence[Sequence_epilogue].events[0]          = {EventType_wait, 6.0f, 0, 0, 0};
+    manager->original_sequence[Sequence_epilogue].events[1].type     = EventType_fade_in;
+    manager->original_sequence[Sequence_epilogue].events[1].duration = 2.0f;
+    manager->original_sequence[Sequence_epilogue].events[1].fadeable = {};
+    manager->original_sequence[Sequence_epilogue].count              = 2;
+    manager->original_sequence[Sequence_epilogue].active             = false;
+
     // Setup the winning event sequence.
     manager->original_sequence[Sequence_win].events[1].type           = EventType_fade_in;
     manager->original_sequence[Sequence_win].events[1].duration       = 1.0f;
@@ -1787,8 +1796,6 @@ void UpdateAndDrawFrame() {
 
         DrawScreenFadeCol(&g_win_screen.white_screen, base_screen_width, base_screen_height, WHITE);
 
-        // TODO: This feels a bit like spaghetti code as lots of things are dependant on each other 
-        // and it makes the flow hard to reason about at a glance.
         UpdateWinScreen(&g_manager, &g_win_screen, delta_t);
         DrawWinScreenGodFace(&g_manager);
 
@@ -1839,6 +1846,14 @@ void UpdateAndDrawFrame() {
             g_end_screen.timer = 0;
             g_end_screen.blink_duration = GetRandomValue(1, 4);
         }
+
+        Event_Queue *epilogue_sequence = &g_event_manager.sequence[Sequence_epilogue];
+        UpdateEventQueue(epilogue_sequence, &g_manager, delta_t);
+
+        if (!epilogue_sequence->active) StartEventSequence(epilogue_sequence);
+        UpdateSpacebarBob(&g_manager.spacebar_text, delta_t);
+        DrawTextTripleEffect(g_manager.spacebar_text.text, {g_manager.spacebar_text.pos.x, g_manager.spacebar_text.pos.y + 20.0f}, 
+                             g_manager.spacebar_text.size*2, epilogue_sequence->events[1].fadeable.alpha); 
 
         DrawScreenFadeCol(&g_win_screen.white_screen, base_screen_width, base_screen_height, WHITE);
         if (IsKeyPressed(KEY_SPACE)) {
