@@ -2108,6 +2108,7 @@ int main() {
     ArenaInit(&g_arena, arena_size); 
 
     g_target = LoadRenderTextureWebSafe(base_screen_width, base_screen_height); 
+
     // -------------------------------------
     // Main Game Loop
 
