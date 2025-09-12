@@ -901,11 +901,18 @@ void StorePlayerDirectionsInBuffer(Player *player) {
         Direction_Facing dir = KeyToDirection(key);
         if (dir == DirectionFacing_none) continue;
 
-        if ((player->facing == DirectionFacing_up    && dir == DirectionFacing_down) ||
-            (player->facing == DirectionFacing_down  && dir == DirectionFacing_up)   ||
-            (player->facing == DirectionFacing_left  && dir == DirectionFacing_right)||
-            (player->facing == DirectionFacing_right && dir == DirectionFacing_left)) {
-            continue;
+        if (InputBufferEmpty(player)) {
+            if ((player->facing == DirectionFacing_up    && dir == DirectionFacing_down) ||
+                (player->facing == DirectionFacing_down  && dir == DirectionFacing_up)   ||
+                (player->facing == DirectionFacing_left  && dir == DirectionFacing_right)||
+                (player->facing == DirectionFacing_right && dir == DirectionFacing_left)) {
+                continue;
+            }
+        }
+
+        if (!InputBufferEmpty(player)) {
+            if (player->input_buffer.inputs[player->input_buffer.end] == dir) 
+                continue;
         }
 
         InputBufferPush(player, dir);
