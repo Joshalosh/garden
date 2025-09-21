@@ -307,7 +307,7 @@ void SpacebarTextInit(Spacebar_Text *text) {
 
 void GameManagerInit(Game_Manager *manager) {
     manager->score                  = 0;
-    manager->happy_score            = 100;
+    manager->happy_score            = 10000;
     manager->satisfied_score        = 2500;
     manager->score_multiplier       = 1;
     manager->frame_counter          = 0;

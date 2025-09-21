@@ -168,7 +168,6 @@ struct Input_Buffer {
     Direction_Facing inputs[INPUT_MAX];
     u32              start;
     u32              end;
-
 };
 
 struct Player {
