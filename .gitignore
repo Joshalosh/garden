@@ -19,3 +19,5 @@
 # Ignore the web build directory
 /dist
 
+# Ignore all zip files
+*.zip
