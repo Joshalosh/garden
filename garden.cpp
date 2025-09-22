@@ -1772,10 +1772,12 @@ void UpdateAndDrawFrame() {
         AnimateAndDrawPlayer(&g_player, g_manager.frame_counter);
         UpdateAndDrawAllTextBursts(&g_manager, delta_t);
 
+#if 0
         // TODO: Take this out of the game before shipping.
         if (IsKeyPressed(KEY_P)) {
             g_manager.state = GameState_win;
         }
+#endif
 
     } else if (g_manager.state == GameState_win) {
         SetTimeValueForWobbleShader(&g_map.wobble, current_time);

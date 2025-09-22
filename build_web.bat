@@ -7,7 +7,7 @@ set EMSDK=C:\emsdk
 set RAYLIB=..\external\Raylib
 set SRC=..\garden.cpp 
 set OUTDIR=dist 
-set OUTNAME=garden
+set OUTNAME=index
 
 rem --- Load emscripten env for this shell --- 
 call "%EMSDK%\emsdk_env.bat"
