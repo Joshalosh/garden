@@ -2000,8 +2000,8 @@ void UpdateAndDrawFrame() {
     if (g_manager.state == GameState_play || g_manager.state == GameState_win || 
         g_manager.state == GameState_win_text) {
         u32 font_size     = 38;
-        f32 text_pos_x    = 192 + shake_offset.x;
-        f32 text_pos_y    = 25  + shake_offset.y;
+        f32 text_pos_x    = (144) + shake_offset.x;
+        f32 text_pos_y    = (25/2)  + shake_offset.y;
         u32 shadow_offset = 2;
 
         if (g_manager.state != GameState_win_text) {
